@@ -1,51 +1,41 @@
-(no line breaks? get a real text editor like notepad++.)
+*(no line breaks? get a real text editor like notepad++.)*
 
+# HIDEOUS DESTRUCTOR - A WEAPONS AND MONSTERS MOD FOR GZDOOM
 
+## QUICKSTART
 
-  HIDEOUS DESTRUCTOR - A WEAPONS AND MONSTERS MOD FOR GZDOOM
+* Look down or select bandages (first weapon on slot 9) to see if you're bleeding.
+* Use medikits (in inventory or second weapon on slot 9) or bandages to stop bleeding.
+* Hit the reload key to reload. Hold on some weapons to keep the mag.
+* Hit the unload key to take ammo out of a weapon.
+* Use items to pick them up, and enemies to melee them.
+* Hold the jump key in front of a low ledge to climb over it.
+* Hold the run/walk key to sprint. Use run/walk toggle to switch from walk and run.
+* Stop moving and hold the use/open door key to view all inventory.
 
+***
 
-	   QUICKSTART
+**CONTENTS**
 
-		* Look down or select bandages (first weapon on slot 9) to see if you're bleeding.
+> I.	INTRODUCTION
 
-		* Use medikits (in inventory or second weapon on slot 9) or bandages to stop bleeding.
+> II.	GETTING STARTED
 
-		* Hit the reload key to reload. Hold on some weapons to keep the mag.
+> III.	CONTROLS
 
-		* Hit the unload key to take ammo out of a weapon.
+> IV.	COMMANDS AND CVARS
 
-		* Use items to pick them up, and enemies to melee them.
+> V.	ITEMS
 
-		* Hold the jump key in front of a low ledge to climb over it.
+> VI.	LIVES
 
-		* Hold the run/walk key to sprint. Use run/walk toggle to switch from walk and run.
+> VII.	WEAPONS
 
-		* Stop moving and hold the use/open door key to view all inventory.
+> VIII.	MONSTERS
 
+***
 
-
-	CONTENTS
-
-		   I. INTRODUCTION
-
-		  II. GETTING STARTED
-
-		 III. CONTROLS
-
-		  IV. COMMANDS AND CVARS
-
-		   V. ITEMS
-
-		  VI. LIVES
-
-		 VII. WEAPONS
-
-		VIII. MONSTERS
-
-
-
-	   I. INTRODUCTION
+## I. INTRODUCTION
 
 The Hideous Destructor weapons and monsters mod is a speculative re-imagining of Doom's gameplay: what if Doom, with its demons and zombies and 80s-metal horrors and ridiculous firepower, didn't hold anything back for the benefit of the player? What if a lone zombie coming at you with an assault rifle became a cause of concern *now*, rather than ten minutes later when your health suddenly dips to single digits because your teammate ran in front of your rocket? What if your guns actually had some serious range and stopping power - as did the enemy's, creating opportunities and risks that would have been much harder to model before? What if, on Phobos, you had to face a force that was much more plausibly capable of wiping out an entire platoon of space marines?
 
@@ -58,15 +48,15 @@ To accomplish this design objective, HD makes four main changes:
 
 The result is a more intense, frustrating and brutal experience where everyone is fighting at a much more equal level than before and nothing can be taken for granted. Have fun.
 
-The setting fluff is primarily written to fit the events express and implied in the id Software games Doom and Doom II: Hell on Earth. Please read hd_lore_freedoom.txt for the Freedoom versions of some of the weapons and monsters. There is no continuity whatsoever with the Doom novels or the 2016 reboot.
+The setting fluff is primarily written to fit the events express and implied in the id Software games Doom and Doom II: Hell on Earth. Please read `hd_lore_freedoom.txt` for the Freedoom versions of some of the weapons and monsters. There is no continuity whatsoever with the Doom novels or the 2016 reboot.
 
 
-	Using Hideous Destructor with other wads
+### Using Hideous Destructor with other wads
 
 Hideous Destructor is designed to be run on any map that does not define its own weapons and monsters. Running with other weapon or monster mods is generally not supported.
 
 
-	  II. GETTING STARTED
+## II. GETTING STARTED
 
 To play Hideous Destructor, save the GitHub download into a folder and load that folder as you would any normal GZDoom mod file.
 
@@ -79,7 +69,7 @@ With that done, you're ready to begin.
 If you want to try out some of the weapons, load the firing range and try shooting a few things.
 
 
-	The bleeding system
+### The bleeding system
 
 When you get hit in HD, you not only lose health right away, you also add to a hidden counter that determines how quickly your injuries worsen. This is an abstract system meant to cover everything from body envelope violations to toxicity and radiation poisoning to magical corruption and smoke inhalation, but for convenience I'll refer to this as the bleeding system.
 
@@ -93,13 +83,13 @@ Of the mundane tech items, only medikits can help stop bleeding permanently, tho
 
 Absent a proper medikit, you can try to bandage yourself using improvised objects. This is abstracted into weapon #9: just stand still and hold the fire button until the help text tells you you're done. You may take some minor damage and no attempt is guaranteed to work. Your armour is designed to apply pressure and aid you in this so do NOT take it off the way you must to prepare for a medikit. You can do this to someone else, which has a much lower change of causing damage and is much more reliable.
 
-Side note about being on fire: As you cannot truly "stop, drop and roll" in the Doom engine, there is an option of spinning around or turning left and right very quickly to try to put out a fire earlier. Doing so* in liquids**, sand or gooey snake floors while crouched greatly increase your chances of putting out the flames in time.
+Side note about being on fire: As you cannot truly "stop, drop and roll" in the Doom engine, there is an option of spinning around or turning left and right very quickly to try to put out a fire earlier. Doing so\* in liquids\*\*, sand or gooey snake floors while crouched greatly increase your chances of putting out the flames in time.
 
-*or any rapid movement
-**other than nukage or lava
+\* or any rapid movement
+\*\* other than nukage or lava
 
 
-	The damage system 
+### The damage system
 
 In addition to regular damage, Hideous Destructor tracks burn damage and "aggravated" damage, as well as non-bleeding but still existent wounds. All accumulate to the detriment of your maximum HP.
 
@@ -110,75 +100,75 @@ Aggravated damage represents long-term damage that cannot be readily healed due 
 Soul sphere and blue potion magic will remove lethal and aggravated damage at the same rate as it helps you recover health.
 
 
-	The aiming system 
+### The aiming system
 
 For the most part Hideous Destructor functions like Doom: point the middle of your screen at the monster, hit the fire button, and insha Allah the monster will die.
 
 There is no auto-aim anywhere in HD. In fact, if you move or turn too quickly it can throw off your aim a bit.
 
-Hold Use or Zoom to lower your mouse sensitivity, subject to the hd_aim/bracesensitivity setting. Setting hd_usefocus to false will restrict this behaviour to Zoom. Zoom will also bring up your scope view if your weapon has one and it is not up already, and change your strafe keys to lean keys unless hd_nozoomlean is set to true.
+Hold Use or Zoom to lower your mouse sensitivity, subject to the `hd_aimsensitivity`/`hd_bracesensitivity` setting. Setting `hd_usefocus` to false will restrict this behaviour to Zoom. Zoom will also bring up your scope view if your weapon has one and it is not up already, and change your strafe keys to lean keys unless `hd_nozoomlean` is set to true.
 
 
-	Difficulty levels
+### Difficulty levels
 
-Homely: You take 30% damage and you don't bleed from injuries, nor suffer from aggravated or lethal damage, but monsters spawn at Ultra-Violence rates.
-
-Ugly: You take 100% damage and spawn at ITYTD/HNTR rates.
-Grotesque: You take 100% damage and spawn at Hurt Me Plenty rates. (Default)
-Hideous: You take 100% damage and spawn at Ultra-Violence rates.
-Nightmare!: As Hideous, but with fast respawning monsters. Shortcut key N.
-
-Grimdark: You take 120% damage and monsters move fast and spawn at Ultra-Violence rates. Megaspheres are replaced with major armour pickups, stimpacks are replaced with medikits, and health bonuses are replaced with armour bonuses. Active Frag shards continuously spawn, reviving enemies randomly. Monsters shoot on sight. Encumbrance is mandatory. Shortcut key G.
-
-Spooky: Same as Grimdark but monsters spawn at ITYTD/HNTR rates.
+* **Homely**: You take 30% damage and you don't bleed from injuries, nor suffer from aggravated or lethal damage, but monsters spawn at Ultra-Violence rates.
+* **Ugly**: You take 100% damage and spawn at ITYTD/HNTR rates.
+* **Grotesque**: You take 100% damage and spawn at Hurt Me Plenty rates. (Default)
+* **Hideous**: You take 100% damage and spawn at Ultra-Violence rates.
+* **Nightmare!**: As Hideous, but with fast respawning monsters. Shortcut key N.
+* **Grimdark**: You take 120% damage and monsters move fast and spawn at Ultra-Violence rates. Megaspheres are replaced with major armour pickups, stimpacks are replaced with medikits, and health bonuses are replaced with armour bonuses. Active Frag shards continuously spawn, reviving enemies randomly. Monsters shoot on sight. Encumbrance is mandatory. Shortcut key G.
+* **Spooky**: Same as Grimdark but monsters spawn at ITYTD/HNTR rates.
 
 
-	Customizing your loadout
+### Customizing your loadout
 
-HD lets you set custom loadouts through the cvars hd_loadout1 through 20.
+HD lets you set custom loadouts through the cvars `hd_loadout1` through `hd_loadout20`.
 
 Each of these is a string that you can configure to add your loadout. What is available for backpacks is a subset of what is available generally (e.g., no BFG), but a backpack will let you carry multiple weapons beyond your normal capacity (e.g., you can start with a backpack containing several backup ZM66s in case one jams).
+
 The syntax is as follows:
+```
+<pic>#<name>: xxx yy, zzz aa - bbb cc, ddd ee /<description>
+```
+where `xxx` and `zzz` are 3-character codes referring to an item, and `yy` and `aa` are any whole number that you want (within reason).
 
-	<pic>#<name>: xxx yy, zzz aa - bbb cc, ddd ee /<description>
+`<pic>` is the lump name for the graphic (`PISTA0`, etc.) and must be followed by `#`, while `<name>` is the display name for the loadout selection menu and must be followed by a colon; these are optional (and you may specify either without the other, or specify the name before the pic as long as both precede the loadout data) and will default, respectively, to the icon/sprite of the first item indicated and "Loadout <number>".
 
-where xxx and zzz are 3-character codes referring to an item, and yy and aa are any whole number that you want (within reason).
-
-<pic> is the lump name for the graphic ("PISTA0", etc.) and must be followed by #, while <name> is the display name for the loadout selection menu and must be followed by a colon; these are optional (and you may specify either without the other, or specify the name before the pic as long as both precede the loadout data) and will default, respectively, to the icon/sprite of the first item indicated and "Loadout <number>".
-
-<description> is completely optional and must be placed at the very end.
+`<description>` is completely optional and must be placed at the very end.
 
 Items are separated by commas, and the spaces are optional. If you only want one of a given item, you may also omit the number (e.g. "bos,710,7mm20" for a Boss, a single 10-round 7.76mm clip and 20 loose 7.76mm rounds).
-NOTE: Due to technical reasons spaces *must* be omitted from loadout strings if they're being set via the "+set" method at the command line.
 
-The first item is the weapon you pull out at start. If the first item is not a weapon, you start with your hands free. If you want to start with a weapon and nothing else, but do not want it drawn at start, use the code for fists ("fis") at the start of your loadout.
+> **NOTE**: Due to technical reasons spaces *must* be omitted from loadout strings if they're being set via the `+set` method at the command line.
 
-The "-" marks where the loadout information on your person ends and the loadout information for the contents of your backpack begins.
+The first item is the weapon you pull out at start. If the first item is not a weapon, you start with your hands free. If you want to start with a weapon and nothing else, but do not want it drawn at start, use the code for fists (`fis`) at the start of your loadout.
 
-The loadout system will detect items from mods for HD like Ugly as Sin. (modding note: it must inherit from "HDPickup" or "HDWeapon" and have a unique "refid" defined and "fitsinbackpack" set to true if it is to be placed in a backpack.) To see a list of all items in the currently loaded session, type "give loadoutitemlist" in the console.
+The `-` (dash) marks where the loadout information on your person ends and the loadout information for the contents of your backpack begins.
 
-The amount for "key" is treated as a bitmask: 1 red, 2 yellow, 4 blue, 7 all.
+The loadout system will detect items from mods for HD like Ugly as Sin. (modding note: it must inherit from `HDPickup` or `HDWeapon` and have a unique `refid` defined and `fitsinbackpack` set to true if it is to be placed in a backpack.) To see a list of all items in the currently loaded session, type `give loadoutitemlist` in the console.
 
-The standard soldier kit "sol" provides green armour, a pistol, 3 frags, a DERP and one ladder.
+The amount for `key` is treated as a bitmask: 1 red, 2 yellow, 4 blue, 7 all.
+
+The standard soldier kit `sol` provides green armour, a pistol, 3 frags, a DERP and one ladder.
 
 Some shortcuts:
-"doomguy": Fully tac-loaded pistol with 2 extra mags and 4 loose rounds (total 50 shots)
-"insurgent": Weighted randomization.
-"hd_loadout*": Only relevant for hd_forceloadout, this forces everyone to use whatever they've set for the loadout number placed where the star is.
+* `doomguy`: Fully tac-loaded pistol with 2 extra mags and 4 loose rounds (total 50 shots)
+* `insurgent`: Weighted randomization.
+* `hd_loadout<number>`: Only relevant for `hd_forceloadout`, this forces everyone to use whatever they've set for the loadout number placed where the star is.
 
 
 
-	 III. CONTROLS
+## III. CONTROLS
 
 Hideous Destructor adds a few non-standard functions. Please read carefully as you will spend most of your gameplay hours unarmed and dead if you do not learn how these things work.
 
 
-	Reloading
+### Reloading
 
-Console commands: +reload, +hd_altreload (or +user1)
-Default keys: r, j
+**Console commands**: `+reload`, `+hd_altreload` (or `+user1`)
 
-Description: Hit the reload key to refill your weapon with your spare ammo. The reload key also serves a few secondary weapon functions (e.g., aborting a hand grenade toss and starting an alternate fist attack) - see those weapon descriptions for details.
+**Default keys**: `r`, `j`
+
+**Description**: Hit the reload key to refill your weapon with your spare ammo. The reload key also serves a few secondary weapon functions (e.g., aborting a hand grenade toss and starting an alternate fist attack) - see those weapon descriptions for details.
 
 When you reload a fixed-magazine weapon like a shotgun or grenade launcher, you load one unit at a time. You will automatically load as many units as you can until you are out of spare units, the gun is full, or you have interrupted the process because you needed to shoot right then (i.e., hold the attack button until you stop reloading).
 
@@ -192,12 +182,13 @@ The alternate reload key lets you:
 - with the plasma rifle and BFG, unload one cell.
 
 
-	Fire Mode
+### Fire Mode
 
-Console command: +hd_firemode (or +user2)
-Default key: h
+**Console command**: `+hd_firemode` (or `+user2`)
 
-Description: A couple weapons have alternate fire modes in addition to their primary and secondary attacks.
+**Default key**: `h`
+
+**Description**: A couple weapons have alternate fire modes in addition to their primary and secondary attacks.
 
 The assault rifle and SMG have semi, burst and full auto modes. When in burst or full auto, you will see a small yellow bullet icon above the mag counter. Same goes for the battle rifle but without the burst.
 
@@ -206,24 +197,26 @@ The Vulcanette has 2 rates of fire, 2100 and 700 RPM. Setting 2100 RPM will show
 All grenade and rocket launchers (for the rifles you must switch to grenade mode first) use fire mode to control airburst, in the same manner as zoom.
 
 
-	Unload
+### Unload
 
-Console command: +hd_unload (or +user4)
-Default key: l
+**Console command**: `+hd_unload` (or `+user4`)
 
-Description: Strips some ammo off the weapon you are carrying. For the shotguns you take the side saddles first; for the vulcanette you take the mags first before the cell.
+**Default key**: `l`
+
+**Description**: Strips some ammo off the weapon you are carrying. For the shotguns you take the side saddles first; for the vulcanette you take the mags first before the cell.
 
 With both reload and unload, if you hold down the key you will pocket whatever it is you are extracting. However, holding down (or interrupting a sequence by tapping) the reload or unload key in a multi-sequence unload (Vulcanette, rocket launcher, shotgun) will abort the sequence, meaning that with the non-shotguns you can either spill everything everywhere in your haste, or pocket one mag or rocket at a time. (The shotguns will be pocketed whenever possible since you have to pull them out and they'll be in hand anyway.)
 
 
-	Manage mags (and clips)
+### Manage mags (and clips)
 
-Console command: +user3 or "use MagManager"
-Default key: none
+**Console command**: `+user3` or `use MagManager`
 
-Description: For weapons that are loaded with magazines or other containers from which you can freely move individual rounds, you can open the magazine manager to fill up some mags/clips for future use - or cannibalize some from one type of mag/clip for the other.
+**Default key**: none
 
-To access the mag manager, type "use MagManager" in the console, or similarly use the specific GZDoom actor name for that mag type, or hit the User3 key for a weapon that uses that ammo type.
+**Description**: For weapons that are loaded with magazines or other containers from which you can freely move individual rounds, you can open the magazine manager to fill up some mags/clips for future use - or cannibalize some from one type of mag/clip for the other.
+
+To access the mag manager, type `use MagManager` in the console, or similarly use the specific GZDoom actor name for that mag type, or hit the User3 key for a weapon that uses that ammo type.
 
 As with the backpack, holding Zoom will let you scroll through the items, reload puts things into the container and unload takes them out.
 
@@ -232,43 +225,47 @@ Tap fire/altfire to switch between mags one at a time; if you do this while Zoom
 Reload/Unload while holding Fire Mode will take mags in and out of your backpack if you have one.
 
 
-	Rangefinder
+### Rangefinder
 
-Console command: hd_findrange
-Default key: none
+**Console command**: `hd_findrange`
 
-Description: Logs the distance of the object or map geometry you're pointing at.
+**Default key**: none
 
-
-	Play Dead
-
-Console command: hd_playdead
-Default key: none
-
-Description: Puts yourself in incapacitated mode without actually losing health. Press Jump or attempt to sprint forward to get back up. While in this state (whether faking it or not), your only possible actions are to strip armour, press Fire to attempt to bandage wounds, or press Altfire to fumble for a stimpack.
+**Description**: Logs the distance of the object or map geometry you're pointing at.
 
 
-	Taunt
+### Play Dead
 
-Console command: hd_taunt
-Default key: b
+**Console command**: `hd_playdead`
 
-Description: Yells at the monsters, waking them and causing them to attack you. Sound, depending on player's gender, is either Kuni from the movie UHF (Wheel of Fish scene), Jay's mom from Jay & Silent Bob Strike Back (opening), or a chainsaw.
+** Default key**: none
 
-
-	Leaning
-
-Console commands: +hd_leanleft, +hd_leanright, +hd_lean
-
-Description: These are, respectively, commands that can be bound to buttons for leaning left, leaning right, and holding to lean in the direction of your sidemove input. The latter is also done through the Zoom key.
+**Description**: Puts yourself in incapacitated mode without actually losing health. Press Jump or attempt to sprint forward to get back up. While in this state (whether faking it or not), your only possible actions are to strip armour, press Fire to attempt to bandage wounds, or press Altfire to fumble for a stimpack.
 
 
-	Sprinting
+### Taunt
 
-Console command: +speed
-Default key: Whatever you have set it to
+**Console command**: `hd_taunt`
 
-Description: Your unburdened, ininjured movement speed, with "always run" off, is a walk of about 5 km/h. To make a quick dash at full speed (comparable to Usain Bolt), hold on to the +speed key while moving. You will put away your weapon as you sprint (except in the case of your fist and hand grenades).
+**Default key**: `b`
+
+**Description**: Yells at the monsters, waking them and causing them to attack you. Sound, depending on player's gender, is either Kuni from the movie UHF (Wheel of Fish scene), Jay's mom from Jay & Silent Bob Strike Back (opening), or a chainsaw.
+
+
+### Leaning
+
+**Console commands**: `+hd_leanleft`, `+hd_leanright`, `+hd_lean`
+
+**Description**: These are, respectively, commands that can be bound to buttons for leaning left, leaning right, and holding to lean in the direction of your sidemove input. The latter is also done through the Zoom key.
+
+
+### Sprinting
+
+**Console command**: `+speed`
+
+**Default key**: Whatever you have set it to
+
+**Description**: Your unburdened, ininjured movement speed, with "always run" off, is a walk of about 5 km/h. To make a quick dash at full speed (comparable to Usain Bolt), hold on to the `+speed` key while moving. You will put away your weapon as you sprint (except in the case of your fist and hand grenades).
 
 If you have "always run" on, your normal speed increases to about 18 km/h, but you cannot recover from fatigue while moving at that speed.
 
@@ -278,39 +275,40 @@ Your fatigue only increases while you are moving; merely holding the sprint key 
 
 You can sprint forward continuously for about 100m before tiring out. If at any time you stop sprinting, you must substantially recover from your fatigue before you can start again.
 
-Protip: Holding a lighter weapon lets you start sprinting sooner. If you know you'll have to make a break for it very soon, don't bring out that BFG! (But if you're stuck with it anyway and you absolutely must begin sprinting immediately, dropping the weapon can give you a split second of time.)
+*Protip*: Holding a lighter weapon lets you start sprinting sooner. If you know you'll have to make a break for it very soon, don't bring out that BFG! (But if you're stuck with it anyway and you absolutely must begin sprinting immediately, dropping the weapon can give you a split second of time.)
 
 
-	Jumping
+### Jumping
 
-Console command: +jump
-Default key: Whatever you have set it to
+**Console command**: `+jump`
 
-Description: If you walk right up to a ledge between waist and shoulder height, you can press and hold the jump key for about half a second to hoist yourself onto that ledge. You will briefly be unable to fire while doing this. This action cannot be done while crouching.
+**Default key**: Whatever you have set it to
+
+**Description**: If you walk right up to a ledge between waist and shoulder height, you can press and hold the jump key for about half a second to hoist yourself onto that ledge. You will briefly be unable to fire while doing this. This action cannot be done while crouching.
 
 If you jump while moving forward and the way ahead of you is clear, you will leap forward. Good for crossing gaps and closing in for a beatdown.
 
 If you hit the jump key in any other situation, you will make a normal vertical leap.
 
 
-	Using
+### Using
 
-Console command: +use
-Default key: Whatever you have set it to
+**Console command**: `+use`
 
-Description: You can open doors with it, as usual. But you also get two other functions:
+**Default key**: Whatever you have set it to
 
-Pickups: For most things, you must "use" an item to pick it up. If you cannot carry the item, you will put it back on the floor in front of you. For smaller items like loose ammo, you must hold the use key while moving over it to pick it up.
+**Description**: You can open doors with it, as usual. But you also get two other functions:
 
-Kicking: pressing use in front of an enemy lets you kick them. (There is no animation for this; this mod is called hideous for a reason.) You can also kick away corpses and hand grenades if they're in the way.
-Hold both Zoom and Speed while hitting Use on a thin door to try to kick it down. It might hurt a bit.
+* **Pickups**: For most things, you must "use" an item to pick it up. If you cannot carry the item, you will put it back on the floor in front of you. For smaller items like loose ammo, you must hold the use key while moving over it to pick it up.
 
-HUD: HD typically hides your complete inventory display. Pressing and holding use brings this up. It will also show how many arbitrary "blocks'" worth of equipment you are carrying.
+* **Kicking**: pressing use in front of an enemy lets you kick them. (There is no animation for this; this mod is called hideous for a reason.) You can also kick away corpses and hand grenades if they're in the way. Hold both Zoom and Speed while hitting Use on a thin door to try to kick it down. It might hurt a bit.
+
+* **HUD**: HD typically hides your complete inventory display. Pressing and holding use brings this up. It will also show how many arbitrary "blocks'" worth of equipment you are carrying.
 
 
-	Aiming and Turning
+### Aiming and Turning
 
-If you are standing still, press and hold Use or Zoom to reduce your mouse sensitivity (and enable the scope if hd_noscope is set to true).
+If you are standing still, press and hold Use or Zoom to reduce your mouse sensitivity (and enable the scope if `hd_noscope` is set to true).
 
 If you have some map geometry right underneath where your weapon is pointing (including the floor when you are crouching), or your barrel is touching a vertical wall, this will also brace your gun against it for additional support and precision.
 
@@ -322,74 +320,71 @@ Lunge/Slide: If you are standing while moving forward or sideways, hit the Crouc
 
 
 
-	  IV. COMMANDS AND CVARS
+## IV. COMMANDS AND CVARS
 
-	Commands
+### Commands
 
-hd_strip: You do not automatically "overwrite" your currently worn armour by picking up and using new armour. Use the hd_strip command to take off what you're wearing first. If you are not wearing any armour, this command will put on any spare armour you happen to be carrying.
-Hitting Reload while you have a medikit or bandages in hand, or double-tapping the use item key with another armour selected, will also strip your armour.
-You may need to strip off your backpack and/or environment suit first.
+* `hd_strip`: You do not automatically "overwrite" your currently worn armour by picking up and using new armour. Use the `hd_strip` command to take off what you're wearing first. If you are not wearing any armour, this command will put on any spare armour you happen to be carrying.
 
-hd_dropone: This will drop one unit of each type of ammo that applies to your current weapon. If you have both full mags and loose ammo, you drop all your loose ammo first; otherwise, if you specify a number after this command, you will drop that number instead. (For shotgun shells 4 shells equals one default unit, but if you specify a number you will drop exactly that many shells if you have enough.)
+  Hitting Reload while you have a medikit or bandages in hand, or double-tapping the use item key with another armour selected, will also strip your armour.
 
-hd_purge: This will drop all ammunition for which you do not have an appropriate weapon, along with empty cells (in the absence of a BFG) and broken robots.
+  You may need to strip off your backpack and/or environment suit first.
 
-hd_slideon, hd_slideoff: Like hd_zoomon and hd_zoomoff but for the hd_noslide cvar.
+* `hd_dropone`: This will drop one unit of each type of ammo that applies to your current weapon. If you have both full mags and loose ammo, you drop all your loose ammo first; otherwise, if you specify a number after this command, you will drop that number instead. (For shotgun shells 4 shells equals one default unit, but if you specify a number you will drop exactly that many shells if you have enough.)
 
-hd_clearcvs: Resets all archived CVars (other than loadout cvars) to their defaults.
+* `hd_purge`: This will drop all ammunition for which you do not have an appropriate weapon, along with empty cells (in the absence of a BFG) and broken robots.
 
-ab: Type "ab <number>" in the console to set the airburst counter whenever you have an automatic rifle, blooper or rocket launcher out and ready to fire a grenade.
+* `hd_slideon`, `hd_slideoff`: Like `hd_zoomon` and `hd_zoomoff` but for the `hd_noslide` cvar.
 
-ied: Type "ied <mode> <tag>" in the console to command your deployed IEDs. Mode 2 sets them to passive; 1 sets them to active; 999 detonates all of them at once.
-detonate, iedpassive, iedactive: shortcuts for "ied 999", "ied 2" and "ied 1" respectively. Can also take tags.
+* `hd_clearcvs`: Resets all archived CVars (other than loadout cvars) to their defaults.
 
-iedtag: If you feel weird about negative numbers, use this command to set your IED tag instead.
+* `ab`: Type `ab <number>` in the console to set the airburst counter whenever you have an automatic rifle, blooper or rocket launcher out and ready to fire a grenade.
 
-herp: Type "herp <mode> <tag> <direction>" in the console to command your deployed HERPs, in a similar fashion to IEDs. Modes 1-2 are active and inactive respectively; mode 3 lets you change their base angle using the direction parameter (in degrees going counterclockwise).
+* `ied`: Type `ied <mode> <tag>` in the console to command your deployed IEDs. Mode 2 sets them to passive; 1 sets them to active; 999 detonates all of them at once.
+  * `detonate`, `iedpassive`, `iedactive`: shortcuts for `ied 999`, `ied 2` and `ied 1` respectively. Can also take tags.
+  * `iedtag`: If you feel weird about negative numbers, use this command to set your IED tag instead.
 
-herptag: as iedtag.
+* `herp`: Type `herp <mode> <tag> <direction>` in the console to command your deployed HERPs, in a similar fashion to IEDs. Modes 1-2 are active and inactive respectively; mode 3 lets you change their base angle using the direction parameter (in degrees going counterclockwise).
+  * `herptag`: as `iedtag`.
+  * `herpdir`: Type `herp <direction> <tag>` as a shortcut alternative to `herp 3 <tag> <direction>`. Useful if you only have one HERP and don't want to bother typing that extra zero.
 
-herpdir: Type "herp <direction> <tag>" as a shortcut alternative to "herp 3 <tag> <direction>". Useful if you only have one HERP and don't want to bother typing that extra zero.
+* `teamspawn`: In team deathmatch, any member of a team can type `teamspawn 666` in the console to set their own current position as the team spawnpoint. Similarly, any member of a team can type `teamspawn -1` or `teamspawn 999` to clear the team spawnpoint and resume respawning in random places. This is intended to allow your team to establish a well-fortified camping ground to cause as much grief to the opposing team as possible. THIS CAN CAUSE A TELEFRAG IF YOU FAIL TO COORDINATE.
 
-teamspawn: In team deathmatch, any member of a team can type "teamspawn 666" in the console to set their own current position as the team spawnpoint. Similarly, any member of a team can type "teamspawn -1" or "teamspawn 999" to clear the team spawnpoint and resume respawning in random places. This is intended to allow your team to establish a well-fortified camping ground to cause as much grief to the opposing team as possible. THIS CAN CAUSE A TELEFRAG IF YOU FAIL TO COORDINATE.
-
-hd_doomguy (cheat): This command, available anytime and not considered a cheat, will set you back to the good old naked marine with a pistol and 50 bullets.
-
+`hd_doomguy` (cheat): This command, available anytime and not considered a cheat, will set you back to the good old naked marine with a pistol and 50 bullets.
 
 
-	CVars (host only)
 
-hd_forceloadout: Set this to "false", "0" or "none" (all without quotes) to let everyone choose their own loadout. Set this to anything else and it becomes everyone's loadout. Takes effect on player spawn.
-Default is blank. This cvar is not saved between sessions.
+### CVars (host only)
 
-hd_encumbrance: This is a multiplier for how much encumbrance affects you. Due to the way Doom is traditionally balanced, this defaults to 0.25, letting one player carry 4 times as much as you "ought" to be able to carry. This is clamped to a minimum of 1 in deathmatch and grimdark/spooky, and a maximum of 2 in any event.
+* `hd_forceloadout`: Set this to `false`, `0` or `none` to let everyone choose their own loadout. Set this to anything else and it becomes everyone's loadout. Takes effect on player spawn. Default is blank. This cvar is not saved between sessions.
 
-hd_nobots: This causes bots to be replaced with riflemen. Can be used for coop and deathmatch. Generally far more competent, but cannot use customized loadouts and can sometimes appear in odd places.
+* `hd_encumbrance`: This is a multiplier for how much encumbrance affects you. Due to the way Doom is traditionally balanced, this defaults to 0.25, letting one player carry 4 times as much as you "ought" to be able to carry. This is clamped to a minimum of 1 in deathmatch and grimdark/spooky, and a maximum of 2 in any event.
 
-hd_lowdamage: Reduces all incoming damage to 30% as though on the lowest skill difficulty. Does not stack with said lowest skill difficulty but does offset Grimdark/Spooky and Nightmare damage increases.
+* `hd_nobots`: This causes bots to be replaced with riflemen. Can be used for coop and deathmatch. Generally far more competent, but cannot use customized loadouts and can sometimes appear in odd places.
 
-hd_nobleed: Eliminates all bleeding.
+* `hd_lowdamage`: Reduces all incoming damage to 30% as though on the lowest skill difficulty. Does not stack with said lowest skill difficulty but does offset Grimdark/Spooky and Nightmare damage increases.
 
-hd_killerbarrels: Sets the percentage chance that any barrel (nukage or flaming) will be a killer barrel. Default 5.
+* `hd_nobleed`: Eliminates all bleeding.
 
-hd_nodoorbuster: Some weapons such as the H.E.A.T. rocket and the Brontornis can destroy small pieces of map geometry, letting you bypass tedious or impossible-to-reach areas. This can result in unpredictable or unwanted behaviour, so enabling this option will prevent such weapons from being able to affect map geometry this way. Enabling this midgame will not reverse any damage already done. Default false.
+* `hd_killerbarrels`: Sets the percentage chance that any barrel (nukage or flaming) will be a killer barrel. Default 5.
 
-hd_dropeverythingondeath: HD mostly goes with regular Doom inventory behaviour when dying and respawning: you keep your stuff in co-op, reset your stuff in deathmatch, maybe drop an extra copy of your weapon. Enabling this cvar will cause you to drop *all* your inventory except keys, leaving a stash of loot for your opponents (or buddies) in deathmatch or, in co-op, forcing you to do a naked walk of shame back to where you'd died.  Default false.
+* `hd_nodoorbuster`: Some weapons such as the H.E.A.T. rocket and the Brontornis can destroy small pieces of map geometry, letting you bypass tedious or impossible-to-reach areas. This can result in unpredictable or unwanted behaviour, so enabling this option will prevent such weapons from being able to affect map geometry this way. Enabling this midgame will not reverse any damage already done. Default false.
 
-hd_safelifts: With HD's reduced player speed and falling damage, some classic Doom lifts end up creating scenarios that resemble a superimposition of a Simone Giertz comedy routine and the deposition materials from a factory class action suit. HD automatically scales all these lifts at level start to more reasonable speeds. This may break some levels, so this option is provided. Note that the level must be restarted for the changes to take effect. Default true.
+* `hd_dropeverythingondeath`: HD mostly goes with regular Doom inventory behaviour when dying and respawning: you keep your stuff in co-op, reset your stuff in deathmatch, maybe drop an extra copy of your weapon. Enabling this cvar will cause you to drop *all* your inventory except keys, leaving a stash of loot for your opponents (or buddies) in deathmatch or, in co-op, forcing you to do a naked walk of shame back to where you'd died.  Default false.
 
-hd_dirtywindows: Before limit-removing sourceports the only windows in Doom were wholly see-through, even if they were supposed to block absolutely everything. This can be a bit frustrating when you have no idea what your shots can or cannot go through unimpeded. This setting will overlay all of these blocking surfaces with a translucent dirt texture to make them look like a poorly cleaned window. Default true.
+* `hd_safelifts`: With HD's reduced player speed and falling damage, some classic Doom lifts end up creating scenarios that resemble a superimposition of a Simone Giertz comedy routine and the deposition materials from a factory class action suit. HD automatically scales all these lifts at level start to more reasonable speeds. This may break some levels, so this option is provided. Note that the level must be restarted for the changes to take effect. Default `true`.
 
-hd_novilespam: At map start, if this is true and multiple archviles are stacked too close together, some of them will be replaced with other monsters. Default true.
+* `hd_dirtywindows`: Before limit-removing sourceports the only windows in Doom were wholly see-through, even if they were supposed to block absolutely everything. This can be a bit frustrating when you have no idea what your shots can or cannot go through unimpeded. This setting will overlay all of these blocking surfaces with a translucent dirt texture to make them look like a poorly cleaned window. Default `true`.
 
-hd_3speed: The frequently varying player speeds in HD do not play well with the movement prediction in network play. If you are experiencing an unusual amount of "rubber banding" while playing online, you can enable this option so that you are restricted to one of only 3 possible pre-set speeds at any time in multiplayer.
+* `hd_novilespam`: At map start, if this is true and multiple archviles are stacked too close together, some of them will be replaced with other monsters. Default `true`.
 
-hd_debug: Turns on some debug logging messages and displays, such as damage reports and (at level 2) bullet trails. Default 0.
+* `hd_3speed`: The frequently varying player speeds in HD do not play well with the movement prediction in network play. If you are experiencing an unusual amount of "rubber banding" while playing online, you can enable this option so that you are restricted to one of only 3 possible pre-set speeds at any time in multiplayer.
 
-hd_clearscv: Resets all archived host options to their defaults.
+* `hd_debug`: Turns on some debug logging messages and displays, such as damage reports and (at level 2) bullet trails. Default 0.
 
-hd_yolo: With this on, you will trigger the wipeout counter the first time you die, but you can't die until everyone (or, in teamplay, everyone on your team) is dead or incapacitated. Not recommended for free-for-all deathmatch.
+* `hd_clearscv`: Resets all archived host options to their defaults.
 
+* `hd_yolo`: With this on, you will trigger the wipeout counter the first time you die, but you can't die until everyone (or, in teamplay, everyone on your team) is dead or incapacitated. Not recommended for free-for-all deathmatch.
 
 	CVars (user-based)
 
