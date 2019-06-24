@@ -248,6 +248,16 @@ extend class HDPlayerPawn{
 				}
 				if(beatmax<beatcap) beatmax++;
 				if(bloodpressure>0)bloodpressure--;
+				
+				//futuristic blue body armor has some harjel like substance which repairs damage when equipped (powered by body heat maybe?)
+				//if(countinv("HDArmourWorn")){
+				let armr=HDArmourWorn(findinventory("HDArmourWorn"));
+				if(armr && armr.mega){
+					int repairchance=armr.durability/10;
+					if(repairchance<1)repairchance=1;
+					if(random(0,20)+(countinv("IsMoving")/10)<=repairchance)armr.durability+=random(1,2);
+					if(armr.durability>33)armr.durability=33;
+				}
 			}
 
 			//every 12 beats
