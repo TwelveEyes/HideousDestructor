@@ -58,7 +58,7 @@ The result is a more intense, frustrating and brutal experience where everyone i
 
 The setting fluff is primarily written to fit the events express and implied in the id Software games Doom and Doom II: Hell on Earth. Please read hd_lore_freedoom.txt for the Freedoom versions of some of the weapons and monsters. There is no continuity whatsoever with the Doom novels or Doom 3
 
-To the extent logically possible, Hideous Destructor has absolutely nothing whatsoever to do with anything in the Bethesda games.
+To the extent logically possible, Hideous Destructor has absolutely nothing whatsoever to do with anything in the Bethesda games, or with any Middle-Earth material not personally written by John Ronald Reuel Tokien or Christopher Tolkien.
 
 
 	  II. GETTING STARTED
@@ -348,7 +348,7 @@ Default is blank. This cvar is not saved between sessions.
 hd_blacklist: Add some item codes to this, separated by commas. Counts will be ignored.
 You can also use the blacklist to change one type of item to another by using the right angle bracket, e.g., "bfg=thu" to replace starting BFGs with Thunder Busters or "zrk=stm" to replace berserk packs with stimpacks. Unfortunately the system is not very smart so certain shortcuts will not be affected (e.g. blacklist "z66=lib" will replace "z66 nogl" with "lib nogl", but someone with "z6a" will spawn without a rifle at all).
 Default is blank. This cvar is not saved between sessions.
-If you add the keyword "all" to your blacklist, e.g. "all,bfg" or "all,bfg=thu", all items blacklisted will be deleted from the world the moment they appear anywhere.
+If you add the keyword "all" to your blacklist, e.g. "all,bfg" or "all,bfg=thu", all items blacklisted will have their pickups deleted from the map the moment they appear.
 
 hd_encumbrance: This is a multiplier for how much encumbrance affects you. Due to the way Doom is traditionally balanced, this defaults to 0.25, letting you carry 4 times as much as you "ought" to be able to carry. This is clamped to a minimum of 1 in deathmatch and grimdark/spooky, and a maximum of 2 in any event.
 

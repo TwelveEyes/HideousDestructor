@@ -68,7 +68,7 @@ class TauntHandler:EventHandler{
 			ppp.A_TakeInventory("powerfrightener");
 			ppp.A_AlertMonsters();
 		}
-        }
+	}
 }
 
 //generic bleeding
@@ -377,8 +377,10 @@ struct HDMobAI play{
 		double oldang=caller.angle;
 		if(!caller.target){
 			caller.A_ClearTarget();
-			if(caller.findstate("idle"))caller.setstatelabel("idle");
-			else caller.setstatelabel("spawn");
+			if(caller.curstate==caller.resolvestate("see")){
+				if(caller.findstate("idle"))caller.setstatelabel("idle");
+				else caller.setstatelabel("spawn");
+			}
 			return;
 		}else if(!caller.checkmove(caller.pos.xy)){
 			caller.A_Wander();

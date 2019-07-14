@@ -27,10 +27,11 @@ class hdladdertop:hdactor{
 		+flatsprite
 		+nointeraction
 		height 1;radius 10;
+		mass int.MAX;
 	}
 	states{
 	spawn:
-		LADD A 1 nodelay{setz(floorz+4);}
+		LADD A 1 nodelay{setz(getzat()+4);}
 		wait;
 	}
 	override void postbeginplay(){
@@ -109,6 +110,7 @@ class hdladderbottom:hdactor{
 	default{
 		+nogravity +flatsprite
 		height 56;radius 10;
+		mass int.MAX;
 	}
 	actor currentuser;
 	double currentuserz;
