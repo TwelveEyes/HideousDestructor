@@ -193,7 +193,7 @@ class HDStatusBar:DoomStatusBar{
 		);
 
 		//mugshot
-		DrawTexture(GetMugShot(5,Mugshot.CUSTOM,mug),(6,-14),DI_BOTTOMLEFT,alpha:blurred?0.2:1.);
+		DrawTexture(GetMugShot(5,Mugshot.CUSTOM,mug),(6,-14),DI_BOTTOMLEFT,alpha:blurred?0.2:1.,scale:(0.8333,1.1));
 
 		//heartbeat/playercolour tracker
 		if(hpl && hpl.beatmax){
@@ -253,7 +253,7 @@ class HDStatusBar:DoomStatusBar{
 		);
 	}
 	void DrawFullScreenStuff(){
-		DrawTexture(GetMugShot(5,Mugshot.CUSTOM,mug),(0,-14),DI_ITEM_CENTER_BOTTOM|DI_SCREEN_CENTER_BOTTOM,alpha:blurred?0.2:1.);
+		DrawTexture(GetMugShot(5,Mugshot.CUSTOM,mug),(0,-14),DI_ITEM_CENTER_BOTTOM|DI_SCREEN_CENTER_BOTTOM,alpha:blurred?0.2:1.,scale:(0.8333,1.));
 	}
 	void DrawAlwaysStuff(){
 		if(
@@ -709,7 +709,7 @@ if(hd_weapondefaults.getstring()~=="convert"){
 			}
 			int err=max(0,((100-hpl.health)>>3));
 			err=random[heart](0,err);
-			healthbars[STB_BEATERSIZE-2]=clamp(18-(hpl.bledout>>7)-(err>>2),1,18);
+			healthbars[STB_BEATERSIZE-2]=clamp(18-(hpl.bloodloss>>7)-(err>>2),1,18);
 			healthbars[STB_BEATERSIZE-1]=(hpl.inpain?random[heart](1,7):1)+err+random[heart](0,(hpl.bloodpressure>>3));
 		}
 		for(int i=0;i<STB_BEATERSIZE;i++){
@@ -751,7 +751,7 @@ if(hd_weapondefaults.getstring()~=="convert"){
 			}
 			drawbar(
 				armoursprite,armourback,
-				armour.durability,armour.mega?HDCONST_BLUEARMOUR:HDCONST_GREENARMOUR,
+				armour.durability,armour.mega?HDCONST_BATTLEARMOUR:HDCONST_GARRISONARMOUR,
 				armourcoords,-1,SHADER_VERT,
 				flags
 			);

@@ -288,14 +288,7 @@ class HERPBot:HDUPK{
 			}else ammo[0]--;
 
 			A_PlaySound("weapons/rifle",CHAN_WEAPON);
-			actor p=Spawn("HDBullet426",pos+(0,0,6),ALLOW_REPLACE);
-			if(p){
-				p.target=self;p.angle=angle;p.pitch=pitch;
-				p.vel+=(
-					frandom(-1,1),frandom(-1,1),frandom(-1,1)
-				);
-				p.vel+=vel;
-			}
+			HDBulletActor.FireBullet(self,"HDB_426",zofs:6,spread:1);
 		}
 		HERP A 2{
 			angle-=frandom(0.4,1.);
@@ -958,6 +951,8 @@ class HERPController:HDWeapon{
 		return null;
 	}
 	override string gethelptext(){
+		if(!herps.size())return "ERROR";
+		weaponstatus[HERPS_INDEX]=clamp(weaponstatus[HERPS_INDEX],0,herps.size()-1);
 		let herpcam=herps[weaponstatus[HERPS_INDEX]];
 		if(!herpcam)return "ERROR";
 		if(

@@ -124,7 +124,7 @@ class HDActor:Actor{
 	}
 	//"After that many drinks anyone would be blowing chunks all night!"
 	//"Chunks is the name of my dog."
-	//for frags: A_SpawnChunks("HDFrag",42,100,700);
+	//for frags: A_SpawnChunks("HDB_frag",42,100,700);
 	void A_SpawnChunks(
 		class<actor> chunk,
 		int number=12,
@@ -158,7 +158,7 @@ class HDActor:Actor{
 				SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH|SXF_TRANSFERPOINTERS
 			);
 			frg.vel+=vel;
-			frg.bseeinvisible=true; //work around hack that normally lets HDBullet out
+			frg.bincombat=true; //work around hack that normally lets HDBulletActor out
 		}
 	}
 	//roughly equivalent to CacoZapper
@@ -442,6 +442,12 @@ struct HDMath{
 			desc
 		);
 		return lod,nam,pic,desc;
+	}
+	//basically storing a 5-bit int array in a single 32-bit int.
+	//every 32 is a 1 in the second entry, every 32*32 a 1 in the third, etc.
+	static int GetFromBase32FakeArray(int input,int slot){
+		input=(input>>(5*slot));
+		return input&(1|2|4|8|16);
 	}
 }
 struct HDF play{

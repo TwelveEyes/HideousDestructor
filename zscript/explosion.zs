@@ -8,9 +8,8 @@ extend class HDActor{
 	void A_HDBlast(
 		double blastradius=0,int blastdamage=0,double fullblastradius=0,name blastdamagetype="None",
 		double pushradius=0,double pushamount=0,double fullpushradius=0,bool pushmass=true,
-		double fragradius=0,int fragdamage=0,name fragdamagetype="SmallArms1",
+		double fragradius=0,class<HDBulletActor> fragtype="HDB_frag",double fragvariance=0.05,double fragspeedfactor=1.,
 		double immolateradius=0,int immolateamount=1,int immolatechance=100,
-		double gibradius=0,int gibamount=1,
 		bool hurtspecies=true,
 		actor source=null,
 		bool passwalls=false
@@ -18,20 +17,25 @@ extend class HDActor{
 		hdactor.HDBlast(self,
 			blastradius,blastdamage,fullblastradius,blastdamagetype,
 			pushradius,pushamount,fullpushradius,pushmass,
-			fragradius,fragdamage,fragdamagetype,
+			fragradius,fragtype,fragvariance,fragspeedfactor,
 			immolateradius,immolateamount,immolatechance,
-			gibradius,gibamount,
 			hurtspecies,
 			source,
 			passwalls
 		);
 	}
+	enum UpperMidLower{
+		FTIER_TOP=1,
+		FTIER_MID=2,
+		FTIER_MIDL=4, //left and right relative to the grenade, facing the victim
+		FTIER_MIDR=8,
+		FTIER_BOTTOM=16
+	}
 	static void HDBlast(actor caller,
 		double blastradius=0,int blastdamage=0,double fullblastradius=0,name blastdamagetype="None",
 		double pushradius=0,double pushamount=0,double fullpushradius=0,bool pushmass=true,
-		double fragradius=0,int fragdamage=0,name fragdamagetype="SmallArms1",
+		double fragradius=0,class<HDBulletActor> fragtype="HDB_frag",double fragvariance=0.05,double fragspeedfactor=1.,
 		double immolateradius=0,int immolateamount=1,int immolatechance=100,
-		double gibradius=0,int gibamount=1,
 		bool hurtspecies=true,
 		actor source=null,
 		bool passwalls=false
@@ -40,8 +44,7 @@ extend class HDActor{
 		int bigradius=max(
 			blastradius,
 			fragradius,
-			immolateradius,
-			gibradius
+			immolateradius
 		);
 
 		//initialize things to be used in the iterator
@@ -84,51 +87,83 @@ extend class HDActor{
 
 			int playerattack=0;//source&&source.player?DMG_PLAYERATTACK:0;
 
-			//check LOS
-			if(passwalls)losmul=1.;
-			else{
-				double biggerradius=bigradius+it.radius;
-				double smallerradius=it.radius-1;
+			//some variables that will be reused
+			double biggerradius=bigradius+it.radius;
+			double smallerradius=it.radius-1;
+			double difz=it.pos.z-caller.pos.z;
+			double pitchtotop=-atan2(difz+it.height,dist2);
+			double pitchtomid=-atan2(difz+ithalfheight,dist2);
+			double pitchtobottom=-atan2(difz,dist2);
+			double angletomid=caller.angleto(it);
+			double edgeshot=atan2(smallerradius,dist-it.radius);
+
+
+			//check how much of the actor is exposed
+			int tiershit=0;
+			if(passwalls){
+				losmul=1.;
+				tiershit=FTIER_TOP|FTIER_MIDL|FTIER_MIDR|FTIER_BOTTOM;
+			}else{
+				//shoot lines to the top, middle, bottom and sides
+				//if some of these fail, target is partially covered
+				//assumes legs that have smaller profile than upper body
 				flinetracedata blt;
-				double difz=it.pos.z-caller.pos.z;
-				double pitchtotop=-atan2(difz+it.height,dist2);
-				double pitchtomid=-atan2(difz+ithalfheight,dist2);
-				double pitchtobottom=-atan2(difz,dist2);
-				double angletomid=caller.angleto(it);
 
 				caller.linetrace(angletomid,biggerradius,pitchtotop,0,
 					0, //caller is already raised by half its height for other things
 					data:blt
 				);
-				if(blt.hitactor==it)losmul+=0.25;
+				if(blt.hitactor==it){
+					tiershit|=FTIER_TOP;
+					losmul+=0.25;
+				}
+
+				blt.hitactor=null; //reset before each call just in case
 				caller.linetrace(angletomid,biggerradius,pitchtomid,0,
 					0, //caller is already raised by half its height for other things
 					data:blt
 				);
-				if(blt.hitactor==it)losmul+=0.25;
+				if(blt.hitactor==it){
+					tiershit|=FTIER_MID;
+					losmul+=0.25;
+				}
 
-				double edgeshot=atan2(smallerradius,dist);
+				blt.hitactor=null;
 				caller.linetrace(angletomid+edgeshot,biggerradius,pitchtomid,0,
 					0, //caller is already raised by half its height for other things
 					data:blt
 				);
-				if(blt.hitactor==it)losmul+=0.17;
+				if(blt.hitactor==it){
+					tiershit|=FTIER_MIDL;
+					losmul+=0.17;
+				}
+
+				blt.hitactor=null;
 				caller.linetrace(angletomid-edgeshot,biggerradius,pitchtomid,0,
 					0, //caller is already raised by half its height for other things
 					data:blt
 				);
-				if(blt.hitactor==it)losmul+=0.17;
+				if(blt.hitactor==it){
+					tiershit|=FTIER_MIDR;
+					losmul+=0.17;
+				}
 
+				blt.hitactor=null;
 				caller.linetrace(angletomid,biggerradius,pitchtobottom,0,
 					0, //caller is already raised by half its height for other things
 					data:blt
 				);
-				if(blt.hitactor==it)losmul+=0.16;
-				losmul=min(losmul,1.);
+				if(blt.hitactor==it){
+					tiershit|=FTIER_BOTTOM;
+					losmul+=0.16;
+				}
+
+				//the final multiplier should not exceed 1
+				if(losmul>1.)losmul=1.;
 			}
 //				if(losmul){caller.A_Log(string.format("%s  %f",it.getclassname(),losmul));}
 
-			if(!losmul)continue;
+			if(!tiershit)continue;
 			double divmass=1.;if(it.mass>0)divmass=1./it.mass;
 
 			//immolate before all damage, to avoid bypassing player death transfer
@@ -139,26 +174,6 @@ extend class HDActor{
 					if(hdactor(caller))hdactor(caller).A_Immolate(it,target,immolateamount);
 					else HDF.Give(it,"Heat",immolateamount*2);
 				}
-			}
-			//gibbing
-			if(!it)continue;if(dist<=gibradius && it.bcorpse && it.bshootable){
-				hdf.give(it,"sawgib",gibamount-dist/3);
-				actor bld;bool gbg;
-				double minbloodheight=min(4.,it.height*0.2);
-				for(int i=0;i<gibamount;i+=3){
-					[gbg,bld]=it.A_SpawnItemEx(it.bloodtype,
-						it.radius*frandom(0.6,1),
-						frandom(-it.radius,it.radius)*0.5,
-						frandom(minbloodheight,it.height),
-						frandom(-1,4),
-						frandom(-4,4),
-						frandom(1,7),
-						it.angleto(caller),
-						SXF_ABSOLUTEANGLE|SXF_NOCHECKPOSITION|SXF_USEBLOODCOLOR
-					);
-					bld.vel+=it.vel;
-				}
-				if(!it.bdontthrust)it.vel+=(it.pos-caller.pos)*divdist*divmass*10;
 			}
 			//push
 			if(!it)continue;if(dist<=pushradius && it.bshootable && !it.bdontthrust){
@@ -187,7 +202,6 @@ extend class HDActor{
 				dist<=fragradius
 				&&(it.bsolid || it.bshootable || it.bvulnerable)
 			){
-				if(it.radiusdamagefactor)fragdamage*=it.radiusdamagefactor;
 				caller.A_Face(it);
 				if(
 					(
@@ -198,96 +212,94 @@ extend class HDActor{
 						)
 					)
 				){
-					//determine size of arc exposed to frags
-					//ideally it would be the arc from corner to corner
-					//but this will do for now
-					double angcover=atan2(
-						it.height,//(it.radius*2+it.height)*0.5,
-						dist
-					);
-//caller.A_Log(string.format("%s  %f",it.getclassname(),angcover));
-					int fragshit=5000;
+					//imagine a ball 80mm wide
+					//area = 4*π*(40^2) = 20106.19298297468
+					//fragments start out 4x4mm
+					//4*π*(40^2)/16 = 1257 rounded up :(
+					//for 3x3, that count goes up to 2234
+					int fragshit=2234;
 					if(dist>0){
-						//HIGH SCHOOL GEOMETRY
-						//https://en.wikipedia.org/wiki/Spherical_sector
-						double domeheight=abs(sin(90-0.5*angcover));
-						double domearea=HDCONST_TAU*domeheight; //*dist
-						double blastarea=(HDCONST_TAU*2)*dist; //*dist
-						double proportionfragged=domearea/blastarea;
+						//"A = 2πrh" for sector area, divided by "A = 4πr^2" for total area of sphere
+						//we're solving for r=1 so r is omitted
+						//2πh/4π = 2h/4 = h/2 = h*0.5
+						//solving for h: h+adjacent=hypotenuse
+						//sohCAHtoa: adjacent/hypotenuse=cosine
+						//therefore cos(angcover)*hypotenuse=adjacent
+						//hypotenuse-cos(angcover*hypotenuse)=h
+						//collapse into (1.-cos(angcover))*0.5
+
+						//double angcover=(abs(pitchtotop-pitchtomid)+edgeshot)*0.5;
+						double angcover=max(abs(pitchtotop-pitchtomid),edgeshot);
+						double proportionfragged=(1.-cos(angcover))*0.5;
+
 
 						//NOW incorporate the cover
 						proportionfragged*=losmul;
 
-						//2500 frags = 2-45 frags on any given target
 						fragshit*=proportionfragged;
+//
+if(hd_debug)console.printf(it.getclassname().."  "..angcover.." = "..proportionfragged);
 					}
-
-//caller.A_Log(string.format("%s  %i",it.getclassname(),fragshit));
 
 					//randomize count and abort if none end up hitting
 					fragshit*=frandom(0.9,1.1);
 					if(fragshit<1)continue;
-
-					//base damage
-					int dmg=min(fragshit*max(fragdamage>>4-random(0,it.countinv("BulletResistance")),1),fragdamage);
-					//crits
-					if(frandom(0,1)<(0.01*fragshit))dmg*=frandom(1.,2.);
-
-					//SO MUCH BLOOD
-					if(
-						!(it is "TempShield")
-					){
-						caller.A_Face(it,0,0);
-						name bld="FragPuff";
-						if(!it.bnoblood&&it.bloodtype)bld=it.bloodtype;
-						int gbg;actor blaaa;vector2 blooddir=(caller.pos.xy-it.pos.xy).unit();
-						if(blooddir.x!=blooddir.x)blooddir.x=frandom(3,3);
-						if(blooddir.y!=blooddir.y)blooddir.y=frandom(3,3);
-						int bloodshit=min(fragshit,it.height*0.5);
-						for(int i=0;i<bloodshit;i++){
-							[gbg,blaaa]=it.A_SpawnItemEx(bld,
-								frandom(-1,it.radius),
-								frandom(-it.radius,it.radius)*0.6,
-								frandom(4,it.height),
-								blooddir.x*frandom(-1,4),
-								blooddir.y*frandom(-4,4),
-								frandom(-1,3),
-								-caller.angle,
-								SXF_USEBLOODCOLOR
-								|SXF_ABSOLUTEANGLE
-								|SXF_ABSOLUTEMOMENTUM
-								|SXF_NOCHECKPOSITION
-							);
-							blaaa.vel+=it.vel;
-						}
+					if(hd_debug){
+						string nm;if(it.player)nm=it.player.getusername();else nm=it.getclassname();
+						console.printf(nm.." fragged "..fragshit.." times");
 					}
 
-					//limit damage to non-gibbing levels
-					//can still gib, just takes a lot more
-					int itgibhealth=it.gibhealth;
-					int ithealth=it.health;
-					if(
-						ithealth>0&&
-						itgibhealth>0
-					){
-						int gh=ithealth+itgibhealth;
-						if(dmg>gh){
-							dmg=min(gh,gh-itgibhealth*3);
-							if(dmg<1)dmg=ithealth+1;
-						}
+					//resolve the impacts using a single bullet
+					let bbb=hdbulletactor(spawn(fragtype,caller.pos));
+					if(!bbb)continue;
+					bbb.woundhealth=0;
+					bbb.setz(clamp(bbb.pos.z,bbb.floorz+1,bbb.ceilingz-1));
+					bbb.target=target;
+					bbb.vel+=caller.vel;
+					bbb.traceactors.push(caller); //does this even work?
+
+					//set the base properties of the frag bullet
+					//TODO: replace with frag type parameter in this function
+					double fragpushfactor=bbb.pushfactor;
+					double fragmass=bbb.mass;
+					double fragspeed=bbb.speed*fragspeedfactor;
+					double fragaccuracy=bbb.accuracy;
+					double fragstamina=max(1,bbb.stamina);
+
+					//limit number of frags and increase size to compensate
+					if(fragshit>20){
+						fragstamina+=((fragshit-20)>>3);
+						fragshit=20;
 					}
 
+					double fragangle=caller.angleto(it);
+					vector3 vu=(cos(bbb.pitch)*(cos(fragangle),sin(fragangle)),sin(bbb.pitch));
+					fragradius-=it.stamina; //to be used to place the bullet, not inside target
 
-					//and finally the good stuff
-					if(hd_debug)caller.A_Log(
-						string.format("%s fragged %i times by %s for %i damage",
-							it.getclassname(),fragshit,caller.getclassname(),dmg
-						)
-					);
-					int pcbak=it.painchance;
-					it.painchance*=fragshit;
-					it.DamageMobj(caller,source,dmg,fragdamagetype,DMG_THRUSTLESS|playerattack);
-					if(it)it.painchance=pcbak;
+					//resolve the impacts using the same bullet, resetting each time
+					for(int i=0;i<fragshit;i++){
+						bbb.resetrandoms();
+						bbb.mass=fragmass*(1.+frandom(-fragvariance,fragvariance));
+						bbb.pushfactor=fragpushfactor*(1.+frandom(-fragvariance,fragvariance));
+						bbb.stamina=fragstamina*(1.+frandom(-fragvariance,fragvariance));
+						bbb.accuracy=fragaccuracy*(1.+frandom(-fragvariance,fragvariance));
+						bbb.speed=fragspeed*(1.+frandom(-fragvariance,fragvariance));
+
+						if(i>10)bbb.bbloodlessimpact=true;
+
+						double fragtop=it.height;
+						double fragbottom=0;
+						if(!(tiershit&FTIER_BOTTOM))fragbottom=fragtop*0.3;
+						if(!(tiershit&FTIER_TOP))fragtop*=0.7;
+
+						bbb.setxyz(caller.pos+(
+							rotatevector((dist2,0),fragangle),
+							it.pos.z+frandom(fragbottom,fragtop)
+						));
+						bbb.onhitactor(it,bbb.pos,vu);
+					}
+					bbb.setorigin(caller.pos,false);
+					bbb.bulletdie();
 				}
 			}
 		}

@@ -435,10 +435,10 @@ class HDFlameRedBig:HDActor{
 		addz(frandom(-0.1,0.1));
 		scale*=frandom(0.98,1.01);
 		scale.x*=randompick(1,1,-1);
-		if(target)setxyz(target.pos+(
+		if(target)setorigin(target.pos+(
 			(frandom(-target.radius,target.radius),frandom(-target.radius,target.radius))*0.6,
 			frandom(0,target.height*0.6))
-		);
+		,true);
 	}
 	void A_SmokeFade(){
 		vel.z*=0.9;scale*=1.1;alpha-=0.05;
@@ -534,7 +534,7 @@ class HDCopyTrail:IdleDummy{
 			vel*=deathheight;
 			if(alpha<0.04){destroy();return;}
 		}
-		setxyz(pos+vel);
+		setorigin(pos+vel,true);
 		//don't even bother with nexttic, it's just one frame!
 	}
 }
@@ -681,6 +681,7 @@ class DistantQuaker:IdleDummy{
 	spawn:
 		TNT1 A 1 nodelay A_SetTics(stamina);
 		TNT1 A 0{
+			if(max(abs(pos.x),abs(pos.y),abs(pos.z))>32000)return;
 			if(wave){
 				A_PlaySound("weapons/subfwoosh",CHAN_AUTO,0.1*intensity);
 				if(target && target.pos.z<target.floorz+8)
@@ -728,9 +729,12 @@ class BloodSplatSilent:HDPuff{
 	}
 }
 class BloodSplat:BloodSplatSilent replaces Blood{
+	default{
+		seesound "misc/bulletflesh";
+	}
 	override void postbeginplay(){
 		super.postbeginplay();
-		A_PlaySound("misc/bulletflesh",0,0.02);
+		if(!bambush)A_PlaySound(seesound,CHAN_BODY,0.2);
 	}
 }
 class BloodSplattest:BloodSplat replaces BloodSplatter{}
@@ -748,8 +752,8 @@ class ShieldNotBlood:NotQuiteBloodSplat{
 		bloodsplat.postbeginplay();
 		if(
 			(satanrobo(target)&&satanrobo(target).shields>50)
-			||(spiderdemon(target)&&spiderdemon(target).shields>50)
-			||(jailer(target)&&jailer(target).shields>50)
+			||(Technorantula(target)&&Technorantula(target).shields>50)
+			||(SkullSpitter(target)&&SkullSpitter(target).shields>50)
 		){
 			A_SetTranslucent(1,1);
 			grav=-0.6;
@@ -827,7 +831,7 @@ class HDBloodTrailFloor:IdleDummy{
 }
 
 
-//Ominous shards of green energy
+//Ominous shards of green or blue energy
 class FragShard:IdleDummy{
 	default{
 		renderstyle "add";+forcexybillboard;scale 0.3;alpha 0;
@@ -849,18 +853,19 @@ class FragShard:IdleDummy{
 	}
 	states{
 	spawn:
-		BFE2 D 20 bright{
+		BFE2 D 20 bright nodelay{
 			if(stamina>0) A_SetTics(stamina);
 		}stop;
 	}
 }
 extend class HDActor{
 	//A_ShardSuck(self.pos+(0,0,32),20);
-	virtual void A_ShardSuck(vector3 aop,int range=4){
-		actor a=self.spawn("FragShard",aop,ALLOW_REPLACE);
-		a.setxyz(aop+(random(-range,range)*6,random(-range,range)*6,random(-range,range)*6));
+	virtual void A_ShardSuck(vector3 aop,int range=4,bool forcegreen=false){
+		actor a=spawn("FragShard",aop,ALLOW_REPLACE);
+		a.setorigin(aop+(random(-range,range)*6,random(-range,range)*6,random(-range,range)*6),false);
 		a.vel=(aop-a.pos)*0.05;
 		a.stamina=20;
+		if(forcegreen)a.A_SetTranslation("AllGreen");
 	}
 }
 
@@ -876,16 +881,16 @@ class TeleFog:IdleDummy replaces TeleportFog{
 	}
 	states{
 	spawn:
-		TFOG AA 2 nodelay bright light("BFS1") A_FadeIn(0.2);
-		TFOG BBCCCDDEEFGHII 2 bright light("BFS1"){
-			A_ShardSuck(self.pos+(0,0,random(1,4)*12+24));
+		TFOG AA 2 nodelay bright light("TLS1") A_FadeIn(0.2);
+		TFOG BBCCCDDEEFGHII 2 bright light("TLS1"){
+			A_ShardSuck(pos+(0,0,frandom(24,48)),forcegreen:true);
 		}
-		TFOG JJJJ random(2,3) bright light("BFS1"){
+		TFOG JJJJ random(2,3) bright light("TLS1"){
 			alpha-=0.2;
-			A_ShardSuck(self.pos+(0,0,random(1,4)*12+24));
+			A_ShardSuck(pos+(0,0,frandom(24,48)),forcegreen:true);
 		}stop;
 	nope:
-		TNT1 A 20 light("BFS1");
+		TNT1 A 20 light("TLS1");
 		stop;
 	}
 }

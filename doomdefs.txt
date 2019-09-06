@@ -67,7 +67,7 @@ flickerlight SPIDX3
 	secondarysize 26
 	chance 1
 }
-object Spiderdemon
+object Technorantula
 {
 	frame SPIDG { light SPIDF1 }
 	frame SPIDH { light SPIDF2 }
@@ -79,7 +79,7 @@ object Spiderdemon
 
 
 //------------------------------
-//	PlasmaBalle, Krangling
+//	PlasmaBalle, TechnoSpider
 //------------------------------
 
 flickerlight PLAZBALL
@@ -124,40 +124,34 @@ object BeamSpotFlash
 	frame PLSED { light PLAZMABX2 }
 	frame PLSEE { light PLAZMABX3 }
 }
-object Krangling
+object TechnoSpider
 {
 	frame BSPIG { light PLAZMABX2 }
 }
 
 
 //------------------------------
-//	BFG Balle
+//	BFG Ball
 //------------------------------
-
-flickerlight BFS1
-{
+flickerlight BFS1{
 	color 0.1 1 0.3
 	size 36
 	secondarysize 24
 	chance 0.5
 }
-pointlight BFE1A
-{
+pointlight BFE1A{
 	color 0.3 1 0.6
 	size 36
 }
-pointlight BFE1B
-{
+pointlight BFE1B{
 	color 0.5 1 0.8
 	size 56
 }
-pointlight BFE1C
-{
+pointlight BFE1C{
 	color 0.8 1 0.95
 	size 86
 }
-object BFGBalle
-{
+object BFGBalle{
 	frame BFS1 {light BFS1}
 	frame BFE1A {light BFE1A}
 	frame BFE1B {light BFE1B}
@@ -166,33 +160,38 @@ object BFGBalle
 	frame BFE1E {light BFE1A}
 	frame BFE1F {light BFS1}
 }
-object BFGBallTail
-{
+object BFGBallTail{
 	frame BFS1 {light BFS1}
 }
-object BFGPuff
-{
+object BFGPuff{
 	frame BFE2 {light BFS1}
 }
-object BFGSpark
-{
+object BFGSpark{
 	frame BFE2D {light BFS1}
 }
 
 
 //------------------------------
+//	Telefog
+//------------------------------
+flickerlight TLS1{
+	color 0.1 1 0.3
+	size 36
+	secondarysize 24
+	chance 0.5
+}
+
+//------------------------------
 //	Humanoids
 //------------------------------
-
-pointlight SHOT
-{
+pointlight SHOT{
 	color 0.8 0.3 0.2
 	size 20
 }
 
 
 //------------------------------
-// Imp, Condemned, Flames
+// Imp, FlyingSkull, Flames
 //------------------------------
 flickerlight HDIMPBALL
 {
@@ -232,7 +231,7 @@ object ReverseImpBallTail
 	frame BAL1D { light HDIMPBX2 }
 	frame BAL1E { light HDIMPBX3 }
 }
-object MageImpBall
+object ArdentipedeBall
 {
 	frame BAL1A { light HDIMPBALL }
 	frame BAL1B { light HDIMPBALL }
@@ -240,7 +239,7 @@ object MageImpBall
 	frame BAL1D { light HDIMPBX2 }
 	frame BAL1E { light HDIMPBX3 }
 }
-object MageImpBall2
+object ArdentipedeBall2
 {
 	frame BAL1A { light HDIMPBALL }
 	frame BAL1B { light HDIMPBALL }
@@ -249,7 +248,7 @@ object MageImpBall2
 	frame BAL1E { light HDIMPBX3 }
 }
 
-object Condemned
+object FlyingSkull
 {
 	frame SKUL { light HDIMPBALL }
 	frame SKULC { light HDIMPBX1 }
@@ -283,10 +282,10 @@ flickerlight REDFIRE
 
 
 //------------------------------
-//	Jailer
+//	SkullSpitter
 //------------------------------
 
-object Jailer
+object SkullSpitter
 {
 	frame PAIN { light HDIMPBALL }
 	frame PAINF { light ROQX2 }
@@ -470,7 +469,7 @@ object BonerBall
 
 
 //------------------------------
-//	Mancubus
+//	CombatSlug
 //------------------------------
 
 pointlight MANC
@@ -507,7 +506,7 @@ object ManJuice
 	frame MISLC { light MANX2 }
 	frame MISLD { light MANX3 }
 }
-object Mancubus
+object CombatSlug
 {
 	frame FATTH { light MANC }
 }
@@ -567,7 +566,7 @@ object BarrelFlame
 
 
 //------------------------------
-//	ArchFiend
+//	Necromancer
 //------------------------------
 
 flickerlight HECK

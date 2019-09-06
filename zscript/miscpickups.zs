@@ -219,8 +219,7 @@ class HDAmBox:HDUPK{
 				A_FaceTarget(0,0);
 				angle+=frandom(-20,20);
 				pitch+=frandom(-20,20);
-				actor b=spawn("HDBullet9",pos+(0,0,12),ALLOW_REPLACE);
-				b.pitch=pitch;b.angle=angle;b.target=self;b.vel+=vel;
+				HDBulletActor.FireBullet(self,"HDB_9",zofs:2,spread:2.,speedfactor:frandom(0.97,1.03));
 				A_SpawnItemEx("HDSpent9mm", -3,1,-1,
 					random(-1,-3),random(-1,1),random(-3,-4),
 					0,SXF_NOCHECKPOSITION|SXF_SETTARGET
@@ -341,8 +340,11 @@ class HDAmBox:HDUPK{
 			0,0,frandom(0,2),0,SXF_NOCHECKPOSITION
 		);
 		---- A 0{
-			actor bbb=spawn("TerrorBolt",pos,ALLOW_REPLACE);
-			bbb.vel.z=min(-50,bbb.floorz-bbb.pos.z);
+			let bbb=HDBulletActor.FireBullet(
+				self,"HDB_bronto",
+				zofs:1.,
+				aimoffy:90
+			);
 		}
 		---- AAAA 0 A_SpawnItemEx("HDSmokeChunk",
 			frandom(-10,10),frandom(-10,10),frandom(1,10),
@@ -509,7 +511,7 @@ class RedSphere:HDInvRandomSpawner replaces BlurSphere{
 		dropitem "SquadSummoner",256,14;
 		dropitem "HDFragGrenades",256,6;
 		dropitem "HDBlurSphere",256,1;
-		dropitem "GreenArmor",256,2;
+		dropitem "GarrisonArmour",256,2;
 		dropitem "BluePotion",256,2;
 	}
 }
@@ -680,7 +682,7 @@ class GreenSphere:BlueSphere replaces Invulnerabilitysphere{
 				);
 			}
 			A_Quake(3,26,0,220,"none");
-			actor aaa=spawn("Archangel",pos,ALLOW_REPLACE);
+			actor aaa=spawn("LightBearer",pos,ALLOW_REPLACE);
 		}
 		TNT1 AAAAA 2 A_SpawnItemEx("HDSmoke",
 			frandom(-4,4),frandom(-4,4),frandom(1,4),

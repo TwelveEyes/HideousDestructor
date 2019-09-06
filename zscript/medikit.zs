@@ -27,13 +27,13 @@ class PortableMedikit:HDPickup{
 				A_GiveInventory("HDMedikitter");
 				if(A_JumpIfInventory("PortableStimpack",0,"null"))A_DropItem("PortableStimpack");
 				else A_GiveInventory("PortableStimpack");
-				let sb=hdweapon(spawn("SecondBlood",pos));
-				if(sb)sb.actualpickup(self);
+				if(A_JumpIfInventory("SecondBlood",0,"null"))A_DropItem("SecondBlood");
+				else A_GiveInventory("SecondBlood");
 				A_TakeInventory("PortableMedikit",1);
 			}else{
 				A_Log("You pull out the medikit you've already unwrapped.",true);
 			}
-			A_SelectWeapon("HDMedikitter");
+			if(!hdplayerpawn(self)||!hdplayerpawn(self).incapacitated)A_SelectWeapon("HDMedikitter");
 			A_PlaySound("weapons/pocket",CHAN_WEAPON);
 		}
 		fail;
@@ -603,7 +603,8 @@ class SelfBandage:HDWoundFixer{
 	}
 	override string,double getpickupsprite(){return "BLUDC0",1.;}
 	override string gethelptext(){return "\cuImprovised Bandaging\n"..WEPHELP_INJECTOR
-		..(owner.countinv("BloodBagWorn")?"\n"..WEPHELP_ALTRELOAD.."  Remove blood feeder":"");}
+		.."\n"..WEPHELP_ALTRELOAD.."  Remove blood feeder"
+		..(owner.countinv("BloodBagWorn")?"":"(if any)");}
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
 		int of=0;
 		if(hpl.woundcount){
