@@ -7,11 +7,11 @@ extend class HDStatusBar{
 		if(hdw)hdw.DrawHUDStuff(self,hdw,hpl);else{
 			if(cplayer.readyweapon.ammotype1)drawwepnum(
 				hpl.countinv(cplayer.readyweapon.ammotype1),
-				hdmath.maxinv(hpl,cplayer.readyweapon.ammotype1)
+				getdefaultbytype(w.ammotype1).maxamount
 			);
 			if(cplayer.readyweapon.ammotype2)drawwepnum(
 				hpl.countinv(cplayer.readyweapon.ammotype2),
-				hdmath.maxinv(hpl,cplayer.readyweapon.ammotype2),
+				getdefaultbytype(w.ammotype2).maxamount,
 				posy:-10
 			);
 		}
@@ -23,22 +23,32 @@ extend class HDStatusBar{
 			1,scale:dotscale
 		);
 	}
-	void drawwepnum(int value,int maxvalue,int posx=-16,int posy=-6,bool alwaysprecise=false){
+	void drawwepnum(int value,double mxval,int posx=-16,int posy=-6,bool alwaysprecise=false){
+		int maxvalue=int(mxval);
 		if(!maxvalue)return;
+			//the only purpose for this not being int is so I can enter double constants
+			//into this argument and not get truncation warnings that I have no need for here
 		hdplayerpawn cp=hdplayerpawn(cplayer.mo);if(!cp)return;
+		double valx=
+			!alwaysprecise&&(
+				hudlevel==1
+				||cplayer.buttons&BT_ATTACK
+				||cplayer.buttons&BT_ALTATTACK
+			)
+			?max(((value*6/maxvalue)<<2),(value>0)):
+			(value*24/maxvalue)
+		;
 		drawimage(
 			"GREENPXL",
 			(posx,posy),
 			DI_SCREEN_CENTER_BOTTOM|DI_TRANSLATABLE|DI_ITEM_RIGHT,
-			1,scale:(
-				!alwaysprecise&&(
-					hudlevel==1
-					||cplayer.buttons&BT_ATTACK
-					||cplayer.buttons&BT_ALTATTACK
-				)
-				?max(((value*6/maxvalue)<<2),(value>0)):
-				(value*24/maxvalue)
-			,2)
+			1,scale:(min(24,valx),2)
+		);
+		if(valx>24)drawimage(
+			"YELOPXL",
+			(posx-24,posy),
+			DI_SCREEN_CENTER_BOTTOM|DI_ITEM_RIGHT,
+			1,scale:(1,2)
 		);
 	}
 	//"" means ignore this value and move on to the next check.

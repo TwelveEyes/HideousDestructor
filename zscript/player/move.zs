@@ -15,6 +15,13 @@ extend class HDPlayerPawn{
 			}
 		}else pitch=clamp(pitch,player.minpitch,player.maxpitch);
 	}
+	override void CalcHeight(){
+		if(
+			CheckFrozen()
+			||(incapacitated&&health>0)
+		)return;
+		super.CalcHeight();
+	}
 	override void CheckCrouch(bool totallyfrozen){}
 	void CrouchCheck(){
 		if(CheckFrozen())return;
@@ -98,39 +105,42 @@ extend class HDPlayerPawn{
 		if(!hd_nozoomlean)cachecvars();
 
 		//set up leaning
-		double leanamt=leaned?(10./(3+checkencumbrance())):0;
-		if(
-			hdweapon(player.readyweapon)
-		){
-			leanamt*=8./max(8.,hdweapon(player.readyweapon).gunmass());
-		}
 		int leanmove=0;
-		if(
-			cmdleanmove&HDCMD_LEFT
-			&&(
-				leaned<=0
-				||cmdleanmove&HDCMD_RIGHT
-			)
-		)leanmove--;
-		if(
-			cmdleanmove&HDCMD_RIGHT
-			&&(
-				leaned>=0
-				||cmdleanmove&HDCMD_LEFT
-			)
-		)leanmove++;
-		if(
-			!leanmove&&(
-				cmdleanmove&HDCMD_STRAFE
-				||(
-					cmd.buttons&BT_ZOOM
-					&&!hd_nozoomlean.getbool()
+		double leanamt=leaned?(10./(3+checkencumbrance())):0;
+		if(notpredicting){
+			if(
+				hdweapon(player.readyweapon)
+			){
+				leanamt*=8./max(8.,hdweapon(player.readyweapon).gunmass());
+			}
+			if(
+				cmdleanmove&HDCMD_LEFT
+				&&(
+					leaned<=0
+					||cmdleanmove&HDCMD_RIGHT
 				)
-			)
-		){
-			if(cmd.sidemove<0&&leaned<=0)leanmove--;
-			if(cmd.sidemove>0&&leaned>=0)leanmove++;
-			cmd.sidemove=0;
+			)leanmove--;
+			if(
+				cmdleanmove&HDCMD_RIGHT
+				&&(
+					leaned>=0
+					||cmdleanmove&HDCMD_LEFT
+				)
+			)leanmove++;
+			if(
+				!leanmove
+				&&(
+					cmdleanmove&HDCMD_STRAFE
+					||(
+						cmd.buttons&BT_ZOOM
+						&&!hd_nozoomlean.getbool()
+					)
+				)
+			){
+				if(cmd.sidemove<0&&leaned<=0)leanmove--;
+				if(cmd.sidemove>0&&leaned>=0)leanmove++;
+				cmd.sidemove=0;
+			}
 		}
 
 
@@ -252,7 +262,11 @@ extend class HDPlayerPawn{
 				Bob(a, cmd.sidemove * bobfactor / 256., false);
 				Thrust(sidemove, a);
 			}
-			if(leanmove&&notpredicting){
+			if(
+				leanmove
+				&&notpredicting
+				&&!isfrozen()
+			){
 				bool poscmd=leanmove>0;
 				bool zrk=zerk>0;
 				if(zrk&&!random(0,63)){

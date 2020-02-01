@@ -33,8 +33,9 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		mass 150;
 		seesound "marine/sight";
 		painchance 240;
-		obituary "%o was shot up by a marine.";
-		hitobituary "%o violated a marine's personal space.";
+		obituary "$OB_MARINE";
+		hitobituary "$OB_MARINEHIT";
+		tag "$CC_MARINE";
 
 		accuracy 0; //set to hdmw_*+1
 		stamina 0; //+1 for setting
@@ -60,16 +61,15 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			&&!(self is "BotBot")
 		)A_Log(string.format("\cf%s died.",nickname));
 		timesdied++;
-		bpushable=false;
 		super.die(source,inflictor,dmgflags);
 	}
 	override void beginplay(){
 		super.beginplay();
+		givensprite=getspriteindex("PLAYA1");
 		bhasdropped=false;
 		spread=0;
 		timesdied=0;
 		jammed=0;
-		if(bfriendly)bpushable=true;
 
 		//weapon
 		pistolloaded=15;
@@ -120,7 +120,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			return nickname;
 		}
 		array<string>mnamebases;mnamebases.clear();
-		string mmmn=Wads.ReadLump(Wads.FindLump("marinenames"));
+		string mmmn=Wads.ReadLump(Wads.CheckNumForName("marinenames",0));
 		mmmn=mmmn.left(mmmn.indexof("\n---"));
 		mmmn.split(mnamebases,"\n");
 
@@ -150,7 +150,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 
 		if(!random(0,3)){
 			array<string>titles;titles.clear();
-			string titleset=Wads.ReadLump(Wads.FindLump("marinenames"));
+			string titleset=Wads.ReadLump(Wads.CheckNumForName("marinenames",0));
 			titleset=titleset.mid(titleset.indexof("\n---")+5);
 			titleset=titleset.left(titleset.indexof("\n---"));
 			titleset.split(titles,"\n");
@@ -167,7 +167,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		else if(!random(0,16))nickname.makelower();
 		if(!random(0,7)){
 			array<string>titles;titles.clear();
-			string titleset=Wads.ReadLump(Wads.FindLump("marinenames"));
+			string titleset=Wads.ReadLump(Wads.CheckNumForName("marinenames",0));
 			titleset=titleset.mid(titleset.indexof("\n---")+5);
 			titleset=titleset.mid(titleset.indexof("\n---")+5);
 			if(titleset!=""){
@@ -185,6 +185,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 	virtual void A_HDMScream(){
 		A_Scream();
 	}
+	int givensprite;
 	override void postbeginplay(){
 		super.postbeginplay();
 		hdmobster.spawnmobster(self);
@@ -199,9 +200,9 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		if(
 			health>0
 			&&damage>=health
-			&&damage<random(12,300-(lastinginjury<<1))
 			&&mod!="raisedrop"
 			&&mod!="spawndead"
+			&&damage<random(12,300-(lastinginjury<<1))
 			&&(
 				(mod=="bleedout"&&random(0,12))
 				||(random(0,2))
@@ -377,7 +378,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		if(userocket&&mmm is "GyroGrenade")gyrogrenade(mmm).isrocket=true;
 		else userocket=false;
 
-		if(!(mmm is "HDBullet")&&!(mmm is "SlowProjectile"))mmm.A_ChangeVelocity(
+		if(!(mmm is "SlowProjectile"))mmm.A_ChangeVelocity(
 			mmm.speed*cos(mmm.pitch),0,mmm.speed*sin(mmm.pitch),CVF_RELATIVE
 		);
 		return mmm;
@@ -406,7 +407,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 	bool checkedin;
 	states{
 	spawn:
-		PLAY A 0;
+		PLAY A 0{sprite=givensprite;}
 		#### AA 4{hdmobai.wander(self);}
 		#### A 0 A_Look();
 		#### BB 4{hdmobai.wander(self);}
@@ -455,23 +456,23 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 	spwander:
 		#### E 0 A_ClearTarget();
 		#### AA 3{hdmobai.wander(self);}
-		#### A 0 A_Chase(flags:CHF_DONTMOVE);
+		#### A 0 A_Chase("melee","missile",CHF_DONTMOVE);
 		#### BB 3{hdmobai.wander(self);}
-		#### A 0 A_Chase(flags:CHF_DONTMOVE);
+		#### A 0 A_Chase("melee","missile",CHF_DONTMOVE);
 		#### CC 3{hdmobai.wander(self);}
-		#### A 0 A_Chase(flags:CHF_DONTMOVE);
+		#### A 0 A_Chase("melee","missile",CHF_DONTMOVE);
 		#### DD 3{hdmobai.wander(self);}
 		#### E 0 A_Jump(128,"spwander");
 	spwander2:
 		#### A 0 A_Look();
 		#### A 0 A_Jump(4,"spawn");
 		#### A 0{angle+=random(-30,30);}
-		#### EEE 2 A_Chase(flags:CHF_DONTMOVE);
+		#### EEE 2 A_Chase("melee","missile",CHF_DONTMOVE);
 		#### A 0{angle+=random(-30,30);}
-		#### EEE 2 A_Chase(flags:CHF_DONTMOVE);
+		#### EEE 2 A_Chase("melee","missile",CHF_DONTMOVE);
 		#### A 0 A_Jump(60,"spwander");
 		#### E 0 A_JumpIfTargetInLOS("see");
-		goto spwander;
+		---- A 0 setstatelabel("spwander");
 
 	missile:
 		#### A 0{
@@ -492,24 +493,25 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 				return;
 			}
 			double dist=distance3d(target);
-			if(dist<500)turnamount=50;
-			else if(dist<1200)turnamount=30;
-			else turnamount=10;
+			if(dist<500)turnamount=20;
+			else if(dist<1200)turnamount=10;
+			else if(dist<2400)turnamount=3;
+			else turnamount=1;
 		}
 	turntoaim:
 		#### E 2 A_FaceTarget(turnamount,turnamount);
-		#### A 0 A_JumpIfTargetInLOS(1);
-		goto see;
+		#### A 0 A_JumpIfTargetInLOS(2);
+		---- A 0 setstatelabel("see");
 		#### A 0 A_JumpIfTargetInLOS(1,10);
 		loop;
 		#### A 0 A_FaceTarget(turnamount,turnamount);
-		#### E 1 A_SetTics(random(1,100/max(1,turnamount)));
+		#### E 1 A_SetTics(random(1,int(100/max(1,turnamount))));
 		#### E 0{
 			spread=turnamount*0.08;
-			A_SetTics(16/spread);
+			A_SetTics(int(16/spread));
 			spread+=min(timesdied,15);
-		}goto shoot;
-
+		}
+		//fallthrough to shoot
 	shoot:
 		#### E 1{
 			if(!target||(checksight(target)&&target.health<1)){
@@ -520,7 +522,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			A_FaceTarget(0,0); //can't lead without this
 			double dist=distance3d(target);
 
-			int settics=clamp(dist*0.002,0,30);
+			int settics=clamp(int(dist*0.002),0,30);
 			if(lastinginjury>0)settics+=random(0,min(lastinginjury,(35*5)));
 			A_SetTics(settics);
 		}
@@ -570,7 +572,8 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			else if(wep==HDMW_HUNTER)setstatelabel("shootsg");
 			else if(wep==HDMW_ZM66)setstatelabel("shootzm66");
 			else if(wep==HDMW_ROCKET)setstatelabel("shootrl");
-		}goto see;
+		}
+		---- A 0 setstatelabel("see");
 	shootzm66:
 		#### E 1;
 		#### E 1 A_LeadTarget1();
@@ -585,10 +588,10 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			gunspent=min(gunloaded,randompick(1,1,1,1,1,3));
 		}
 	firezm66:
-		#### FYY 1 bright light("SHOT"){
+		#### FFF 1 bright light("SHOT"){
 			if(gunloaded<1||gunspent<1)setstatelabel("firezm66end");
 			gunloaded--;gunspent--;
-			A_PlaySound("weapons/rifle",CHAN_WEAPON);
+			A_StartSound("weapons/rifle",CHAN_WEAPON);
 			HDBulletActor.FireBullet(self,"HDB_426");
 			if(!random(0,1999-gunspent)){
 				jammed=true;
@@ -599,7 +602,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		#### E 2 A_AlertMonsters(0,bfriendly?AMF_TARGETEMITTER:0);
 		#### E 0 A_JumpIf(gunloaded>0&&random(0,2),"firezm66");
 		#### E 0 A_MonsterRefire(20,"see");
-		goto missile;
+		---- A 0 setstatelabel("missile");
 	shootsmg:
 		#### E 1 A_LeadTarget1();
 		#### E 1{
@@ -610,7 +613,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 	firesmg:
 		#### F 1 bright light("SHOT"){
 			gunloaded--;
-			A_PlaySound("weapons/smg",CHAN_WEAPON,0.7);
+			A_StartSound("weapons/smg",CHAN_WEAPON,volume:0.7);
 			HDBulletActor.FireBullet(self,"HDB_9",speedfactor:1.1);
 			if(!random(0,7))A_AlertMonsters(0,bfriendly?AMF_TARGETEMITTER:0);
 		}
@@ -621,7 +624,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		);
 		#### E 0 A_JumpIf(gunloaded>0&&random(0,2),"firesmg");
 		#### E 0 A_MonsterRefire(20,"see");
-		goto missile;
+		---- A 0 setstatelabel("missile");
 	shootsg:
 		#### E 1;
 		#### E 1 A_LeadTarget1();
@@ -652,7 +655,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		#### E 1{
 			if(gunspent){
 				gunspent=0;
-				A_PlaySound("weapons/huntrack",5);
+				A_StartSound("weapons/huntrack",8);
 				A_SetTics(random(4,6));
 				A_SpawnItemEx("HDSpentShell",
 					cos(pitch)*8,0,height-7-sin(pitch)*8,
@@ -664,7 +667,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			}
 		}
 		#### E 0 A_MonsterRefire(20,"see");
-		goto missile;
+		---- A 0 setstatelabel("missile");
 	shootrl:
 		#### E 2;
 		#### E 1{
@@ -678,17 +681,17 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		}
 		#### F 2 bright light("SHOT"){
 			if(wep==HDMW_ROCKET)gunloaded--;else glloaded=false;
-			A_PlaySound("weapons/rockignite",CHAN_WEAPON);
-			A_PlaySound("weapons/bronto",5);
+			A_StartSound("weapons/rockignite",CHAN_WEAPON);
+			A_StartSound("weapons/bronto",CHAN_WEAPON,CHANF_OVERLAP);
 			A_MarineShot("GyroGrenade",userocket:true);
 			A_AlertMonsters(0,bfriendly?AMF_TARGETEMITTER:0);
 		}
 		#### E 5{
 			A_Recoil(-4);
-			A_PlaySound("weapons/rocklaunch",CHAN_AUTO,0.6);
+			A_StartSound("weapons/rocklaunch",CHAN_WEAPON,CHANF_OVERLAP,0.6);
 		}
-		#### E 0 A_PlaySound("weapons/huntrack",5);
-		goto see;
+		#### E 0 A_StartSound("weapons/huntrack",8);
+		---- A 0 setstatelabel("see");
 	shootgl:
 		#### E 1{
 			if(A_CheckBlast(target))A_LeadTarget1();
@@ -701,12 +704,12 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		}
 		#### F 1 bright{
 			if(wep==HDMW_ROCKET)gunloaded--;else glloaded=false;
-			A_PlaySound("weapons/grenadeshot",CHAN_WEAPON);
+			A_StartSound("weapons/grenadeshot",CHAN_WEAPON);
 			A_MarineShot("GyroGrenade");
 		}
 		#### E 4;
 		#### E 0 A_MonsterRefire(20,"see");
-		goto missile;
+		---- A 0 setstatelabel("missile");
 
 	shootpistol:
 		#### E 1 A_LeadTarget1();
@@ -717,7 +720,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		}
 		#### F 1 bright light("SHOT"){
 			pistolloaded--;
-			A_PlaySound("weapons/pistol",CHAN_WEAPON);
+			A_StartSound("weapons/pistol",CHAN_WEAPON);
 			HDBulletActor.FireBullet(self,"HDB_9",spread:2.,speedfactor:frandom(0.97,1.03));
 			if(!random(0,3))A_AlertMonsters(0,bfriendly?AMF_TARGETEMITTER:0);
 		}
@@ -727,10 +730,10 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			0,SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
 		);
 		#### E 0 A_MonsterRefire(20,"see");
-		goto missile;
+		---- A 0 setstatelabel("missile");
 	noshot:
 		#### E 6;
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	unjam:
 		#### E 10;
@@ -744,7 +747,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 				gunloaded=-1;
 			}else if(!random(0,3)){
 				jammed=false;
-				A_PlaySound("weapons/rifleclick");
+				A_StartSound("weapons/rifleclick",8);
 				if(!random(0,5))A_SpawnItemEx("HDSmokeChunk",12,0,height-12,4,frandom(-2,2),frandom(2,4));
 				A_SpawnItemEx("BulletPuffBig",12,0,42,1,0,1);
 				setstatelabel("reload");
@@ -754,8 +757,8 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		loop;
 
 	ohforfuckssake:
-		#### E 4 A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
-		goto reload;
+		#### E 4 A_StartSound("weapons/rifleclick2",8);
+		---- A 0 setstatelabel("reload");
 
 	reload:
 		#### A 0{
@@ -768,43 +771,43 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 				if(wep==HDMW_HUNTER)setstatelabel("reloadsg");
 				if(wep==HDMW_ROCKET)setstatelabel("reloadrl");
 			}else if(!glloaded&&wep!=HDMW_ROCKET)setstatelabel("reloadgl");
-		}goto see;
+		}---- A 0 setstatelabel("see");
 	reloadsg:
-		#### A 0 A_PlaySound("weapons/huntopen",CHAN_WEAPON);
+		#### A 0 A_StartSound("weapons/huntopen",8);
 		#### AB 3{hdmobai.chase(self,"melee",null,true);}
 	reloadsgloop:
-		#### A 0 A_PlaySound("weapons/pocket",5);
+		#### A 0 A_StartSound("weapons/pocket",9);
 		#### CDAB 3{hdmobai.chase(self,"melee",null,true);}
 		#### BBC 3{
 			if(!random(0,1))hdmobai.chase(self,"melee",null,true);
 			if(gunloaded<gunmax){
 				gunloaded++;
-				A_PlaySound("weapons/sshotl",CHAN_WEAPON);
+				A_StartSound("weapons/sshotl",8);
 			}
 		}
 		#### A 0 A_JumpIf(gunloaded<gunmax,"reloadsgloop");
-		goto see;
+		---- A 0 setstatelabel("see");
 	reloadrl:
-		#### A 0 A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+		#### A 0 A_StartSound("weapons/rifleclick2",8);
 		#### AB 3{hdmobai.chase(self,"melee",null,true);}
 	reloadrlloop:
-		#### A 0 A_PlaySound("weapons/pocket",5);
+		#### A 0 A_StartSound("weapons/pocket",9);
 		#### CDAB 3{hdmobai.chase(self,"melee",null,true);}
 		#### C 4{
 			if(!random(0,3))hdmobai.chase(self,"melee",null,true);
 			if(gunloaded<gunmax){
 				gunloaded++;
-				A_PlaySound("weapons/rockreload",CHAN_WEAPON);
+				A_StartSound("weapons/rockreload",8,CHANF_OVERLAP);
 			}
 		}
 		#### A 0 A_JumpIf(gunloaded<gunmax,"reloadsgloop");
-		goto see;
+		---- A 0 setstatelabel("see");
 	reloadmag:
 		#### AB 3{hdmobai.chase(self,"melee",null,true);}
 		#### C 3{
 			hdmobai.chase(self,"melee",null,true);
-			A_PlaySound("weapons/rifleclick",CHAN_WEAPON);
-			A_PlaySound("weapons/rifleload",5);
+			A_StartSound("weapons/rifleclick",8);
+			A_StartSound("weapons/rifleload",8,CHANF_OVERLAP);
 			name oldthing="";
 			if(
 				pistolloaded<1
@@ -825,9 +828,9 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			if(oldthing)HDMagAmmo.SpawnMag(self,oldthing,0);
 		}
 		#### DABC 3{hdmobai.chase(self,"melee",null,true);}
-		#### D 2 A_PlaySound("weapons/rifleload",5);
+		#### D 2 A_StartSound("weapons/rifleload",8);
 		#### A 3{
-			A_PlaySound("weapons/rifleclick",CHAN_WEAPON);
+			A_StartSound("weapons/rifleclick",8,CHANF_OVERLAP);
 			hdmobai.chase(self,"melee",null);
 			if(
 				pistolloaded<1
@@ -839,18 +842,18 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			)pistolloaded=15;
 			else gunloaded=gunmax;
 		}
-		goto see;
+		---- A 0 setstatelabel("see");
 	reloadgl:
-		#### A 0 A_PlaySound("weapons/grenopen",CHAN_WEAPON);
+		#### A 0 A_StartSound("weapons/grenopen",8);
 		#### ABCD 3{hdmobai.chase(self,"melee",null,true);}
-		#### AB 2 A_PlaySound("weapons/rockreload",5);
+		#### AB 2 A_StartSound("weapons/rockreload",8);
 		#### C 3{
-			A_PlaySound("weapons/grenopen",CHAN_WEAPON);
+			A_StartSound("weapons/grenopen",CHAN_WEAPON,CHANF_OVERLAP);
 			hdmobai.chase(self,"melee",null);
 			glloaded=1;
 		}
 		#### D 4;
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	melee:
 		#### C 7 A_FaceTarget();
@@ -869,30 +872,30 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			}
 			A_FaceTarget(0,0);
 			A_Recoil(-3);
-		}goto see;
+		}---- A 0 setstatelabel("see");
 	pain:
 		#### G 3;
 		#### G 3 A_Pain();
 		#### G 0 A_Jump(100,"see");
 		#### AB 2 A_FaceTarget(50,50);
-		#### CD 3{
-			hdmobai.chase(self);
-			A_ChangeVelocity(frandom(-1,1),frandom(1,max(0,5-lastinginjury*0.1))*randompick(-1,1),0,CVF_RELATIVE);
-		}
+		#### CD 3 A_ChangeVelocity(
+			frandom(-1,1),
+			frandom(1,max(0,5-lastinginjury*0.1))*randompick(-1,1),
+			0,CVF_RELATIVE
+		);
 		#### G 0 A_CPosRefire();
-		goto missile;
+		#### E 0 A_Jump(256,"missile");
 
 	death.bleedout:
-		#### H 5{bpushable=false;}
-		#### I 5;
-		goto deathpostscream;
+		#### HI 5;
+		---- A 0 setstatelabel("deathpostscream");
 	death:
 		---- A 0 A_DeathZombieZombieDeath();
-		#### H 5{bpushable=false;}
+		#### H 5;
 		#### I 5 A_HDMScream();
 	deathpostscream:
 		#### JK 5;
-		goto dead;
+		---- A 0 setstatelabel("dead");
 
 	dead:
 		#### K 3 canraise A_JumpIf(abs(vel.z)<2.,1);
@@ -905,7 +908,6 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 
 			lastinginjury=random(0,(lastinginjury>>3));
 			A_SetSolid();
-			if(bfriendly)bpushable=true;
 		}
 		#### MMK 7 A_SpawnItemEx("MegaBloodSplatter",0,0,4,
 			vel.x,vel.y,vel.z,0,
@@ -927,9 +929,9 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 				seesound="grunt/sight";
 				painsound="grunt/pain";
 				deathsound="grunt/death";
-				A_PlaySound(seesound,CHAN_VOICE);
+				A_StartSound(seesound,CHAN_VOICE);
 			}
-		}goto see;
+		}---- A 0 setstatelabel("see");
 
 	xdeath:
 		---- A 0 A_DeathZombieZombieDeath();
@@ -954,25 +956,16 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		stop;
 	ungib:
 		#### W 0 A_JumpIf((random(1,12)-timesdied)<5,"RaiseZombie");
-		#### WW 8 A_SpawnItemEx("MegaBloodSplatter",
-			0,0,4,vel.x,vel.y,vel.z,
-			0,SXF_NOCHECKPOSITION|SXF_ABSOLUTEMOMENTUM
-		);
+		#### WW 8;
 		#### VUT 7;
 		#### SRQ 5;
 		#### POH 4;
-		goto checkraise;
+		---- A 0 setstatelabel("checkraise");
 	raisezombie:
-		#### U 4{
-			A_UnsetShootable();
-			A_SpawnItemEx("MegaBloodSplatter",0,0,4,
-				vel.x,vel.y,vel.z+3,0,
-				SXF_NOCHECKPOSITION|SXF_ABSOLUTEMOMENTUM
-			);
-		}
+		#### U 4 A_UnsetShootable();
 		#### U 8;
 		#### T 4;
-		#### T 2 A_PlaySound("weapons/bigcrack",6);
+		#### T 2 A_StartSound("weapons/bigcrack",16);
 		#### T 0{
 			if(bplayingid)sprite=getspriteindex("POSS");
 			else{
@@ -980,12 +973,12 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 				A_SetTranslation("FreedoomGreycoat");
 			}
 		}
-		#### S 2 A_PlaySound("misc/wallchunks",7);
+		#### S 2 A_StartSound("misc/wallchunks",17);
 		#### AAAAA 0 A_SpawnItemEx("HugeWallChunk",0,0,40,random(4,6),0,random(-2,7),random(1,360));
 		#### SRQ 6;
 		#### PONMH 4;
 		#### IJKL 4;
-		#### M 0{spawn("DeadZombieStormtrooper",pos,ALLOW_REPLACE);}
+		#### M 0 spawn("DeadZombieStormtrooper",pos,ALLOW_REPLACE);
 		stop;
 		POSS SRQPONMHIJKL 0;
 		SPOS SRQPONMHIJKL 0;
@@ -1143,16 +1136,20 @@ class DeadRifleman:HDMarine replaces DeadMarine{
 	states{
 	death.spawndead:
 		---- A 0 givearmour(0.6,0.12,0.1);
-		goto dead;
+		---- A 0 setstatelabel("dead");
 	}
 }
 class ReallyDeadRifleman:DeadRifleman replaces GibbedMarine{
 	states{
 	death.spawndead:
+		---- A 1;
 		---- A 0{
 			A_UnsetShootable();
 			timesdied++;
-		}goto xdead;
+			bodydamage=2000;
+			bgibbed=true;
+		}
+		---- A 0 setstatelabel("xdead");
 	}
 }
 class DeadRiflemanCrouched:DeadRifleman{
@@ -1203,7 +1200,7 @@ extend class HDMarine{
 				)
 			){
 				actor pmo=players[i].mo;
-				pmo.A_PlaySound("misc/chat",CHAN_VOICE|CHAN_NOPAUSE,1,0,24);
+				pmo.A_StartSound("misc/chat",CHAN_VOICE,CHANF_UI|CHANF_NOPAUSE|CHANF_LOCAL);
 				pmo.A_Log(msg,true);
 			}
 		}
@@ -1258,7 +1255,7 @@ extend class HDMarine{
 				if(checksight(pmo)||distance3d(pmo)<512)msg.appendformat(
 					" I'm right here, watch your fire!"
 				);
-				pmo.A_PlaySound("misc/chat",CHAN_VOICE|CHAN_NOPAUSE);
+				pmo.A_StartSound("misc/chat",CHAN_VOICE,CHANF_UI|CHANF_NOPAUSE|CHANF_LOCAL);
 				pmo.A_Log(msg,true);
 			}
 		}
@@ -1332,7 +1329,7 @@ class GhostMarine:HDMobBase{
 	}
 	default{
 		+noblooddecals
-		+shootable +noblockmonst +ghost +shadow -solid -pushable
+		+shootable +noblockmonst +ghost +shadow -solid
 		+nopain +nofear +seeinvisible +nodamage +nonshootable
 		+noclip
 		+frightening
@@ -1384,13 +1381,13 @@ class GhostMarine:HDMobBase{
 				A_SetTics(0);
 				return;
 			}
-			A_PlaySound("weapons/bigrifle",CHAN_WEAPON);
+			A_StartSound("weapons/bigrifle",CHAN_WEAPON);
 			pitch+=frandom(-1,1);
 			if(!random(0,7))A_AlertMonsters(0,AMF_TARGETEMITTER);
 		}
 		#### E 6 A_SetTics(random(1,4));
 		#### A 0 A_MonsterRefire(20,"see");
-		goto missile2;
+		---- A 0 setstatelabel("missile2");
 	melee:
 		#### E 0{
 			if(!deathmatch)gonnaleave=0;
@@ -1399,11 +1396,11 @@ class GhostMarine:HDMobBase{
 		#### D 4;
 		#### E 4{
 			if(target&&distance3d(target)<56&&A_GhostShot(target)){
-				A_PlaySound("weapons/smack",CHAN_WEAPON);
+				A_StartSound("weapons/smack",CHAN_WEAPON);
 			}
 		}
 		#### E 4 A_FaceTarget(0,0);
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	pain:
 		#### G 4;
@@ -1457,11 +1454,11 @@ class GhostGyroGrenade:GyroGrenade{
 			random(-7,7),random(-7,7),random(4,18),
 			random(0,360),160
 		);
-		TNT1 AA 0 A_SpawnItemEx("HDBBWTH",
+		TNT1 AA 0 A_SpawnItemEx("HDExplosion",
 			random(-1,1),random(-1,1),2,
 			flags:SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS
 		);
-		TNT1 A 2 A_SpawnItemEx("HDBBWTH",zvel:2,
+		TNT1 A 2 A_SpawnItemEx("HDExplosion",zvel:2,
 			flags:SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS
 		);
 		TNT1 AAA 0 A_SpawnItemEx("HDSmoke",
@@ -1471,7 +1468,7 @@ class GhostGyroGrenade:GyroGrenade{
 		);
 		TNT1 A 21{
 			A_AlertMonsters();
-			spawn("DistantRocket",pos,ALLOW_REPLACE);
+			DistantNoise.Make(self,"world/rocketfar");
 			A_Quake(2,21,0,200,"none");
 		}stop;
 	}
@@ -1483,7 +1480,6 @@ class SquadSummoner:HDPickup{
 		//$Title "Summoning Talisman"
 		//$Sprite "PRIFA0"
 
-		+inventory.fancypickupsound
 		+forcexybillboard
 		-hdpickup.droptranslation
 		inventory.maxamount 7;
@@ -1492,14 +1488,14 @@ class SquadSummoner:HDPickup{
 		inventory.pickupsound "misc/p_pkup";
 		inventory.pickupmessage "Picked up a summoning talisman.";
 		hdpickup.bulk ENC_SQUADSUMMONER;
-		hdpickup.nicename "Summoning Talisman";
+		tag "summoning talisman";
 	}
 	states{
 	spawn:
 		PRIF A -1;
 	use:
 		TNT1 A 0{
-			A_PlaySound("misc/p_pkup",CHAN_AUTO,attenuation:ATTN_NONE);
+			A_StartSound("misc/p_pkup",CHAN_AUTO,attenuation:ATTN_NONE);
 			A_AlertMonsters();
 			A_SpawnItemEx("GhostMarine",0,0,0,-8,0,0,0,SXF_NOCHECKPOSITION|SXF_SETMASTER);
 			A_SpawnItemEx("GhostMarine",0,0,0,0,5,0,0,SXF_NOCHECKPOSITION|SXF_SETMASTER);
@@ -1552,20 +1548,25 @@ class BotBot:HDMarine{
 			)
 		){
 			if(!teamdamage)return 0;
-			else damage*=teamdamage;
+			else damage=int(damage*teamdamage);
 		}
 
-		int dmmm=super.damagemobj(
+		lastmod=mod;
+		return super.damagemobj(
 			inflictor,source,damage,mod,flags,angle
 		);
-		if(health<1&&masterplayer>=0){
+	}
+	name lastmod;
+	override void Die(actor source,actor inflictor,int dmgflags){
+		super.Die(source,inflictor,dmgflags);
+		if(masterplayer>=0){
 			actor rpp=players[masterplayer].mo;
 			if(rpp){
 				rpp.A_SetShootable();
-				rpp.damagemobj(inflictor,source,rpp.health,mod,flags|DMG_FORCED);
+				rpp.damagemobj(inflictor,source,rpp.health,lastmod,dmgflags|DMG_FORCED);
+				rpp.A_UnsetShootable();
 			}
 		}
-		return dmmm;
 	}
 	int warptimer;
 	int unseen;
@@ -1573,7 +1574,10 @@ class BotBot:HDMarine{
 	vector3 oldppos;
 	override void tick(){
 		super.tick();
-		if(masterplayer<1)return;
+		if(
+			masterplayer<1
+			||health<1
+		)return;
 		actor rpp=players[masterplayer].mo;
 		if(rpp){
 			rpp.setorigin((
@@ -1634,7 +1638,7 @@ class BotBot:HDMarine{
 					unseen=0;
 					seen=true;
 					warptimer=0;
-					A_PlaySound(seesound,CHAN_VOICE);
+					A_StartSound(seesound,CHAN_VOICE);
 					spawn("HDSmoke",pos,ALLOW_REPLACE);
 				}else{
 					setorigin(posbak,false);
@@ -1652,7 +1656,7 @@ class BotBot:HDMarine{
 	}
 	int masterplayer;
 	override void postbeginplay(){
-		HDActor.postbeginplay();
+		super.postbeginplay();
 		givearmour(1.,0.12,1.);
 		if(!master){
 			for(int i=0;i<MAXPLAYERS;i++){

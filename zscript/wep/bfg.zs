@@ -1,7 +1,7 @@
 // ------------------------------------------------------------
 // BFG9k
 // ------------------------------------------------------------
-class BFG9K:HDWeapon replaces BFG9000{
+class BFG9K:HDCellWeapon replaces BFG9000{
 	default{
 		//$Category "Weapons/Hideous Destructor"
 		//$Title "BFG 9k"
@@ -15,16 +15,22 @@ class BFG9K:HDWeapon replaces BFG9000{
 		weapon.bobspeed 1.8;
 		weapon.bobstyle "normal";
 		scale 0.7;
-		inventory.pickupmessage "You got the BFG 9k! Oh yes.";
 		hdweapon.barrelsize 32,3.5,7;
 		hdweapon.refid HDLD_BFG;
-		hdweapon.nicename "BFG 9k";
+		tag "$TAG_BFG9000";
+	}
+	override string pickupmessage(){
+		return "You got the "..gettag().."! Oh yes.";
+	}
+	override string getobituary(actor victim,actor inflictor,name mod,bool playerattack){
+		if(bplayingid)return "%o was smacked by %k's big green gob.";
+		return "%o just got glassed and no one leaves here till we find out %k did it!";
 	}
 	override bool AddSpareWeapon(actor newowner){return AddSpareWeaponRegular(newowner);}
 	override hdweapon GetSpareWeapon(actor newowner,bool reverse,bool doselect){return GetSpareWeaponRegular(newowner,reverse,doselect);}
 	//BFG9k.Spark(self,4);
 	//BFG9k.Spark(self,4,height-10);
-	static void Spark(actor caller,int sparks=1,int sparkheight=10){
+	static void Spark(actor caller,int sparks=1,double sparkheight=10){
 		actor a;vector3 spot;
 		vector3 origin=caller.pos+(0,0,sparkheight);
 		double spp;double spa;
@@ -106,17 +112,17 @@ class BFG9K:HDWeapon replaces BFG9000{
 			A_WeaponBusy();
 			if(invoker.weaponstatus[0]&BFGF_STRAPPED){
 				A_SetTics(6);
-				A_PlaySound("weapons/bfgclick",CHAN_WEAPON);
+				A_StartSound("weapons/bfgclick",8);
 			}
 		}
 		#### AA 1 A_Lower(3);
 		#### AAA 1 A_Lower(5);
 		#### AA 2 A_Lower(3);
 		#### A 4{
-			A_PlaySound("weapons/bfglock",5);
+			A_StartSound("weapons/bfglock",8);
 			if(!(invoker.weaponstatus[0]&BFGF_STRAPPED)){
 				A_SetTics(6);
-				A_PlaySound("weapons/bfgclick",CHAN_WEAPON);
+				A_StartSound("weapons/bfgclick",8,CHANF_OVERLAP);
 			}
 			A_SetBlend("00 00 00",1,6,"00 00 00");
 			invoker.weaponstatus[0]^=BFGF_STRAPPED;
@@ -211,7 +217,7 @@ class BFG9K:HDWeapon replaces BFG9000{
 				if(health>16)damagemobj(invoker,self,1,"internal");    
 			}
 			A_WeaponBusy(false);
-			A_PlaySound("weapons/bfgcharge",5);
+			A_StartSound("weapons/bfgcharge",CHAN_WEAPON);
 			BFG9k.Spark(self,1,height-10);
 			A_WeaponReady(WRF_NOFIRE);
 		}
@@ -224,9 +230,9 @@ class BFG9K:HDWeapon replaces BFG9000{
 	chargeend:
 		#### B 2{
 			BFG9k.Spark(self,1,height-10);
-			A_PlaySound("weapons/bfgcharge",invoker.weaponstatus[BFGS_TIMER]>6?CHAN_AUTO:5);    
+			A_StartSound("weapons/bfgcharge",(invoker.weaponstatus[BFGS_TIMER]>6)?CHAN_AUTO:CHAN_WEAPON);
 			A_WeaponReady(WRF_ALLOWRELOAD|WRF_NOFIRE|WRF_DISABLESWITCH);
-			A_SetTics(max(1,6-invoker.weaponstatus[BFGS_TIMER]*0.3));
+			A_SetTics(max(1,6-int(invoker.weaponstatus[BFGS_TIMER]*0.3)));
 			invoker.weaponstatus[BFGS_TIMER]++;
 		}
 		#### B 0{
@@ -238,12 +244,12 @@ class BFG9K:HDWeapon replaces BFG9000{
 			invoker.weaponstatus[BFGS_TIMER]=0;
 			invoker.weaponstatus[0]|=BFGF_CRITICAL;
 			invoker.weaponstatus[BFGS_CRITTIMER]=15;
-			A_PlaySound("weapons/bfgf",CHAN_WEAPON);
+			A_StartSound("weapons/bfgf",CHAN_WEAPON);
 			A_GiveInventory("PowerFrightener");
 		}
 		#### B 3{
 			invoker.weaponstatus[BFGS_CRITTIMER]--;
-			A_PlaySound("weapons/bfgcharge",random(5,6));
+			A_StartSound("weapons/bfgcharge",random(9005,9007));
 			BFG9k.Spark(self,1,height-10);
 			if(invoker.weaponstatus[BFGS_CRITTIMER]<1){
 				invoker.weaponstatus[BFGS_CRITTIMER]=0;
@@ -258,7 +264,7 @@ class BFG9K:HDWeapon replaces BFG9000{
 		}
 		#### B 2{
 			A_ZoomRecoil(0.2);
-			A_PlaySound("weapons/bfgfwoosh",CHAN_AUTO);
+			A_StartSound("weapons/bfgfwoosh",CHAN_WEAPON,CHANF_OVERLAP);
 			A_GiveInventory("PowerFrightener",1);
 
 			invoker.weaponstatus[BFGS_CHARGE]=0;
@@ -339,11 +345,11 @@ class BFG9K:HDWeapon replaces BFG9000{
 		#### C 2 offset(0,38) A_MuzzleClimb(-frandom(1.2,2.4),frandom(1.2,2.4));
 		#### C 4 offset(0,40){
 			A_MuzzleClimb(-frandom(1.2,2.4),frandom(1.2,2.4));
-			A_PlaySound("weapons/bfgclick2");
+			A_StartSound("weapons/bfgclick2",8);
 		}
 		#### C 2 offset(0,42){
 			A_MuzzleClimb(-frandom(1.2,2.4),frandom(1.2,2.4));
-			A_PlaySound("weapons/bfgopen");
+			A_StartSound("weapons/bfgopen",8);
 			if(invoker.weaponstatus[BFGS_BATTERY]>=0){    
 				HDMagAmmo.SpawnMag(self,"HDBattery",invoker.weaponstatus[BFGS_BATTERY]);
 				A_SetTics(4);
@@ -361,7 +367,7 @@ class BFG9K:HDWeapon replaces BFG9000{
 			else if(!random(0,15))A_FireProjectile("YokaiSpawner");
 		}goto harmless;
 	vile:
-		---- AAAAA 0 A_FireProjectile("BFGVileShard",random(170,190),spawnofs_xy:random(-20,20));
+		---- AAAAA 0 A_FireProjectile("BFGNecroShard",random(170,190),spawnofs_xy:random(-20,20));
 		goto batteryout;
 	harmless:
 		---- AAAAA 0 A_FireProjectile("BFGShard",random(170,190),spawnofs_xy:random(-20,20));
@@ -369,11 +375,11 @@ class BFG9K:HDWeapon replaces BFG9000{
 	batteryout:
 		#### C 4 offset(0,42){
 			if(invoker.weaponstatus[BFGS_LOADTYPE]==-1)setweaponstate("reload3");
-			else A_PlaySound("weapons/pocket");
+			else A_StartSound("weapons/pocket",9);
 		}
 		#### C 12;
-		#### C 12 offset(0,42)A_PlaySound("weapons/bfgbattout");
-		#### C 10 offset(0,36)A_PlaySound("weapons/bfgbattpop");
+		#### C 12 offset(0,42)A_StartSound("weapons/bfgbattout",8);
+		#### C 10 offset(0,36)A_StartSound("weapons/bfgbattpop",8);
 		#### C 0{
 			let mmm=hdmagammo(findinventory("HDBattery"));
 			if(!mmm||mmm.amount<1){setweaponstate("reload3");return;}
@@ -385,8 +391,8 @@ class BFG9K:HDWeapon replaces BFG9000{
 			}
 		}
 	reload3:
-		#### C 12 offset(0,38) A_PlaySound("weapons/bfgopen");
-		#### C 16 offset(0,37) A_PlaySound("weapons/bfgclick2");
+		#### C 12 offset(0,38) A_StartSound("weapons/bfgopen",8);
+		#### C 16 offset(0,37) A_StartSound("weapons/bfgclick2",8);
 		#### C 2 offset(0,38);
 		#### C 2 offset(0,36);
 		#### A 2 offset(0,34);
@@ -404,7 +410,7 @@ class BFG9K:HDWeapon replaces BFG9000{
 	bwahahahaha:
 		BFUG A 3{
 			invoker.weaponstatus[BFGS_CRITTIMER]--;
-			A_PlaySound("weapons/bfgcharge",CHAN_AUTO);
+			A_StartSound("weapons/bfgcharge",CHAN_AUTO);
 			BFG9k.Spark(self,1,6);
 			if(invoker.weaponstatus[BFGS_CRITTIMER]<1){
 				invoker.weaponstatus[BFGS_CRITTIMER]=0;
@@ -415,7 +421,7 @@ class BFG9K:HDWeapon replaces BFG9000{
 	heh:
 		BFUG A 8;
 		BFUG A 4{
-			invoker.A_PlaySound("weapons/bfgfwoosh",CHAN_AUTO);
+			invoker.A_StartSound("weapons/bfgfwoosh",CHAN_AUTO);
 			invoker.weaponstatus[0]&=~BFGF_CRITICAL; //DO NOT DELETE THIS
 			invoker.weaponstatus[BFGS_CHARGE]=0;invoker.weaponstatus[BFGS_BATTERY]=0;
 
@@ -481,7 +487,7 @@ class BFGSpark:HDActor{
 		wait;
 	}
 }
-class BFGVileShard:Actor{
+class BFGNecroShard:Actor{
 	default{
 		+ismonster +float +nogravity +noclip +lookallaround +nofear +forcexybillboard +bright
 		radius 0;height 0;
@@ -530,7 +536,7 @@ class BFGVileShard:Actor{
 		stop;
 	}
 }
-class BFGShard:BFGVileShard{
+class BFGShard:BFGNecroShard{
 	states{
 	see2:
 		TNT1 A 0;
@@ -557,7 +563,6 @@ class BFGBalle:HDFireball{
 		radius 6;
 		speed 10;
 		gravity 0;
-		obituary "%o was smacked by %k's big green gob.";
 	}
 	void A_BFGBallZap(){
 		if(pos.z-floorz<12)vel.z+=1;
@@ -651,7 +656,7 @@ class BFGBalle:HDFireball{
 			DistantQuaker.Quake(self,
 				6,100,16384,10,256,512,128
 			);
-			A_SpawnItemEx("DistantBFG");
+			DistantNoise.Make(self,"world/bfgfar");
 		}
 		TNT1 AAAAA 0 A_SpawnItemEx("HDSmokeChunk",random(-2,0),random(-3,3),random(-2,2),random(-5,0),random(-5,5),random(0,5),random(100,260),SXF_TRANSFERPOINTERS|SXF_NOCHECKPOSITION,16);
 		TNT1 AAAAA 0 A_SpawnItemEx("BFGBallRemains",-1,0,-12,0,0,0,SXF_TRANSFERPOINTERS|SXF_NOCHECKPOSITION,16);
@@ -709,14 +714,14 @@ class BFGPuff:GreenParticleFountain{
 		+hittracer
 		renderstyle "add";
 		damagetype "BFGBallAttack";
-		obituary "%o couldn't be bothered to get away from %k's BFG.";
 		scale 0.8;
+		obituary "$OB_MPBFG_BOOM";
 	}
 	states{
 	spawn:
 		BFE2 A 1 bright nodelay{
 			if(target)target=target.target;
-			A_PlaySound("misc/bfgrail",5);
+			A_StartSound("misc/bfgrail",9005);
 		}
 		BFE2 A 3 bright{
 			A_Explode(random(196,320),320,0);
@@ -740,7 +745,7 @@ class BFGPuff:GreenParticleFountain{
 			}
 		}
 		BFE2 ABCDE 2 bright A_FadeOut(0.1);
-		TNT1 A 0 A_SpawnItemEx("BFGVileShard",0,0,10,10,0,0,random(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,254);
+		TNT1 A 0 A_SpawnItemEx("BFGNecroShard",0,0,10,10,0,0,random(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,254);
 		stop;
 	}
 }

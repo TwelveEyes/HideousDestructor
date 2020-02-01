@@ -58,9 +58,11 @@ class HDPlayerPawn:PlayerPawn{
 		+forceybillboard //zoom actor will fuck up otherwise
 
 		+nomenu
+		+noskin
 
 		height 54;radius 12;
 		mass 150;gibhealth 180;
+		deathheight 24;
 
 		player.viewheight 48;
 		player.attackzoffset 21;
@@ -68,12 +70,12 @@ class HDPlayerPawn:PlayerPawn{
 		player.jumpz 0;
 		player.colorrange 112,127;
 		maxstepheight 24;
-		player.gruntspeed 16.0;
-		player.displayname "Marine";
+		player.gruntspeed 99999999999.0;
+		player.displayname "Operator";
 		player.crouchsprite "PLYC";
 
 		hdplayerpawn.loadout "";
-		hdplayerpawn.maxpocketspace 600.;
+		hdplayerpawn.maxpocketspace HDCONST_MAXPOCKETSPACE;
 		player.startitem "CustomLoadoutGiver";
 	}
 	override bool cancollidewith(actor other,bool passive){
@@ -87,6 +89,9 @@ class HDPlayerPawn:PlayerPawn{
 	override void PostBeginPlay(){
 		super.PostBeginPlay();
 		cachecvars();
+
+		standsprite=sprite;
+		if(player)ApplyUserSkin(true);
 
 		lastpos=pos;
 		lastvel=vel;
@@ -152,7 +157,7 @@ class HDPlayerPawn:PlayerPawn{
 					}
 				}
 			}
-			if(gunbraced)A_PlaySound("weapons/guntouch",CHAN_BODY,0.3);
+			if(gunbraced)A_StartSound("weapons/guntouch",8,CHANF_OVERLAP,0.3);
 		}
 	}
 	void A_CheckSeeState(){
@@ -246,6 +251,9 @@ class HDPlayerPawn:PlayerPawn{
 	transient cvar hd_usefocus;
 	transient cvar hd_lasttip;
 	transient cvar hd_helptext;
+	transient cvar hd_voicepitch;
+	transient cvar hd_maglimit;
+	transient cvar hd_skin;
 	transient cvar neverswitchonpickup;
 	void cachecvars(){
 		playerinfo plr;
@@ -265,6 +273,9 @@ class HDPlayerPawn:PlayerPawn{
 		hd_usefocus=cvar.getcvar("hd_usefocus",plr);
 		hd_lasttip=cvar.getcvar("hd_lasttip",plr);
 		hd_helptext=cvar.getcvar("hd_helptext",plr);
+		hd_voicepitch=cvar.getcvar("hd_voicepitch",plr);
+		hd_maglimit=cvar.getcvar("hd_maglimit",plr);
+		hd_skin=cvar.getcvar("hd_skin",plr);
 		neverswitchonpickup=cvar.getcvar("neverswitchonpickup",plr);
 	}
 	override void Tick(){
@@ -286,6 +297,8 @@ class HDPlayerPawn:PlayerPawn{
 				&&specialtipalpha<1000.
 			)specialtipalpha=specialtipalpha=12.+0.08*specialtip.length();
 		}
+
+		if(hd_voicepitch)A_SoundPitch(CHAN_VOICE,clamp(hd_voicepitch.getfloat(),0.7,1.3));
 
 		//only do anything below this while the player is alive!
 		if(bkilled||health<1){
@@ -327,7 +340,6 @@ class HDPlayerPawn:PlayerPawn{
 
 
 
-
 		super.Tick();
 
 
@@ -337,27 +349,8 @@ class HDPlayerPawn:PlayerPawn{
 		if(!player||!player.mo||player.mo!=self){super.tick();return;} //that xkcd xorg graph, but with morphing
 
 
-		//female player sprites
-		if(
-			player.getgender()==1
-			&&wads.checknumforname("PLYFA1",wads.ns_sprites,-1,false)>=0
-		){
-			if(wads.checknumforname("PLFCA1",wads.ns_sprites,-1,false)>=0)
-			crouchsprite=getspriteindex("PLFCA1");
-			if(player.crouchfactor<0.75)sprite=crouchsprite;
-			else sprite=getspriteindex("PLYFA1");
-		}else{
-			crouchsprite=getspriteindex("PLYCA1");
-			if(player.crouchfactor<0.75)sprite=crouchsprite;
-			else sprite=getspriteindex("PLAYA1");
-		}
-		//that stupid ef/xy thing
-		if(
-			sprite==crouchsprite
-		){
-			if(frame==23)frame=4;
-			else if(frame==24)frame=5;
-		}
+		ApplyUserSkin();
+
 
 		//prevent odd screwups that leave you unable to throw grenades or something
 		if(!countinv("HDFist"))GiveBasics();
@@ -400,18 +393,48 @@ class HDPlayerPawn:PlayerPawn{
 		if((fm||sm)&&runwalksprint>=0&&vel!=(0,0,0))A_GiveInventory("IsMoving");
 
 
+		//terminal velocity
+		if(vel.z<-64)vel.z+=getgravity()*1.1;
+
+
 		//"falling" damage
-		int fallvel=teleported?0:(lastvel-vel).length();
+		double fallvel=teleported?0:(lastvel-vel).length();
+
+		if(fallvel>8){
+			//check collision with shootables
+			double zbak=pos.z;
+			addz(lastvel.z);
+			blockingmobj=null;
+			if(
+				!checkmove(pos.xy+lastvel.xy,PCM_NOLINES)
+				&&blockingmobj
+			){
+				let bmob=blockingmobj;
+				if(
+					!bmob.bdontthrust
+					&&bmob.mass>0
+					&&bmob.mass<1000
+				){
+					bmob.A_StartSound("weapons/smack",CHAN_AUTO,CHANF_OVERLAP);
+					A_StartSound("weapons/smack",CHAN_AUTO,CHANF_OVERLAP);
+					bmob.vel+=lastvel*90/bmob.mass;
+					vel+=lastvel*0.05;
+					bmob.damagemobj(self,self,int(fallvel*frandom(1,8)),"bashing");
+				}
+			}
+			setz(zbak);
+		}
+
 		if(fallvel>10){
 			if(barehanded)fallvel-=4;
-			if(fallvel<=15)A_PlaySound("weapons/smack",CHAN_AUTO,0.4);
+			if(fallvel<=15)A_StartSound("weapons/smack",CHAN_AUTO,volume:0.4);
 			else{
-				A_PlaySound("weapons/smack",CHAN_AUTO);
+				A_StartSound("weapons/smack",CHAN_AUTO);
 				if(countinv("PowerStrength"))fallvel/=2;
-				int fdmg=random(fallvel*2,fallvel*3);
+				int fdmg=int(fallvel*frandom(2,3));
 				damagemobj(self,self,fdmg,"falling");
-				beatmax-=fallvel/2;
-				if(random(1,fallvel)>7)Disarm(self);
+				beatmax-=(fdmg>>1);
+				if(frandom(1,fallvel)>7)Disarm(self);
 			}
 		}
 		stunned=max(stunned-1,0);
@@ -424,12 +447,10 @@ class HDPlayerPawn:PlayerPawn{
 		else runwalksprint=-1;
 
 		//check if hands free
-		if(
-			(player.readyweapon is "HDFist")
-			||(player.readyweapon is "HDFragGrenades")
-			||(player.readyweapon is "NullWeapon")
-			||(player.readyweapon is "Tripwire")
-		)barehanded=true;else barehanded=false;
+		barehanded=(
+			hdweapon(player.readyweapon)
+			&&hdweapon(player.readyweapon).bdontnull
+		);
 
 		//reduce stepheight if crouched
 		if(height<40 && !barehanded) maxstepheight=12;
@@ -518,11 +539,10 @@ class HDPlayerPawn:PlayerPawn{
 		if(mustwalk||cmdleanmove||runwalksprint<0)speed=0.36;
 		else if(cansprint && runwalksprint>0){
 			//sprint
-			bool lowspeed=skill>=5;
 			if(!sm && fm>0){
-				speed=lowspeed?1.8:2.8;
+				speed=hd_lowspeed?1.8:2.8;
 				viewbob=max(viewbob,(VB_MAX*0.8));
-			}else speed=lowspeed?1.3:1.6;
+			}else speed=hd_lowspeed?1.3:1.6;
 		}
 		//cap speed depending on weapon status
 		if(weaponbusy)speed=min(speed,0.6);
@@ -608,7 +628,7 @@ class HDPlayerPawn:PlayerPawn{
 		else nocrosshair--;
 
 		//check use key
-		UseButtonCheck(input,fm,sm);
+		UseButtonCheck(input);
 
 		//this must be at the end since it needs to overwrite a lot of what has just happened
 		IncapacitatedCheck();
@@ -660,10 +680,15 @@ extend class HDHandlers{
 	override void PlayerEntered(PlayerEvent e){
 		let p=HDPlayerPawn(players[e.PlayerNumber].mo);
 		if(p){
-			p.levelreset();
-			hdlivescounter.get();
+			//do NOT put anything here that must be done for everyone at the very start of the game!
+			//Players 5-8 will not work.
+
 			if(deathmatch)p.spawn("TeleFog",p.pos,ALLOW_REPLACE);
 
+			p.levelreset();  //reset if changing levels
+			hdlivescounter.get();  //only needs to be done once
+
+			//replace bot if changing levels
 			if(
 				hd_nobots
 				&&players[e.PlayerNumber].bot
@@ -710,6 +735,14 @@ extend class HDPlayerPawn{
 		burncount=min(90,burncount-1);
 		if(!random(0,7))aggravateddamage--;
 
+		if(secondflesh>0){
+			int seconded=min(secondflesh,oldwoundcount);
+			secondflesh=0;
+			oldwoundcount-=seconded;
+			seconded=random(-100,seconded);
+			if(seconded>0)aggravateddamage+=seconded;
+		}
+
 		givebody(max(0,maxhealth()-health));
 
 		overloaded=CheckEncumbrance();
@@ -732,7 +765,11 @@ extend class HDPlayerPawn{
 		}
 
 		A_GiveInventory("PowerFrightener",1);
-		ConsolidateAmmo();
+		if(
+			player
+			&&player
+			&&cvar.getcvar("hd_consolidate",player).getbool()
+		)ConsolidateAmmo();
 
 		if(player){
 			Shader.SetEnabled(player,"NiteVis",false);

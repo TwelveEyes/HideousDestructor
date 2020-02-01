@@ -12,6 +12,9 @@ class HDGrenadeThrower:HDWeapon{
 	property wiretype:wiretype;
 	default{
 		+weapon.no_auto_switch +weapon.noalert +weapon.wimpy_weapon
+		+hdweapon.dontdisarm
+		+hdweapon.dontnull
+		+nointeraction
 		weapon.bobstyle "Alpha";
 		weapon.bobspeed 2.5;weapon.bobrangex 0.1;weapon.bobrangey 0.5;
 
@@ -50,7 +53,7 @@ class HDGrenadeThrower:HDWeapon{
 		}
 		sb.drawwepnum(
 			hpl.countinv("HDFragGrenadeAmmo"),
-			hdmath.maxinv(hpl,"HDFragGrenadeAmmo")
+			(HDCONST_MAXPOCKETSPACE/ENC_FRAG)
 		);
 		sb.drawwepnum(hdw.weaponstatus[FRAGS_FORCE],50,posy:-10,alwaysprecise:true);
 		if(!(hdw.weaponstatus[0]&FRAGF_SPOONOFF)){
@@ -121,7 +124,7 @@ class HDGrenadeThrower:HDWeapon{
 			if(wepstat&FRAGF_SPOONOFF)TossGrenade(true);
 			else{
 				if(wepstat&FRAGF_PINOUT){
-					owner.A_PlaySound("weapons/fragpinout",CHAN_WEAPON);
+					owner.A_StartSound("weapons/fragpinout",8);
 					weaponstatus[0]&=~FRAGF_PINOUT;
 				}
 				if(
@@ -164,7 +167,7 @@ class HDGrenadeThrower:HDWeapon{
 		invoker.weaponstatus[FRAGS_REALLYPULL]=0;
 		invoker.weaponstatus[0]|=(FRAGF_PINOUT|FRAGF_INHAND);
 		A_TakeInventory(invoker.grenadeammotype,1,TIF_NOTAKEINFINITE);
-		A_PlaySound("weapons/fragpinout",CHAN_WEAPON);
+		A_StartSound("weapons/fragpinout",8);
 	}
 	//drop the spoon
 	action void A_StartCooking(){
@@ -189,7 +192,7 @@ class HDGrenadeThrower:HDWeapon{
 			wepmsg="\cgThe fuze is lit!\n\n\n\n\cgRemember to throw!";
 			msgtimer=100;
 		}
-		owner.A_PlaySound("weapons/fragspoonoff",0,1,0,20);
+		owner.A_StartSound("weapons/fragspoonoff",8,attenuation:20);
 	}
 	//we need to start from the inventory itself so it can go into DoEffect
 	action void A_TossGrenade(bool oshit=false){
@@ -427,10 +430,12 @@ class HDFragGrenades:HDGrenadethrower{
 	default{
 		weapon.selectionorder 1020;
 		weapon.slotnumber 0;
+		tag "fragmentation grenades";
 		hdgrenadethrower.ammotype "HDFragGrenadeAmmo";
 		hdgrenadethrower.throwtype "HDFragGrenade";
 		hdgrenadethrower.spoontype "HDFragSpoon";
 		hdgrenadethrower.wiretype "Tripwire";
+		inventory.icon "FRAGA0";
 	}
 }
 class HDFragGrenadeRoller:HDActor{
@@ -448,7 +453,7 @@ class HDFragGrenadeRoller:HDActor{
 	}
 	override bool used(actor user){
 		angle=user.angle;
-		A_PlaySound(bouncesound);
+		A_StartSound(bouncesound);
 		if(hdplayerpawn(user)&&hdplayerpawn(user).incapacitated)A_ChangeVelocity(4,0,1,CVF_RELATIVE);
 		else A_ChangeVelocity(12,0,4,CVF_RELATIVE);
 		return true;
@@ -460,8 +465,8 @@ class HDFragGrenadeRoller:HDActor{
 		}
 	spawn2:
 		#### BCD 2{
-			if(abs(vel.z-keeprolling.z)>10)A_PlaySound("misc/fragknock",CHAN_BODY);
-			else if(floorz>=pos.z)A_PlaySound("misc/fragroll");
+			if(abs(vel.z-keeprolling.z)>10)A_StartSound("misc/fragknock",CHAN_BODY);
+			else if(floorz>=pos.z)A_StartSound("misc/fragroll");
 			keeprolling=vel;
 			if(abs(vel.x)<0.4 && abs(vel.y)<0.4) setstatelabel("death");
 		}loop;
@@ -473,7 +478,7 @@ class HDFragGrenadeRoller:HDActor{
 	death:
 		---- A 2{
 			if(abs(vel.z-keeprolling.z)>3){
-				A_PlaySound("misc/fragknock",CHAN_BODY);
+				A_StartSound("misc/fragknock",CHAN_BODY);
 				keeprolling=vel;
 			}
 			if(abs(vel.x)>0.4 || abs(vel.y)>0.4) setstatelabel("spawn");
@@ -486,7 +491,7 @@ class HDFragGrenadeRoller:HDActor{
 				fragradius:1024
 			);
 			DistantQuaker.Quake(self,4,35,512,10);
-			A_PlaySound("world/explode",1,7);
+			A_StartSound("world/explode",CHAN_AUTO);
 			A_AlertMonsters();
 			actor xpl=spawn("WallChunker",self.pos-(0,0,1),ALLOW_REPLACE);
 				xpl.target=target;xpl.master=master;xpl.stamina=stamina;
@@ -494,7 +499,7 @@ class HDFragGrenadeRoller:HDActor{
 				xpl.target=target;xpl.master=master;xpl.stamina=stamina;
 			A_SpawnChunks("BigWallChunk",14,4,12);
 			A_SpawnChunks("HDB_frag",360,300,900);
-			spawn("DistantRocket",pos,ALLOW_REPLACE);
+			distantnoise.make(self,"world/rocketfar");
 		}
 		stop;
 	}
@@ -555,7 +560,7 @@ class HDFragGrenade:SlowProjectile{
 			super.tick();
 		}else{
 			if(inthesky){
-				spawn("DistantRocket",pos,ALLOW_REPLACE);
+				distantnoise.make(self,"world/rocketfar");
 				A_SpawnChunks("HDB_frag",360,300,900);
 				destroy();return;
 			}
@@ -583,7 +588,7 @@ class HDFragGrenade:SlowProjectile{
 			gr.fuze=self.fuze;
 			gr.vel=self.keeprolling;
 			gr.keeprolling=self.keeprolling;
-			gr.A_PlaySound("misc/fragknock",CHAN_BODY);
+			gr.A_StartSound("misc/fragknock",CHAN_BODY);
 			HDMobAI.Frighten(gr,512);
 		}stop;
 	}
@@ -595,7 +600,7 @@ class HDFragSpoon:HDDebris{
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
-		A_PlaySound("weapons/grenopen",0,2);
+		A_StartSound("weapons/grenopen",CHAN_VOICE);
 	}
 	states{
 	spawn:
@@ -615,9 +620,10 @@ class HDFragGrenadeAmmo:HDAmmo{
 		inventory.icon "FRAGA0";
 		inventory.amount 1;
 		scale 0.3;
+		inventory.maxamount 50;
 		inventory.pickupmessage "Picked up a fragmentation hand grenade.";
 		inventory.pickupsound "weapons/pocket";
-		hdpickup.nicename "Fragmentation Grenades";
+		tag "fragmentation grenades";
 		hdpickup.refid HDLD_GREFRAG;
 		hdpickup.bulk ENC_FRAG;
 	}

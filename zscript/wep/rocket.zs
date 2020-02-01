@@ -4,8 +4,15 @@
 extend class HDWeapon{
 	int airburst;
 	action void A_FireHDGL(){
-		A_PlaySound("weapons/grenadeshot",CHAN_WEAPON);
-		let ggg=gyrogrenade(spawn("GyroGrenade",pos+(0,0,height-8),ALLOW_REPLACE));
+		A_StartSound("weapons/grenadeshot",CHAN_WEAPON,CHANF_OVERLAP);
+		let ggg=gyrogrenade(spawn("GyroGrenade",pos+(
+				0,0,HDWeapon.GetShootOffset(
+					self,invoker.barrellength,
+					invoker.barrellength-HDCONST_SHOULDERTORADIUS
+				)-2
+			),
+			ALLOW_REPLACE)
+		);
 		ggg.angle=angle;ggg.pitch=pitch-2;ggg.target=self;ggg.master=self;
 		ggg.primed=false;
 		if(invoker.airburst)ggg.airburst=max(10,abs(invoker.airburst))*HDCONST_ONEMETRE;
@@ -17,7 +24,8 @@ extend class HDWeapon{
 		if(justpressed(BT_ATTACK))cab=-1;
 		else if(justpressed(BT_ALTATTACK))cab=1;
 		else if(player.cmd.pitch){
-			cab=(-player.cmd.pitch>>5);
+			cab=-player.cmd.pitch;
+			if(abs(cab)>(1<<9))cab>>=9;else cab=clamp(cab,-1,1);
 			HijackMouse();
 		}
 		int abb=invoker.airburst+cab;
@@ -65,7 +73,7 @@ class GyroGrenade:SlowProjectile{
 		if(!primed&&random(0,20)){
 			if(speed>50)painsound="misc/punch";else painsound="misc/fragknock";
 			actor a=spawn("IdleDummy",pos,ALLOW_REPLACE);
-			a.stamina=10;a.A_PlaySound(painsound,CHAN_AUTO);
+			a.stamina=10;a.A_StartSound(painsound,CHAN_AUTO);
 			[bmissileevenmore,a]=A_SpawnItemEx("DudRocket",0,0,0,
 				random(30,60),random(-10,10),random(-10,10),
 				random(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,0
@@ -79,16 +87,14 @@ class GyroGrenade:SlowProjectile{
 		//NOTE: basic impact damage calculation is ALREADY in base SlowProjectile!
 		if(blockingobject){
 			int dmgg=random(32,128);
-			name dmggtp="SmallArms2";
 			if(primed&&isrocket){
 				double dangle=absangle(angle,angleto(blockingobject));
 				if(dangle<20){
 					dmgg+=random(200,600);
-					if(hd_Debug)A_Log("CRIT!");
-					dmggtp="SmallArms3";
+					if(hd_debug)A_Log("CRIT!");
 				}else if(dangle<40)dmgg+=random(100,400);
 			}
-			blockingobject.damagemobj(self,target,dmgg,dmggtp);
+			blockingobject.damagemobj(self,target,dmgg,"Piercing");
 		}
 
 		//explosion
@@ -96,17 +102,16 @@ class GyroGrenade:SlowProjectile{
 			A_SprayDecal("Scorch",16);
 			A_HDBlast(
 				pushradius:256,pushamount:128,fullpushradius:96,
-				fragradius:HDCONST_SPEEDOFSOUND-10*stamina,
+				fragradius:HDCONST_SPEEDOFSOUND-10*stamina,fragtype:"HDB_fragRL",
 				immolateradius:128,immolateamount:random(3,60),
 				immolatechance:isrocket?random(1,stamina):25
 			);
-			actor xpl=spawn("Gyrosploder",self.pos-(0,0,1),ALLOW_REPLACE);
+			actor xpl=spawn("Gyrosploder",pos-(0,0,1),ALLOW_REPLACE);
 			xpl.target=target;xpl.master=master;xpl.stamina=stamina;
 		}else{
-			spawn("DistantRocket",self.pos,ALLOW_REPLACE);
+			distantnoise.make(self,"world/rocketfar");
 		}
 		A_SpawnChunks("HDB_frag",180,100,700+50*stamina);
-
 		destroy();return;
 	}
 	states{
@@ -126,7 +131,7 @@ class GyroGrenade:SlowProjectile{
 			if(!inthesky){
 				brockettrail=true;
 				Gunsmoke();
-				A_PlaySound("weapons/rocklaunch",CHAN_VOICE);
+				A_StartSound("weapons/rocklaunch",CHAN_VOICE);
 			}
 		}
 		---- AAA 0{
@@ -154,7 +159,7 @@ class GyroGrenade:SlowProjectile{
 		}
 		---- A 0{
 			if(primed){
-				if(!inthesky)A_PlaySound("weapons/rocklaunch",5);
+				if(!inthesky)A_StartSound("weapons/rocklaunch",5);
 			}else{
 				primed=true;
 				brockettrail=false;
@@ -175,35 +180,32 @@ class HDHEAT:GyroGrenade{
 	override void ExplodeSlowMissile(line blockingline,actor blockingobject){
 		if(max(abs(skypos.x),abs(skypos.y))>=32768){destroy();return;}
 		bmissile=false;
-
 		//bounce
 		//nothing here - HEAT will always explode
 
 		//damage
 		if(blockingobject){
 			int dmgg=random(70,240);
-			name dmggtp="SmallArms3";
 			double dangle=absangle(angle,angleto(blockingobject));
 			if(dangle<20){
 				dmgg+=random(2000,4000);
-				if(hd_Debug)A_Log("CRIT!");
+				if(hd_debug)A_Log("CRIT!");
 			}else if(dangle<40)dmgg+=random(200,1200);
-			else dmggtp="SmallArms2";
-			blockingobject.damagemobj(self,target,dmgg,dmggtp);
-		}else doordestroyer.destroydoor(self);
+			blockingobject.damagemobj(self,target,dmgg,"Piercing");
+		}else doordestroyer.destroydoor(self,dedicated:true);
 
 		//explosion
 		if(!inthesky){
 			A_SprayDecal("BrontoScorch",16);
 			A_HDBlast(
 				pushradius:256,pushamount:128,fullpushradius:96,
-				fragradius:1024,fragvariance:(0.007*stamina),
+				fragradius:1024,fragtype:"HDB_fragRL",
 				immolateradius:128,immolateamount:random(3,60),
 				immolatechance:2
 			);
 			actor xpl=spawn("Gyrosploder",self.pos-(0,0,1),ALLOW_REPLACE);
 			xpl.target=target;xpl.master=master;xpl.stamina=stamina;
-		}else{spawn("DistantRocket",self.pos,ALLOW_REPLACE);}
+		}else distantnoise.make(self,"world/rocketfar");
 		A_SpawnChunks("HDB_frag",80,100,600);
 
 		destroy();return;
@@ -225,7 +227,7 @@ class Gyrosploder:HDActor{
 	override void postbeginplay(){
 		super.postbeginplay();
 		A_ChangeVelocity(1,0,0,CVF_RELATIVE);
-		A_SpawnItemEx("DistantRocket",flags:SXF_NOCHECKPOSITION);
+		distantnoise.make(self,"world/rocketfar");
 	}
 	states{
 	death:
@@ -284,9 +286,10 @@ class HDRocketAmmo:HDAmmo replaces RocketAmmo{
 
 		inventory.pickupmessage "Picked up a rocket grenade.";
 		scale 0.33;
-		hdpickup.nicename "Rocket Grenade";
+		tag "rocket grenade";
 		hdpickup.refid HDLD_ROCKETS;
 		hdpickup.bulk ENC_ROCKET;
+		inventory.maxamount (60+40); //never forget
 	}
 	override void GetItemsThatUseThis(){
 		itemsthatusethis.push("HDRL");
@@ -317,9 +320,9 @@ class HEATAmmo:HDAmmo{
 		//$Sprite "ROCKA0"
 
 		+inventory.ignoreskill
-//		inventory.maxamount (6+4); //never forget
+		inventory.maxamount (60+40); //never forget
 		inventory.pickupmessage "Picked up a H.E.A.T. round.";
-		hdpickup.nicename "H.E.A.T. Rocket";
+		tag "H.E.A.T. rocket";
 		hdpickup.refid HDLD_HEATRKT;
 		hdpickup.bulk ENC_HEATROCKET;
 		xscale 0.24;
@@ -339,9 +342,10 @@ class DudRocketAmmo:HDAmmo{
 		+hdpickup.cheatnogive
 		inventory.pickupmessage "picked up a defused rocket grenade.";
 		inventory.amount 1;
+		inventory.maxamount (60+40); //never forget
 		radius 2;height 2;
 		scale 0.33;
-		hdpickup.nicename "Dud Rocket";
+		tag "dud rocket";
 		hdpickup.bulk ENC_ROCKET;
 	}
 	override void GetItemsThatUseThis(){
@@ -393,17 +397,18 @@ class DudRocket:HDUPK{
 		---- A 0{
 			A_HDBlast(
 				pushradius:256,pushamount:128,fullpushradius:96,
-				fragradius:1024-20*stamina,
+				fragradius:HDCONST_SPEEDOFSOUND-10*stamina,fragtype:"HDB_fragRL",
 				immolateradius:128,immolateamount:random(3,60),
-				immolatechance:random(1,25)
+				immolatechance:25
 			);
 			actor xpl=spawn("Gyrosploder",self.pos-(0,0,1),ALLOW_REPLACE);
 			xpl.target=target;xpl.master=master;xpl.stamina=stamina;
+			A_SpawnChunks("HDB_frag",180,100,700+50*stamina);
 		}stop;
 	give:
 		---- A 0 A_JumpIfInTargetInventory("DudRocketAmmo",0,3);
 		---- A 0 A_GiveToTarget("DudRocketAmmo",1);
-		---- A 0 A_PlaySound("weapons/grenopen");
+		---- A 0 A_StartSound("weapons/grenopen");
 		stop;
 		ROCQ A 0 A_Jump(1,"Explode");
 		ROCQ A 0 spawn("DudRocketAmmo",pos,ALLOW_REPLACE);

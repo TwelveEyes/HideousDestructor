@@ -11,7 +11,7 @@ class ImpBallTail:BlackParticleFountain{
 	}
 	states{
 	spawn:
-		BAL1 BC 2 bright A_PlaySound("misc/firecrkl",0,0.2,0,4);
+		BAL1 BC 2 bright A_StartSound("misc/firecrkl",volume:0.2,attenuation:4.);
 	death:
 		BAL1 DDEE 2 bright A_FadeOut(0.2);
 		stop;
@@ -70,12 +70,12 @@ class HDImpBall:HDFireball{
 	void A_ImpSquirt(){
 		roll=frandom(0,360);alpha*=0.96;scale*=frandom(1.,0.96);
 		if(!tracer)return;
-		int diff=max(
+		double diff=max(
 			absangle(initangleto,angleto(tracer)),
 			absangle(inittangle,tracer.angle),
 			abs(inittz-tracer.pos.z)*0.05
 		);
-		int dmg=max(0,10-diff/10);
+		int dmg=int(max(0,10-diff*0.1));
 		if(!tracer.player)tracer.angle+=randompick(-10,10);
 
 		//do it again
@@ -83,11 +83,11 @@ class HDImpBall:HDFireball{
 		inittangle=tracer.angle;
 		inittz=tracer.pos.z;
 
-		if(dmg){
-			tracer.damagemobj(self,target,dmg/10,"Thermal");
-			tracer.A_GiveInventory("Heat",dmg);
-		}
 		setorigin((pos+(tracer.pos-initpos))*0.5,true);
+		if(dmg){
+			tracer.A_GiveInventory("Heat",dmg);
+			tracer.damagemobj(self,target,dmg/10,"Thermal");
+		}
 	}
 	states{
 	spawn:
@@ -119,7 +119,7 @@ class HDImpBall:HDFireball{
 				//HEAD SHOT
 				if(
 					pos.z-tracer.pos.z>tracer.height*0.8
-					&&!(tracer is "CaeloBite")
+					&&!(tracer is "Trilobite")
 					&&!(tracer is "Technorantula")
 					&&!(tracer is "TechnoSpider")
 					&&!(tracer is "SkullSpitter")
@@ -151,7 +151,9 @@ class Serpentipede:HDMobBase{
 		painsound "imp/pain";
 		deathsound "imp/death";
 		activesound "imp/active";
-		tag "$fn_imp";
+		meleesound "imp/melee";
+		hdmobbase.downedframe 12;
+		tag "$CC_IMP";
 
 		damagefactor "Thermal",0.66;
 		Health 100;
@@ -162,23 +164,26 @@ class Serpentipede:HDMobBase{
 		Damage 4;
 		MeleeDamage 4;
 		PainChance 80;
-		translation "64:72=50:71";
-		meleesound "imp/melee";
-		obituary "%o was marinated by the imps.";
-		hitobituary "%o was tenderized by the imps.";
+		translation "MediumImp";
+		obituary "%o was marinated by the serpentipedes.";
+		hitobituary "%o was tenderized by the serpentipedes.";
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
 		hdmobster.spawnmobster(self);
-		hdmobai.resize(self,0.8,1.1);
 		if(bplayingid){
 			bsmallhead=true;
 			bbiped=true;
+			A_SetSize(13,54);
 		}
+		resize(0.8,1.1);
 	}
 	override string GetObituary(actor victim,actor inflictor,name mod,bool playerattack){
-		if(mod=="claws")return hitobituary;
-		return obituary;
+		string ob;
+		if(mod=="claws")ob=hitobituary;
+		else ob=obituary;
+		if(bplayingid)ob.replace("serpentipede","imp");
+		return ob;
 	}
 	virtual void A_ImpChase(){
 		hdmobai.chase(self);
@@ -201,22 +206,11 @@ class Serpentipede:HDMobBase{
 	spawn:
 		TROO A 0;
 	spawn0:
-		---- A 0{
-			if(countinv("Clip")<1){
-				A_GiveInventory("Clip",1);
-				A_SetScale(scale.x*frandom(0.9,1.1));
-				A_SetSize(radius*scale.x,height*scale.y);
-				mass*=scale.x;
-				if(scale.x>1.0){
-					A_SetHealth(health*scale.x);
-				}
-			}
-		}
 		#### AAABBCCCDD 8 A_Look();
 		#### A 0 A_SetAngle(angle+random(-4,4));
 		#### A 1 A_SetTics(random(1,3));
 		---- A 0 A_Jump(216,2);
-		---- A 0 A_PlaySound("imp/active");
+		---- A 0 A_StartSound(activesound,CHAN_VOICE);
 		#### A 0 A_JumpIf(bambush,"spawn0");
 		#### A 0 A_Jump(32,"spawn2");
 		loop;
@@ -232,7 +226,7 @@ class Serpentipede:HDMobBase{
 			else if(!A_JumpIfTargetInLOS("null"))setstatelabel("see");
 		}loop;
 	missile0:
-		---- A 0 A_JumpIfTargetInLOS(1);
+		---- A 0 A_JumpIfTargetInLOS(2);
 		---- A 0 A_Jump(256,"spam");
 		#### E 0{
 			bNODROPOFF=true;
@@ -250,6 +244,7 @@ class Serpentipede:HDMobBase{
 			leadaim1=(angle,pitch);
 		}
 		#### E 0{
+			if(!target)return;
 			A_FaceTarget(20,40);
 			leadaim2=(angle,pitch);
 			leadaim1=(deltaangle(leadaim1.x,leadaim2.x),deltaangle(leadaim2.y,leadaim1.y));
@@ -305,7 +300,7 @@ class Serpentipede:HDMobBase{
 		---- A 0 A_Jump(256,2);
 		---- A 0 A_FaceTarget(40,80);
 		#### E 2;
-		#### E 0 A_PlaySound("imp/sight");
+		#### E 0 A_StartSound(seesound,CHAN_VOICE);
 		#### EEEEE 2 A_SpawnItemEx("ReverseImpBallTail",4,24,random(31,33),1,0,0,0,160);
 		#### E 2;
 		#### F 2;
@@ -318,9 +313,9 @@ class Serpentipede:HDMobBase{
 	melee:
 		#### EE 4 A_FaceTarget();
 		#### F 2;
-		#### G 8 A_CustomMeleeAttack(random(10,30),"imp/melee","","claws",true);
+		#### G 8 A_CustomMeleeAttack(random(10,30),meleesound,"","claws",true);
 		#### F 4;
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		---- A 0 A_GiveInventory("HDFireEnder",3);
 		#### H 3 {bNODROPOFF=true;}
@@ -380,7 +375,7 @@ class Serpentipede:HDMobBase{
 	standup:
 		#### LK 5;
 		#### J 0 A_Jump(64,2);
-		#### J 0 A_PlaySound(seesound,CHAN_VOICE);
+		#### J 0 A_StartSound(seesound,CHAN_VOICE);
 		#### JI 4 A_Recoil(-0.3);
 		#### HE 5;
 		#### A 0 A_Jump(256,"see");
@@ -391,8 +386,13 @@ class Serpentipede:HDMobBase{
 // ------------------------------------------------------------
 // Healer Imp
 // ------------------------------------------------------------
-class tempshield2imp:tempshield2{
-	default{+noblooddecals bloodtype "ShieldNeverBlood";}
+class tempshieldimp:tempshield{
+	default{
+		+noblooddecals
+		bloodtype "ShieldNeverBlood";
+		radius 18;height 26;
+		stamina 10;
+	}
 }
 class ShieldImpBall:DoomImpBall{
 	default{
@@ -415,7 +415,7 @@ class ShieldImpBall:DoomImpBall{
 	){
 		if(!bmissile)return 0;
 		ExplodeMissile();
-		tempshield.spawnshield(self,"tempshield2imp",false,8);
+		tempshield.spawnshield(self,"tempshieldimp",false,8);
 		A_Scream();
 		bmissile=false;
 		setstatelabel("death");
@@ -425,7 +425,7 @@ class ShieldImpBall:DoomImpBall{
 	states{
 	spawn:
 		BAL1 A 0 nodelay{
-			A_PlaySound("imp/attack",CHAN_VOICE);
+			A_StartSound("imp/attack",CHAN_VOICE);
 			savedvel=vel.xy;
 		}
 		BAL1 ABABAB 2 bright;
@@ -482,16 +482,17 @@ class Regentipede:Serpentipede{
 		speed 6;
 		health 120;
 		gibhealth 140;
-		translation "64:77=50:76","128:141=208:223";
+		translation "LightImp";
 		seesound "";
 		activesound "";
 		meleedamage 3;
 		obituary "%o could feel the schadenfreude.";
 		hitobituary "%o said I want a second opinion, so the imps said okay you're ugly too.";
+		tag "$CC_IMPH";
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
-		hdmobai.resize(self,0.6,0.85);
+		resize(0.6,0.85);
 	}
 	override void A_ImpChase(){
 		hdmobai.chase(self,flags:CHF_RESURRECT);
@@ -509,10 +510,10 @@ class Regentipede:Serpentipede{
 		#### F 4;
 		#### G 8 A_SpawnProjectile("HDImpBall",(random(24,30)),0,(random(-6,6)),CMF_AIMDIRECTION,pitch);
 		#### F 5;
-		goto see;
+		---- A 0 setstatelabel("see");
 	missile2:
 		#### E 2 A_FaceTarget(0,0);
-		#### E 0 A_PlaySound("imp/sight");
+		#### E 0 A_StartSound(seesound,CHAN_VOICE);
 		#### EEEEE 2 A_SpawnItemEx("ReverseImpBallTail",3,19,random(24,30),1,0,0,0,160);
 		---- A 0 A_JumpIfTargetInLOS(2);
 		---- A 0 A_Jump(256,2);
@@ -525,20 +526,20 @@ class Regentipede:Serpentipede{
 		#### G 0 A_FaceTarget();
 		#### G 0 A_SpawnProjectile("ShieldImpBall",32,8,0,CMF_AIMDIRECTION,pitch);
 		#### GGFE 5;
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		---- A 0 A_GiveInventory("HDFireEnder",5);
 		#### H 3;
 		#### H 3 A_Pain();
-		goto see;
+		---- A 0 setstatelabel("see");
 	heal:
 		#### AHAHAHAHAHA 4 light("HEAL");
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
-		---- A 0 A_SpawnItemEx("BFGVileShard",0,0,24,0,0,8,0,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,164);
+		---- A 0 A_SpawnItemEx("BFGNecroShard",0,0,24,0,0,8,0,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,164);
 		goto super::death;
 	xdeath:
-		---- A 0 A_SpawnItemEx("BFGVileShard",0,0,24,0,0,8,0,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,188);
+		---- A 0 A_SpawnItemEx("BFGNecroShard",0,0,24,0,0,8,0,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,188);
 		goto super::xdeath;
 	raise:
 		#### M 4 A_SpawnItemEx("MegaBloodSplatter",0,0,4,vel.x,vel.y,vel.z+3,0,SXF_NOCHECKPOSITION|SXF_ABSOLUTEMOMENTUM);
@@ -559,15 +560,16 @@ class Ardentipede:Serpentipede{
 		//$Sprite "TROOA1"
 
 		-missilemore
-		translation "128:151=#[197,164,64]","160:167=16:47";
+		translation "MageImp";
 		speed 8;
 		health 110;
 		obituary "%o experienced the magic.";
 		hitobituary "%o experienced ALL the magic.";
+		tag "$CC_IMPM";
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
-		hdmobai.resize(self,0.9,1.2);
+		resize(0.9,1.2);
 	}
 	override void tick(){
 		super.tick();
@@ -580,7 +582,7 @@ class Ardentipede:Serpentipede{
 		#### ABCD 4 {
 			hdmobai.wander(self,true);
 			if(stamina>0)stamina--;
-		}goto see;
+		}---- A 0 setstatelabel("see");
 	missile:
 		---- A 0 A_JumpIf(stamina>random(5,10),"recharge");
 		---- A 0 A_JumpIf(health<random(0,200),1);
@@ -604,12 +606,12 @@ class Ardentipede:Serpentipede{
 		---- A 0 A_FaceTarget(0,0);
 		#### F 6;
 		#### G 8 A_SpawnProjectile("ArdentipedeBall",(random(30,34)),0,(random(-6,6)),CMF_AIMDIRECTION,pitch);
-		goto see;
+		---- A 0 setstatelabel("see");
 	missile2:
 		#### E 0 A_Jump(96,"Missile1");
 		#### E 0 A_Jump(16,"Missile3");
 		#### E 2 A_FaceTarget(0,0);
-		#### E 2 A_PlaySound("imp/sight");
+		#### E 2 A_StartSound(seesound,CHAN_VOICE);
 		#### EEEEEEE 2 A_SpawnItemEx("ReverseImpBallTail",random(3,5),random(23,25),random(31,33),1,0,0,0,160);
 		---- A 0 A_JumpIfTargetInLOS(2);
 		---- A 0 A_Jump(256,2);
@@ -619,7 +621,7 @@ class Ardentipede:Serpentipede{
 		#### GGGGGGGG 0 A_SpawnProjectile("ArdentipedeBall2",random(29,34),6,(random(-18,18)),CMF_AIMDIRECTION,pitch+frandom(-2,4));
 		---- A 0{stamina+=5;}
 		#### GGFE 5;
-		goto see;
+		---- A 0 setstatelabel("see");
 	missile3:
 		#### E 0 A_Jump(16,"missile1");
 		#### E 0 A_Jump(32,"missile2");

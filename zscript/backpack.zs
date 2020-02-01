@@ -14,23 +14,31 @@ class HDBackpack:HDWeapon{
 	//"10" for 10 rounds/medikits/whatever; "0 10 20" for 3 mags
 	//"0 0 0 0 0 0 0 0 0" for a single weapon: first # is bulk
 
+	double maxcapacity;
+	property maxcapacity:maxcapacity;
+
 	default{
 		//$Category "Items/Hideous Destructor/Gear"
 		//$Title "Backpack"
 		//$Sprite "BPAKA0"
 
-		+inventory.invbar +weapon.wimpy_weapon
+		+inventory.invbar
+		+weapon.wimpy_weapon
 		+weapon.no_auto_switch
 		+hdweapon.droptranslation
 		+hdweapon.fitsinbackpack
 		+hdweapon.alwaysshowstatus
+		+hdweapon.ignoreloadoutamount
 		weapon.selectionorder 1010;
+
 		inventory.icon "BPAKA0";
 		inventory.pickupmessage "Picked up a backpack to help fill your life with ammo!";
 		inventory.pickupsound "weapons/pocket";
 
-		hdweapon.nicename "Backpack";
+		tag "backpack";
 		hdweapon.refid HDLD_BACKPAK;
+
+		hdbackpack.maxcapacity HDCONST_BPMAX;
 	}
 	override void DropOneAmmo(int amt){
 		if(owner){
@@ -50,25 +58,41 @@ class HDBackpack:HDWeapon{
 
 	int bpindex;
 	int maxindex;
+	void UpdateCapacity(){
+		maxcapacity=getdefaultbytype(getclass()).maxcapacity/max(hd_encumbrance,0.01);
+	}
 	override void InitializeWepStats(bool idfa){
 		if(idfa)return;
+
+		UpdateCapacity();
+
 		nicenames.clear();
 		refids.clear();
 		invclasses.clear();
 		for(int i=0;i<allactorclasses.size();i++){
 			class<actor> reff=allactorclasses[i];
+			if(!(reff is "Inventory"))continue;
+			let invd=getdefaultbytype((class<inventory>)(reff));
+			if(
+				!invd
+				||invd.bnointeraction
+				||invd.bundroppable
+				||invd.buntossable
+			)continue;
 			string ref="";
 			string nnm="";
 			if(reff is "HDPickup"){
 				let gdb=getdefaultbytype((class<hdpickup>)(reff));
 				if(gdb.bfitsinbackpack){
-					nnm=gdb.nicename;
+					nnm=gdb.gettag();
+					if(nnm==gdb.getclassname())nnm="";
 					ref=gdb.refid;
 				}
 			}else if(reff is "HDWeapon"){
 				let gdb=getdefaultbytype((class<hdweapon>)(reff));
 				if(gdb.bfitsinbackpack){
-					nnm=gdb.nicename;
+					nnm=gdb.gettag();
+					if(nnm==gdb.getclassname())nnm="";
 					ref=gdb.refid;
 				}
 			}
@@ -116,7 +140,6 @@ class HDBackpack:HDWeapon{
 						if(wep){
 							hdweapon(iii).loadoutconfigure(weapondefaults);
 							hdweapon(iii).loadoutconfigure(howmany[i]);
-							A_Log(howmany[i].."  "..hdweapon(iii).bfitsinbackpack);
 						}
 						itemtobackpack(iii);
 					}
@@ -133,8 +156,8 @@ class HDBackpack:HDWeapon{
 				let iii=spawn(invclasses[refindex],pos,ALLOW_REPLACE);
 				if(iii){
 					iii.destroy();
-					double bulkmax=(HDCONST_BPMAX-bulk)/max(1,getdefaultbytype(pkup).bulk);
-					int addamt=max(1,min(bulkmax,howmanyi));
+					double bulkmax=(maxcapacity-bulk)/max(1,getdefaultbytype(pkup).bulk);
+					int addamt=int(max(1,min(bulkmax,howmanyi)));
 					if(addamt>0){
 						int amt=amounts[refindex].toint(10);
 						amounts[refindex]=""..amt+addamt;
@@ -170,7 +193,7 @@ class HDBackpack:HDWeapon{
 			}else if(((class<hdweapon>)(reff))){
 				amounts[i].split(theseamounts," ");
 				for(int j=0;j<theseamounts.size();j++){
-					if(!((j+1)%9))blk+=theseamounts[j].toint();
+					if(!((j+1)%(HDWEP_STATUSSLOTS+1)))blk+=theseamounts[j].toint();
 				}
 			}else if(((class<hdpickup>)(reff))){
 				let classref=((class<hdpickup>)(reff));
@@ -203,7 +226,7 @@ class HDBackpack:HDWeapon{
 		if(wep||mag){
 			array<string>amts;
 			amounts[thisindex].split(amts," ");
-			if(wep)return amts.size()/9;
+			if(wep)return amts.size()/(HDWEP_STATUSSLOTS+1);
 			else return amts.size();
 		}
 		return amounts[thisindex].toint();
@@ -253,7 +276,7 @@ class HDBackpack:HDWeapon{
 		}else if((HDWeapon)(item)){
 			array<string> wepstatus;
 			amounts[which].split(wepstatus," ");
-			if(wepstatus.size()>=9){
+			if(wepstatus.size()>=(HDWEP_STATUSSLOTS+1)){
 				if((HDPistol)(item)){
 					specicon=(wepstatus[0].toint()&PISF_SELECTFIRE)?"PISTC0":"PISTA0";
 				}else if((ZM66AssaultRifle)(item)){
@@ -347,6 +370,8 @@ class HDBackpack:HDWeapon{
 	}
 	void UpdateMessage(int num){
 		if(!owner)return;
+		UpdateCapacity();
+
 		//set index as necessary
 		int nnsiz=nicenames.size();
 		if(num==index)weaponbulk();
@@ -410,7 +435,9 @@ class HDBackpack:HDWeapon{
 		}
 		let thisinv=(class<inventory>)(invclasses[index]);
 		selectedinbackpack=getamount(thisinv);
-		selectedininventory=owner.countinv(thisinv);
+
+		if(thisinv is "HDWeapon")selectedininventory=hdweapon.getactualamount(owner,thisinv.getclassname());
+		else selectedininventory=owner.countinv(thisinv);
 
 		//display selected item name and amounts carried
 		wepmsg="\cs[] [] [] \cbBackpack \cs[] [] []\nfiremode=fast scroll  unload/reload=take/insert\n\n"
@@ -432,25 +459,22 @@ class HDBackpack:HDWeapon{
 		if(newindex>=invclasses.size())return 1;
 		index=newindex;
 		UpdateMessage(newindex);
+
 		if(wep){
 			if(wep is "HDBackpack"&&HDBackpack(wep).bulk>0){
 				if(owner)owner.A_Log("Empty this backpack first.",true);
 				return 1;
 			}
-			if(wep.weaponbulk()+bulk>HDCONST_BPMAX){
+			if(wep.weaponbulk()+bulk>maxcapacity){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
 				return 1;
 			}
 			if(wep.owner)wep=HDWeapon(owner.dropinventory(wep));
-			string newwep=
-				wep.weaponstatus[0].." "..
-				wep.weaponstatus[1].." "..
-				wep.weaponstatus[2].." "..
-				wep.weaponstatus[3].." "..
-				wep.weaponstatus[4].." "..
-				wep.weaponstatus[5].." "..
-				wep.weaponstatus[6].." "..
-				wep.weaponstatus[7].." "..
+			string newwep=""..wep.weaponstatus[0];
+			for(int i=1;i<HDWEP_STATUSSLOTS;i++){
+				newwep=newwep.." "..wep.weaponstatus[i];
+			}
+			newwep=newwep.." "..
 				int(wep.weaponbulk())..
 				(amounts[index]==""?"":" ");
 			amounts[index]=newwep..amounts[index];
@@ -463,7 +487,7 @@ class HDBackpack:HDWeapon{
 			UpdateMessage(index);
 			return 12;
 		}else if(mag){
-			if(mag.magbulk+bulk>HDCONST_BPMAX){
+			if(mag.magbulk+bulk>maxcapacity){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
 				return 1;
 			}
@@ -472,7 +496,7 @@ class HDBackpack:HDWeapon{
 			else amounts[index]=tookmag.." "..amounts[index];
 		}else{
 			int units=item.owner?1:item.amount;
-			if(pkup.bulk*units+bulk>HDCONST_BPMAX){
+			if(pkup.bulk*units+bulk>maxcapacity){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
 				return 1;
 			}
@@ -494,6 +518,13 @@ class HDBackpack:HDWeapon{
 			)
 		);
 	}
+	//configure from loadout
+	//syntax: bak item1. item2. item3 (basically use dots instead of commas)
+	override void loadoutconfigure(string input){
+		input.replace(".",",");
+		if(hd_debug&&!!owner)owner.A_Log("Backpack Loadout: "..input);
+		initializeamount(input);
+	}
 	//generic code for removing from backpack
 	int RemoveFromBackpack(int which=-1,bool trytopocket=true){
 		if(which<0||which>=invclasses.size())which=index;
@@ -504,17 +535,20 @@ class HDBackpack:HDWeapon{
 		if(tempamounts.size()<1)return 1;
 		int ticks=0;
 		let hdp=hdplayerpawn(owner);
-		if(trytopocket&&hdp&&hdp.itemenc*hdmath.getencumbrancemult()>=hdp.maxpocketspace)trytopocket=false;
 		let wepth=(class<hdweapon>)(invclasses[which]);
 		let thisclass=(class<hdpickup>)(invclasses[which]);
 		if(wepth){
 			let newp=HDWeapon(spawn(wepth,owner.pos+(0,0,owner.height-12),ALLOW_REPLACE));
+			newp.bdontdefaultconfigure=true;
 			newp.angle=owner.angle;newp.A_ChangeVelocity(1,1,1,CVF_RELATIVE);
-			for(int i=0;i<9;i++){
+			for(int i=0;i<(HDWEP_STATUSSLOTS+1);i++){
 				if(i<newp.weaponstatus.size())newp.weaponstatus[i]=tempamounts[0].toint();
 				tempamounts.delete(0);
 			}
-			if(trytopocket&&owner.countinv(wepth)<getdefaultbytype(wepth).maxamount){
+			if(
+				trytopocket
+				&&newp.bfitsinbackpack
+			){
 				newp.actualpickup(owner);
 				ticks=12;
 			}else{
@@ -525,14 +559,24 @@ class HDBackpack:HDWeapon{
 		if(thisclass){
 			int thisamt=max(0,tempamounts[0].toint());
 			bool multipi=getdefaultbytype(thisclass).bmultipickup;
-			if(thisclass is "HDMagAmmo"){
+
+			let mt=(class<HDMagAmmo>)(thisclass);
+			if(
+				owner.A_JumpIfInventory(thisclass,0,"null")
+				||HDPickup.MaxGive(owner,thisclass,
+					mt?(getdefaultbytype(mt).roundbulk*getdefaultbytype(mt).maxperunit+getdefaultbytype(mt).magbulk)
+					:getdefaultbytype(thisclass).bulk
+				)<1
+			)trytopocket=false;
+
+			if(mt){
 				if(trytopocket)HDMagAmmo.GiveMag(owner,thisclass,thisamt);
 				else HDMagAmmo.SpawnMag(owner,thisclass,thisamt);
 				tempamounts.delete(0);
 			}else{
 				basicpickup=true;
 				thisamt--;
-				if(!trytopocket||A_JumpIfInventory(thisclass,0,"null")){
+				if(!trytopocket){
 					int moar=0;
 					if(multipi&&thisamt>0)moar=min(random(10,50),thisamt);
 					let iii=inventory(spawn(thisclass,owner.pos+(0,0,owner.height-20),ALLOW_REPLACE));
@@ -608,7 +652,7 @@ class HDBackpack:HDWeapon{
 		}
 	select0:
 		TNT1 A 10{
-			A_PlaySound("weapons/pocket",CHAN_WEAPON);
+			A_StartSound("weapons/pocket",CHAN_WEAPON);
 			if(invoker.bulk>(HDBPC_CAPACITY*0.7))A_SetTics(20);
 			invoker.index=clamp(invoker.index,0,invoker.maxindex);
 			if(invoker.havenone(invoker.index))invoker.updatemessage(invoker.index+1);
@@ -660,15 +704,15 @@ extend class HDBackpack{
 				else if(hdpickupgiver(iii))itemtobackpack(hdpickupgiver(iii).actualitem);
 				else itemtobackpack(iii);
 			}else if(mag){
-				howmany=min(
+				howmany=int(min(
 					random(1,random(1,20)),
 					getdefaultbytype(mag).maxamount,
-					HDCONST_BPMAX/(
+					maxcapacity/(
 						max(1.,getdefaultbytype(mag).roundbulk)
 						*max(1.,getdefaultbytype(mag).magbulk)
 						*5.
 					)
-				);
+				));
 				for(int j=0;j<howmany;j++){
 					inventory iii=inventory(spawn(mag,pos,ALLOW_REPLACE));
 					if(iii){
@@ -680,11 +724,11 @@ extend class HDBackpack{
 				let iii=spawn(pkup,pos,ALLOW_REPLACE);
 				if(iii){
 					iii.destroy();
-					howmany=min(
+					howmany=int(min(
 						random(1,getdefaultbytype(pkup).bmultipickup?random(1,80):random(1,random(1,20))),
 						getdefaultbytype(pkup).maxamount,
-						HDCONST_BPMAX/(max(1.,getdefaultbytype(pkup).bulk)*5.)
-					);
+						maxcapacity/(max(1.,getdefaultbytype(pkup).bulk)*5.)
+					));
 					if(
 						getdefaultbytype(pkup).refid==""
 					){
@@ -701,8 +745,8 @@ extend class HDBackpack{
 	}
 
 
-	//go through all backpacked items and call their respective Consolidate()s
 	override void Consolidate(){
+		//go through all backpacked items and call their respective Consolidate()s
 		for(int i=0;i<invclasses.size();i++){
 			if(havenone(i))continue;
 			let type=(class<hdpickup>)(invclasses[i]);
@@ -721,9 +765,10 @@ extend class HDBackpack{
 			if(type is "HDMagAmmo"){
 				let thismags=hdmagammo(thisinv);
 				string ibp="";
-				for(int i=0;i<inbackpack;i++){
-					ibp=ibp..(ibp==""?"":" ")..thismags.mags[0];
-					thismags.mags.delete(0);
+				for(int j=0;j<inbackpack;j++){
+					int thismagindex=thismags.mags.size()-1; //replace with "0" to reverse order
+					ibp=ibp..(ibp==""?"":" ")..thismags.mags[thismagindex];
+					thismags.mags.delete(thismagindex); //don't "pop" in case i want to reverse
 					thismags.amount--;
 				}
 				amounts[i]=ibp;
@@ -734,6 +779,11 @@ extend class HDBackpack{
 
 			thisinv.maxamount=maxinvbak;
 		}
+
+		//arbitrary hard-code: repair *E.R.P.s even if all of them have been backpacked.
+		//wanted: sane way to give weapons the same unpack-consolidate-repack treatment.
+		if(!owner.findinventory("HERPUsable"))herpusable.backpackrepairs(owner,self);
+		if(!owner.findinventory("DERPUsable"))derpusable.backpackrepairs(owner,self);
 	}
 
 	//increase maxamount by backpackamount
@@ -770,7 +820,7 @@ extend class HDBackpack{
 						cfi.amount=0;
 					}
 					if(cfi){
-						cfi.maxamount=int.MAX;
+						cfi.maxamount=max(cfi.maxamount,originalamount+bpamt);
 						cfi.amount+=bpamt;
 					}
 				}

@@ -52,7 +52,7 @@ class ClipBoxPickup2:IdleDummy{
 		A_SpawnItemEx("HD9mMag30",flags:SXF_NOCHECKPOSITION);
 		if(random(0,2))A_SpawnItemEx("HDFragGrenadeAmmo",-3,-3,flags:SXF_NOCHECKPOSITION);
 		if(random(0,2))A_SpawnItemEx("HD9mMag30",3,3,flags:SXF_NOCHECKPOSITION);
-		A_SpawnItemEx("HDSMG",1,1,flags:SXF_NOCHECKPOSITION);
+		A_SpawnItemEx("HDSMGRandom",1,1,flags:SXF_NOCHECKPOSITION);
 		destroy();
 	}
 }
@@ -61,7 +61,7 @@ class ShellRandom:HDInvRandomSpawner replaces Shell{
 		dropitem "ShellPickup",256,8;
 		dropitem "HDFumbledShell",256,4;
 		dropitem "DecoPusher",200,4;
-		dropitem "BFGVileShard",200,1;
+		dropitem "BFGNecroShard",200,1;
 		dropitem "HDBattery",256,1;
 		dropitem "HD4mMag",256,1;
 		dropitem "HDAB",200,1;
@@ -91,7 +91,7 @@ class RocketBoxRandom:HDInvRandomSpawner replaces RocketBox{
 }
 class CellRandom:HDInvRandomSpawner replaces Cell{
 	default{
-		dropitem "BFGVileShard",128,1;
+		dropitem "BFGNecroShard",128,1;
 		dropitem "HD7mMag",256,3;
 		dropitem "BrontornisRound",256,2;
 		dropitem "HDBattery",256,7;
@@ -99,7 +99,7 @@ class CellRandom:HDInvRandomSpawner replaces Cell{
 }
 class CellPackReplacer:HDInvRandomSpawner replaces CellPack{
 	default{
-		dropitem "BFGVileShard",196,1;
+		dropitem "BFGNecroShard",196,1;
 		dropitem "HD7mMag",256,3;
 		dropitem "BrontornisSpawner",256,1;
 		dropitem "HDBattery",256,4;
@@ -139,6 +139,7 @@ class HDAmBox:HDUPK{
 		meleerange 42;
 		radiusdamagefactor 0.5;
 		obituary "%o paid no attention to Admiral Ackbar.";
+		tag "ammo box";
 	}
 	bool tapped;
 	bool disarmed;
@@ -201,12 +202,12 @@ class HDAmBox:HDUPK{
 		stop;
 	death:
 	trapped:
-		---- A 3 A_PlaySound("misc/boxtrapped",CHAN_WEAPON);
+		---- A 3 A_StartSound("misc/boxtrapped",CHAN_WEAPON);
 		---- A 0{
 			tapped=false;
 			switch(random(0,5)){
 			case 1:
-				A_SpawnItemEx("BFGVileShard",
+				A_SpawnItemEx("BFGNecroShard",
 					flags:SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS
 				);
 				break;
@@ -224,11 +225,12 @@ class HDAmBox:HDUPK{
 					random(-1,-3),random(-1,1),random(-3,-4),
 					0,SXF_NOCHECKPOSITION|SXF_SETTARGET
 				);
-				A_PlaySound("weapons/pistol",CHAN_VOICE);
+				A_StartSound("weapons/pistol",CHAN_VOICE);
 				break;
 			case 4:
-				A_SpawnItemEx("HDFragGrenade",0,0,10,1,0,3,
-					0,SXF_NOCHECKPOSITION|SXF_SETTARGET
+				A_SpawnItemEx("HDFragGrenade",
+					0,0,10,1,0,3,
+					0,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS
 				);
 				A_SpawnItemEx("HDFragSpoon",0,0,10,
 					random(3,6),0,random(8,16),
@@ -252,7 +254,7 @@ class HDAmBox:HDUPK{
 			switch(rnd){
 			case 1:
 			case 2:
-				deadtrap="BFGVileShard";
+				deadtrap="BFGNecroShard";
 				break;
 			case 3:
 				deadtrap="HDLoose9mm";
@@ -264,7 +266,9 @@ class HDAmBox:HDUPK{
 			A_SpawnItemEx("HDAmBoxDisarmed",0,0,1,flags:SXF_NOCHECKPOSITION);
 		}stop;
 	goodies:
-		---- A 2 A_PlaySound("weapons/pocket",CHAN_VOICE);
+		---- A 2 A_StartSound("weapons/pocket",CHAN_VOICE);
+		---- A 0 A_JumpIf(Wads.CheckNumForName("id",0)!=-1,2);
+		AMBX B 0 A_SpawnItemEx("HDFader",flags:SXF_TRANSFERSPRITEFRAME|SXF_TRANSFERSCALE|SXF_TRANSFERRENDERSTYLE);
 		---- A 0 A_Jump(256,
 			"zeds","smgs","piss",
 			"libs","clip","rocs",
@@ -282,7 +286,7 @@ class HDAmBox:HDUPK{
 		shel: ---- AAAAA 0 A_DropItem("ShellPickup");stop;
 		ieds: ---- AAA 0 A_DropItem("HDIEDKits");stop;
 	brokengoodies:
-		---- A 0 A_PlaySound("weapons/plasmax",CHAN_VOICE);
+		---- A 0 A_StartSound("weapons/plasmax",CHAN_VOICE);
 		---- A 0 A_DropStuff("HDSmokeChunk",random(0,6));
 		---- AAA 0 A_SpawnItemEx("HDSmoke",
 			frandom(-1,1),frandom(-1,1),frandom(-1,1),
@@ -387,10 +391,14 @@ class HDAmBoxUnarmed:HDAmBox{
 	}
 }
 class HDAmBoxDisarmed:HDAmBoxUnarmed{
+	default{
+		tag "disarmed ammo box";
+	}
 	states{
 	spawn:
-		OWWV A -1 nodelay{tapped=true;}
-		stop;
+		OWWV A -1 nodelay{
+			tapped=true;
+		}stop;
 	grab:
 		goto goodies;
 	}
@@ -478,7 +486,7 @@ class HelmFrag:HDInvRandomSpawner replaces ArmorBonus{
 		dropitem "HDFragGrenades",72,1;
 		dropitem "HD7mMag",48,1;
 		dropitem "HD4mMag",48,1;
-		dropitem "BFGVileShard",96,1;
+		dropitem "BFGNecroShard",96,1;
 		dropitem "HDBattery",48,1;
 		dropitem "PortableStimpack",48,1;
 		dropitem "ClipBox",48,1;
@@ -490,7 +498,7 @@ class BlueFrag:HDInvRandomSpawner replaces HealthBonus{
 		dropitem "DecoPusher",96,20;
 		dropitem "BluePotion",96,2;
 		dropitem "HDFragGrenades",72,1;
-		dropitem "BFGVileShard",96,1;
+		dropitem "BFGNecroShard",96,1;
 		dropitem "HD9mMag15",48,1;
 		dropitem "HDBattery",72,1;
 		dropitem "PortableMedikit",48,1;
@@ -513,9 +521,10 @@ class RedSphere:HDInvRandomSpawner replaces BlurSphere{
 		dropitem "HDBlurSphere",256,1;
 		dropitem "GarrisonArmour",256,2;
 		dropitem "BluePotion",256,2;
+		dropitem "HDJetpack",256,1;
 	}
 }
-class BlueSphere:HDActor replaces Soulsphere{
+class BlueSphere:HDUPK replaces Soulsphere{
 	default{
 		//$Category "Items/Hideous Destructor/Magic"
 		//$Title "Soul Sphere"
@@ -526,38 +535,53 @@ class BlueSphere:HDActor replaces Soulsphere{
 		scale 0.8;
 		stamina 777;
 	}
-	override bool used(actor user){
-		if(bmissileevenmore)return false;
-		bmissileevenmore=true;
+	override void A_HDUPKGive(){
+		if(!picktarget||bnointeraction)return;
+		bnointeraction=true;
 		PlantBit.SpawnPlants(self,70,144);
-		let hdp=hdplayerpawn(user);
+		let hdp=hdplayerpawn(picktarget);
 		if(hdp)hdp.regenblues+=stamina;
-		else user.givebody(stamina);
-		setstatelabel("grab");
-		return true;
+		else picktarget.givebody(stamina);
+		setstatelabel("fadeout");
 	}
 	states{
 	spawn:
 		SOUL ABCDCB random(2,7) bright light("SOULSPHERE");
 		loop;
-	grab:
+	fadeout:
 		---- A 0{
-			vel.z++;
+			vel.z=0.6;
 			gravity=0;
-			A_PlaySound("misc/p_pkup",CHAN_BODY);
+			A_StartSound("misc/p_pkup",CHAN_BODY);
 		}
 		---- A 1 bright{
+			vel.xy*=0.6;
 			A_SetScale(scale.x*1.01);
-			A_FadeOut(0.1);
+			A_FadeOut(0.06);
 			A_SpawnItemEx("HDGunSmoke",
-				frandom(-4,4),frandom(-4,4),frandom(6,24),
-				frandom(-1,1),frandom(-1,1),1,frandom(0,360),
+				frandom(-1,1),0,frandom(3,6),
+				frandom(-1,1),0,1,frandom(0,360),
 				SXF_NOCHECKPOSITION|SXF_ABSOLUTEMOMENTUM|SXF_ABSOLUTEPOSITION
 			);
 		}wait;
 	}
 }
+class BrownSphere:BlueSphere replaces Megasphere{
+		//$Category "Items/Hideous Destructor/Magic"
+		//$Title "Megasphere"
+		//$Sprite "MEGAA0"
 
+	override void A_HDUPKGive(){
+		if(!picktarget||bnointeraction)return;
+		picktarget.A_GiveInventory("SpiritualArmour",1);
+		super.A_HDUPKGive();
+	}
+	states{
+	spawn:
+		MEGA ABCD random(2,7) bright;
+		loop;
+	}
+}
 class PlantBit:IdleDummy{
 	default{
 		+movewithsector
@@ -602,24 +626,6 @@ class PlantBit:IdleDummy{
 		stop;
 	}
 }
-
-
-class BrownSphere:BlueSphere replaces Megasphere{
-		//$Category "Items/Hideous Destructor/Magic"
-		//$Title "Megasphere"
-		//$Sprite "MEGAA0"
-
-	override bool used(actor user){
-		if(!super.used(user))return false;
-		user.A_GiveInventory("SpiritualArmour",1);
-		return true;
-	}
-	states{
-	spawn:
-		MEGA ABCD random(2,7) bright;
-		loop;
-	}
-}
 class GreenSphere:BlueSphere replaces Invulnerabilitysphere{
 	default{
 		//$Category "Items/Hideous Destructor/Magic"
@@ -635,28 +641,28 @@ class GreenSphere:BlueSphere replaces Invulnerabilitysphere{
 		height 12;
 		radius 12;
 	}
-	override bool used(actor user){
-		user.A_GiveInventory("HDInvuln");
-		user.A_Quake(3,26,0,220,"none");
-		blockthingsiterator itt=blockthingsiterator.create(user,256);
+	override void A_HDUPKGive(){
+		if(bnointeraction||health<1||!picktarget)return;
+		bnointeraction=true;
+		picktarget.A_GiveInventory("HDInvuln");
+		picktarget.A_Quake(3,26,0,220,"none");
+		blockthingsiterator itt=blockthingsiterator.create(picktarget,256);
 		while(itt.Next()){
-			A_Immolate(itt.thing,user,76);
+			A_Immolate(itt.thing,picktarget,76);
 		}
-
 		for(int i=45;i<360;i+=90){
-			user.A_SpawnItemEx("HDExplosion",
-				4,-4,20,user.vel.x,user.vel.y,user.vel.z+1,i,
+			picktarget.A_SpawnItemEx("HDExplosion",
+				4,-4,20,picktarget.vel.x,picktarget.vel.y,picktarget.vel.z+1,i,
 				SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS|SXF_ABSOLUTEMOMENTUM
 			);
-			user.A_SpawnItemEx("HDSmokeChunk",0,0,0,
-				user.vel.x+frandom(-12,12),
-				user.vel.y+random(-12,12),
-				user.vel.z+frandom(4,16),
+			picktarget.A_SpawnItemEx("HDSmokeChunk",0,0,0,
+				picktarget.vel.x+frandom(-12,12),
+				picktarget.vel.y+random(-12,12),
+				picktarget.vel.z+frandom(4,16),
 				0,SXF_NOCHECKPOSITION|SXF_ABSOLUTEMOMENTUM
 			);
 		}
 		destroy();
-		return true;
 	}
 	states{
 	spawn:
@@ -664,11 +670,14 @@ class GreenSphere:BlueSphere replaces Invulnerabilitysphere{
 		loop;
 	death.telefrag:
 		TNT1 A 0{
-			if(target)used(target);
-			else setstatelabel("death");
+			if(target){
+				picktarget=target;
+				A_HDUPKGive();
+			}else setstatelabel("death");
 		}stop;
 	death:
 		TNT1 A 0{
+			A_CallSpecial(special,args[0],args[1],args[2],args[3],args[4]);
 			for(int i=45;i<360;i+=90){
 				A_SpawnItemEx("HDExplosion",
 					4,-4,20,vel.x,vel.y,vel.z+1,i,
@@ -712,7 +721,7 @@ class MapLoadoutGiver:HDPickup{
 	default{
 		-hdpickup.fitsinbackpack
 		hdpickup.refid HDLD_MAP;
-		hdpickup.nicename "Map";
+		tag "local area map";
 	}
 	states{
 	spawn:TNT1 A 0;stop;
@@ -726,7 +735,7 @@ class KeyLoadoutGiver:HDPickup{
 		-hdpickup.fitsinbackpack
 		inventory.maxamount 7;
 		hdpickup.refid HDLD_KEY;
-		hdpickup.nicename "Keys";
+		tag "keys";
 	}
 	states{
 	spawn:TNT1 A 0;stop;
@@ -808,7 +817,7 @@ class HDRedKey:HDUPKAlwaysGive replaces RedCard{
 	give:
 	beep:
 		---- A 0{
-			A_PlaySound("misc/i_pkup",0,1,0,0);
+			A_StartSound("misc/i_pkup",12,CHANF_LOCAL);
 		}goto spawn1;
 	}
 }
@@ -855,7 +864,7 @@ class HDRedSkull:HDUPK replaces RedSkull{
 		loop;
 	effect:
 		#### ABAB 1 bright;
-		---- A 0 A_PlaySound("brain/cube",0,1,0,0);
+		---- A 0 A_StartSound("brain/cube",666,CHANF_LOCAL);
 		---- A 0 A_DamageTarget(1);
 		#### ##### 1 A_SpawnItemEx("HDSmoke",0,0,0,random(4,0),random(-2,2),random(1,3),0,SXF_NOCHECKPOSITION);
 		---- A 0{
@@ -897,7 +906,7 @@ class HDMap:HDUPKAlwaysGive replaces Allmap{
 	}
 	states{
 	give:
-		PMAP A 0 A_PlaySound("misc/i_pkup",0,1,0,0);
+		PMAP A 0 A_StartSound("misc/i_pkup",12,CHANF_LOCAL);
 	//fallthrough to spawn
 	spawn:
 		PMAP A 0 nodelay A_Jump(256,"a","b","c","d");

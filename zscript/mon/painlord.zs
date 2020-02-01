@@ -6,6 +6,7 @@ class PainMonster:HDMobBase{
 		meleesound "baron/melee";
 		bloodcolor "44 99 22";
 		+hdmobbase.biped
+		species "BaronOfHell";
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
@@ -32,7 +33,7 @@ class PainLord:PainMonster replaces BaronofHell{
 		activesound "baron/active";
 		obituary "$ob_baron";
 		hitobituary "$ob_baronhit";
-		tag "$fn_baron";
+		tag "$CC_BARON";
 
 		+missilemore +seeinvisible +dontharmspecies
 		maxtargetrange 65536;
@@ -45,6 +46,7 @@ class PainLord:PainMonster replaces BaronofHell{
 		health BE_HPMAX;
 		speed 6;
 		painchance 4;
+		hdmobbase.shields 2000;
 	}
 	void A_BaronSoul(){
 			let aaa=FlyingSkull(spawn("FlyingSkull",pos,ALLOW_REPLACE));
@@ -58,14 +60,11 @@ class PainLord:PainMonster replaces BaronofHell{
 			aaa.A_SkullLaunch();
 			shields-=66;
 	}
-	int shields;
 	enum BaronStats{
-		BE_SHIELDMAX=66,
 		BE_HPMAX=1000,
 		BE_OKAY=BE_HPMAX*7/10,
 		BE_BAD=BE_HPMAX*3/10,
 	}
-
 
 	override double bulletshell(vector3 hitpos,double hitangle){
 		return frandom(3,12);
@@ -73,32 +72,9 @@ class PainLord:PainMonster replaces BaronofHell{
 	override double bulletresistance(double hitangle){
 		return max(0,frandom(0.8,1.)-hitangle*0.008);
 	}
-	override int damagemobj(
-		actor inflictor,actor source,int damage,
-		name mod,int flags,double angle
-	){
-		if(damage==TELEFRAG_DAMAGE)return super.damagemobj(
-			inflictor,source,TELEFRAG_DAMAGE,
-			"Telefrag",DMG_THRUSTLESS|DMG_NO_PAIN
-		);
-
-		if(
-			!(flags&DMG_FORCED)
-			&&health>0
-		){
-			//shields
-			[shields,damage]=hdf.gothroughshields(shields,damage,inflictor,mod,flags);
-			if(damage<1)return 0;
-		}
-
-		return super.damagemobj(
-			inflictor,source,damage,mod,flags,angle
-		);
-	}
 	override void postbeginplay(){
 		super.postbeginplay();
 		hdmobai.resize(self,0.95,1.05);
-		shields=BE_SHIELDMAX;
 	}
 	states{
 	spawn:
@@ -111,13 +87,12 @@ class PainLord:PainMonster replaces BaronofHell{
 		BOSS DD 8 A_Look();
 		BOSS D 1 A_SetTics(random(1,16));
 		TNT1 A 0 A_Jump(216,"spawn");
-		TNT1 A 0 A_PlaySound("baron/active");
+		TNT1 A 0 A_StartSound("baron/active",CHAN_VOICE);
 		loop;
 	see:
 		TNT1 A 0 A_AlertMonsters();
 		BOSS ABCD 6{
 			hdmobai.chase(self);
-			if(health>0&&shields<BE_SHIELDMAX)shields+=3;
 		}
 		TNT1 A 0 A_JumpIfTargetInLOS("see");
 		goto roam;
@@ -126,7 +101,6 @@ class PainLord:PainMonster replaces BaronofHell{
 		TNT1 A 0 A_JumpIfTargetInLOS("missile");
 		BOSS ABCD 8{
 			hdmobai.wander(self,true);
-			if(health>0&&shields<BE_SHIELDMAX)shields+=2;
 		}
 		loop;
 	missile:
@@ -135,7 +109,7 @@ class PainLord:PainMonster replaces BaronofHell{
 			if(A_JumpIfTargetInLOS("shoot",10))setstatelabel("shoot");
 		}
 		BOSS E 0 A_JumpIfTargetInLOS("missile");
-		goto see;
+		---- A 0 setstatelabel("see");
 	shoot:
 		BOSS E 0 A_AlertMonsters(0,AMF_TARGETNONPLAYER);
 		BOSS E 0 A_Jump(64,2);
@@ -164,7 +138,7 @@ class PainLord:PainMonster replaces BaronofHell{
 		BOSS H 0 bright A_SpawnProjectile("MiniBBall",66,0,24,2,7);
 		BOSS H 6 bright A_SpawnProjectile("MiniBBall",66,0,-24,2,7);
 		BOSS H 12;
-		goto see;
+		---- A 0 setstatelabel("see");
 	MissileFuckYou:
 		BOSS H 18 A_FaceTarget(20,20);
 		BOSS H 0 bright A_SpawnProjectile("BaleBall",38,0,2,0,0);
@@ -179,7 +153,7 @@ class PainLord:PainMonster replaces BaronofHell{
 			if(random(0,3))A_SpawnProjectile("BelphBall",28,0,0,2,pitch);
 			else A_BaronSoul();
 		}
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		BOSS H 6 A_Pain();
 		BOSS H 3 A_Jump(116,"see","MissileSkull");
@@ -200,11 +174,11 @@ class PainLord:PainMonster replaces BaronofHell{
 		BOSS F 2;
 		BOSS G 6 A_CustomMeleeAttack(random(40,120),"baron/melee","","claws",true);
 		BOSS F 5 A_JumpIf(target&&distance3d(target)>84,"missilesweep");
-		goto see;
+		---- A 0 setstatelabel("see");
 	death.telefrag:
 		TNT1 A 0 spawn("Telefog",pos,ALLOW_REPLACE);
 		TNT1 A 0 A_NoBlocking();
-		TNT1 AAAAA 0 A_SpawnItemEx("BFGVileShard",
+		TNT1 AAAAA 0 A_SpawnItemEx("BFGNecroShard",
 			frandom(-4,4),frandom(-4,4),frandom(6,24),
 			frandom(1,6),0,frandom(1,3),
 			frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS|SXF_SETMASTER
@@ -213,10 +187,10 @@ class PainLord:PainMonster replaces BaronofHell{
 	death:
 		---- A 0{bodydamage+=666*5;}
 		---- A 0 A_Quake(2,64,0,600);
-		BOSS I 2 A_SpawnItemEx("BFGVileShard",0,0,20,10,0,8,45,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
-		BOSS I 2 A_SpawnItemEx("BFGVileShard",0,0,35,10,0,8,135,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
-		BOSS I 2 A_SpawnItemEx("BFGVileShard",0,0,50,10,0,8,225,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
-		BOSS I 2 A_SpawnItemEx("BFGVileShard",0,0,65,10,0,8,315,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
+		BOSS I 2 A_SpawnItemEx("BFGNecroShard",0,0,20,10,0,8,45,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
+		BOSS I 2 A_SpawnItemEx("BFGNecroShard",0,0,35,10,0,8,135,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
+		BOSS I 2 A_SpawnItemEx("BFGNecroShard",0,0,50,10,0,8,225,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
+		BOSS I 2 A_SpawnItemEx("BFGNecroShard",0,0,65,10,0,8,315,SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
 		BOSS J 8 A_Scream();
 		BOSS K 8;
 		BOSS L 8 A_NoBlocking();
@@ -226,7 +200,7 @@ class PainLord:PainMonster replaces BaronofHell{
 		BOSS O -1 A_BossDeath();
 		stop;
 	death.maxhpdrain:
-		BOSS J 5 A_PlaySound("misc/gibbed",CHAN_BODY);
+		BOSS J 5 A_StartSound("misc/gibbed",CHAN_BODY);
 		BOSS K 5;
 		BOSS L 5 A_NoBlocking();
 		BOSS MN 5;
@@ -287,7 +261,7 @@ class MiniBBallTail:HDActor{
 	states{
 	spawn:
 		BAL7 E 2 bright A_FadeOut(0.2);
-		TNT1 A 0 A_PlaySound("baron/ballhum",0,0.4,0,6);
+		TNT1 A 0 A_StartSound("baron/ballhum",volume:0.4,attenuation:6.);
 		loop;
 	}
 }

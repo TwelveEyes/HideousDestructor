@@ -17,7 +17,8 @@ class Babuin:HDMobBase{
 	}
 	void TryLatch(){
 		if(
-			!target
+			health<1
+			||!target
 			||target==self
 			||target.health<1
 			||distance2d(target)-target.radius-radius>12
@@ -30,7 +31,7 @@ class Babuin:HDMobBase{
 				rotatevector(pos.xy-latchtarget.pos.xy,-latchtarget.angle).unit()
 				*(latchtarget.radius+radius)
 			;
-			latchpos.z=random(8,latchtarget.height-12);
+			latchpos.z=frandom(8,latchtarget.height-12);
 			targangle=latchtarget.angle;
 			latchforce=min(0.4,mass*0.02/max(1,latchtarget.mass));
 			lastpos=pos;
@@ -93,7 +94,7 @@ class Babuin:HDMobBase{
 			if(
 				inmap
 				&&(
-					absangle(latchtarget.angle,targangle)>random(30,180)
+					absangle(latchtarget.angle,targangle)>frandom(6,180)
 					||floorz>pos.z
 					||ceilingz<pos.z+height
 					||(
@@ -153,11 +154,11 @@ class Babuin:HDMobBase{
 		maxtargetrange 128;
 		painchance 90; pushfactor 0.2;
 		maxstepheight 32;maxdropoffheight 32;
-		seesound "demon/sight";painsound "demon/pain";
-		deathsound "demon/death";activesound "demon/active";
+		seesound "babuin/sight";painsound "babuin/pain";
+		deathsound "babuin/death";activesound "babuin/active";
 		obituary "%o was mauled by a babuin.";
 		damagefactor "Thermal",0.76;
-		damagefactor "SmallArms0",0.9;
+		tag "babuin";
 	}
 	states{
 	spawn:
@@ -171,7 +172,7 @@ class Babuin:HDMobBase{
 		}
 		#### A 0{
 			if(!random(0,5))setstatelabel("spawnsniff");
-			else if(!random(0,9))A_PlaySound(activesound,CHAN_VOICE);
+			else if(!random(0,9))A_StartSound(activesound,CHAN_VOICE);
 		}loop;
 	spawnsniff:
 		#### A 0{blookallaround=true;}
@@ -181,7 +182,7 @@ class Babuin:HDMobBase{
 		}
 		#### F 2{
 			angle+=frandom(-20,20);
-			if(!random(0,9))A_PlaySound(activesound,CHAN_VOICE);
+			if(!random(0,9))A_StartSound(activesound,CHAN_VOICE);
 		}
 		#### FFF 2 A_Look();
 		#### A 0{
@@ -208,14 +209,14 @@ class Babuin:HDMobBase{
 		}
 	seechase:
 		#### AABBCCDD random(1,2){hdmobai.chase(self);}
-		goto seeend;
+		---- A 0 setstatelabel("seeend");
 	roam:
 		#### AABBCCDD random(1,3){hdmobai.wander(self,true);}
-		goto seeend;
+		---- A 0 setstatelabel("seeend");
 	seeend:
 		#### A 0{
 			if(!random(0,120)){
-				A_PlaySound(seesound,CHAN_VOICE);
+				A_StartSound(seesound,CHAN_VOICE);
 				A_AlertMonsters();
 			}
 			givebody(random(2,12));
@@ -224,7 +225,7 @@ class Babuin:HDMobBase{
 	melee:
 		#### E 7{
 			A_FaceTarget(0,0);
-			A_PlaySound("demon/melee");
+			A_StartSound("babuin/bite",CHAN_VOICE);
 			A_Changevelocity(cos(pitch)*4,0,sin(-pitch)*4,CVF_RELATIVE);
 		}
 		#### F 6;
@@ -234,7 +235,7 @@ class Babuin:HDMobBase{
 		}
 	postmelee:
 		#### G 6;
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	latched:
 		#### EF random(1,2){
@@ -243,9 +244,7 @@ class Babuin:HDMobBase{
 				latchtarget.damagemobj(
 					self,self,random(0,2),random(0,3)?"teeth":"falling"
 				);
-			}else{
-				setstatelabel("pain");
-			}
+			}else forcepain(self);
 		}loop;
 
 	missile:
@@ -253,7 +252,8 @@ class Babuin:HDMobBase{
 			A_FaceTarget(16,16);
 			A_Changevelocity(1,0,0,CVF_RELATIVE);
 			if(A_JumpIfTargetInLOS("null",20,0,128))setstatelabel("jump");
-		}goto see;
+		}
+		---- A 0 setstatelabel("see");
 	jump:
 		#### AE 3{
 			A_FaceTarget(16,16);
@@ -261,7 +261,7 @@ class Babuin:HDMobBase{
 		}
 		#### E 2{
 			A_FaceTarget(6,6);
-			A_PlaySound("babuin/sight");
+			A_StartSound("babuin/sight",CHAN_VOICE);
 		}
 		#### E 0 A_ChangeVelocity(cos(pitch)*16,0,sin(-pitch)*16+random(3,8),CVF_RELATIVE);
 	fly:
@@ -272,18 +272,18 @@ class Babuin:HDMobBase{
 	land:
 		#### FEH 3{vel.xy*=0.8;}
 		#### D 4{vel.xy=(0,0);}
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		#### H 2 A_SetSolid();
 		#### H 6 A_Pain();
 		#### H 0 A_CheckFloor("missile");
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
 		#### I 5{
 			A_CheckFreedoomSprite();
 			A_Scream();
 			bpushable=false;
-			A_SpawnItemEx("BFGVileShard",flags:SXF_TRANSFERPOINTERS|SXF_SETMASTER,240);
+			A_SpawnItemEx("BFGNecroShard",flags:SXF_TRANSFERPOINTERS|SXF_SETMASTER,240);
 		}
 	deathend:
 		#### J 5 A_NoBlocking();
@@ -328,6 +328,7 @@ class SpecBabuin:Babuin{
 
 		renderstyle "fuzzy";
 		dropitem "HDBlurSphere",1;
+		tag "cloaked babuin";
 	}
 	states{
 	see:

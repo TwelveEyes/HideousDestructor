@@ -7,7 +7,7 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 		painsound "wolfss/pain";
 		deathsound "wolfss/death";
 		activesound "wolfss/active";
-		tag "$fn_wolfss";
+		tag "$cc_wolfss";
 
 		painchance 170;
 
@@ -17,23 +17,20 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 	override void postbeginplay(){
 		super.postbeginplay();
 		hdmobster.spawnmobster(self);
-		hasdropped=false;
 		gunloaded=31;
 		if(!bplayingid){
 			scale=(0.81,0.81);
 		}
 		givearmour(1.);
 	}
-	bool hasdropped;
 	double spread;
 	double turnamount;
 	int gunloaded;
-	void noblockwepdrop(){
-		A_NoBlocking();
+	override void deathdrop(){
 		hdweapon wp=null;
-		if(!hasdropped){
+		if(!bhasdropped){
 			A_DropItem("HDHandgunRandomDrop");
-			hasdropped=true;
+			bhasdropped=true;
 			if(wp=hdweapon(spawn("HDSMG",pos,ALLOW_REPLACE))){
 				wp.weaponstatus[SMGS_AUTO]=2;
 				wp.weaponstatus[SMGS_MAG]=random(0,30);
@@ -60,31 +57,31 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 		SSWV H 1{
 			A_Recoil(frandom(-0.4,0.4));
 			A_SetTics(random(30,80));
-			if(!random(0,3))A_PlaySound("grunt/active");
+			if(!random(0,3))A_StartSound("grunt/active",CHAN_VOICE);
 		}
-		goto spawn;
+		---- A 0 setstatelabel("spawn");
 	spawnstill:
 		SSWV A 0 A_Look();
 		SSWV A 0 A_Recoil(frandom(-0.4,0.4));
 		SSWV CD 5 A_SetAngle(angle+frandom(-4.,4.));
 		SSWV A 0 A_Look();
 		SSWV A 0 A_Jump(192,2);
-		SSWV A 0 A_PlaySound("grunt/active");
+		SSWV A 0 A_StartSound("grunt/active",CHAN_VOICE);
 		SSWV AB 5 A_SetAngle(angle+frandom(-4.,4.));
 		SSWV A 0 A_Look();
 		SSWV B 1 A_SetTics(random(10,40));
-		goto spawn;
+		---- A 0 setstatelabel("spawn");
 	spawnwander:
 		SSWV CDAB 5{
 			hdmobai.wander(self);
-			if(!random(0,72))A_PlaySound("grunt/active");
+			if(!random(0,72))A_StartSound("grunt/active",CHAN_VOICE);
 		}
-		goto spawn;
+		---- A 0 setstatelabel("spawn");
 	see:
 		SSWV A 0 A_JumpIf(gunloaded<2,"reload");
 		SSWV ABCD 4{hdmobai.chase(self);}
 		SSWV A 0 A_JumpIfTargetInLOS("see");
-		goto roam;
+		---- A 0 setstatelabel("roam");
 	roam:
 		#### E 3 A_Jump(60,"roam2");
 		#### E 0{spread=1;}
@@ -110,13 +107,13 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 		#### E 2 A_JumpIfTargetInLOS("missile2",40);
 		#### E 0{spread=4;}
 		#### ABCD 3{hdmobai.chase(self);}
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		SSWV H 3;
 		SSWV H 3 A_Pain();
 		SSWV A 0 A_Jump(192,"see");
 		SSWV A 0 A_AlertMonsters();
-		goto see;
+		---- A 0 setstatelabel("see");
 	missile:
 		#### A 0 A_JumpIf(gunloaded<1,"reload");
 		#### A 0 A_JumpIfTargetInLOS(3,120);
@@ -142,13 +139,13 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 		}goto turntoaim;
 	turntoaim:
 		#### E 2 A_FaceTarget(turnamount,turnamount);
-		#### A 0 A_JumpIfTargetInLOS(1);
-		goto see;
+		#### A 0 A_JumpIfTargetInLOS(2);
+		---- A 0 setstatelabel("see");
 		#### A 0 A_JumpIfTargetInLOS(1,10);
 		loop;
 		#### E 1{
 			A_FaceTarget(turnamount,turnamount);
-			A_SetTics(random(1,100/clamp(turnamount,1,turnamount+1)+4));
+			A_SetTics(random(1,int(100/clamp(turnamount,1,turnamount+1)+4)));
 			spread=frandom(0.06,0.27)*turnamount;
 		}
 		#### A 0 A_Jump(256,"shoot");
@@ -160,7 +157,7 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 			}
 			pitch+=frandom(0,spread)-frandom(0,spread);
 			angle+=frandom(0,spread)-frandom(0,spread);
-			A_PlaySound("weapons/pistol",CHAN_WEAPON);
+			A_StartSound("weapons/pistol",CHAN_WEAPON);
 			HDBulletActor.FireBullet(self,"HDB_9",speedfactor:1.1);
 			A_SpawnItemEx("HDSpent9mm",
 				cos(pitch)*10,0,height-8-sin(pitch)*10,
@@ -181,21 +178,21 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 	reload:
 		SSWV A 3{hdmobai.chase(self,"melee",null,true);}
 		SSWV B 4{
-			A_PlaySound("weapons/rifleclick2");
+			A_StartSound("weapons/rifleclick2",8);
 			if(gunloaded>=0)A_SpawnProjectile("HDSMGEmptyMag",38,0,random(90,120));
 			gunloaded=-1;
 		}
 		SSWV CD 3{hdmobai.chase(self,"melee",null,true);}
 		SSWV E 4{
-			A_PlaySound("weapons/rifleload");
+			A_StartSound("weapons/rifleload",8);
 			hdmobai.wander(self,true);
 		}
 		SSWV F 3{
-			A_PlaySound("weapons/rifleclick2");
+			A_StartSound("weapons/rifleclick2",8);
 			gunloaded+=30;
 			hdmobai.wander(self,true);
 		}
-		goto see;
+		---- A 0 setstatelabel("see");
 	melee:
 		#### D 8 A_FaceTarget();
 		#### E 4;
@@ -208,12 +205,11 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 		#### E 4 A_FaceTarget();
 		goto missile2;
 		#### D 4;
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
 		SSWV I 5;
 		SSWV J 5 A_Scream();
-		SSWV K 5 noblockwepdrop();
-		SSWV L 5;
+		SSWV KL 5;
 	dead:
 		SSWV L 3 canraise A_JumpIf(abs(vel.z)<2,1);
 		loop;
@@ -223,13 +219,12 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 		SSWV N 5;
 		SSWV O 5 A_XScream();
 		SSWV PQRSTU 5;
-		goto xdead;
+		---- A 0 setstatelabel("xdead");
 	xdeath:
 		SSWV N 5 A_SpawnItemEx("MegaBloodSplatter",0,0,34,0,0,0,0,160);
 		SSWV O 0 A_SpawnItemEx("MegaBloodSplatter",0,0,34,0,0,0,0,160);
 		SSWV O 5 A_XScream();
-		SSWV P 0 A_SpawnItemEx("MegaBloodSplatter",0,0,34,0,0,0,0,160);
-		SSWV P 5 noblockwepdrop();
+		SSWV P 5 A_SpawnItemEx("MegaBloodSplatter",0,0,34,0,0,0,0,160);
 		SSWV Q 0 A_SpawnItemEx("MegaBloodSplatter",0,0,34,0,0,0,0,160);
 		SSWV QRSTU 5;
 	xdead:
@@ -241,12 +236,12 @@ class HoopBubble:HDMobMan replaces WolfensteinSS{
 		SSWV M 4;
 		SSWV MLK 6;
 		SSWV JIH 4;
-		goto checkraise;
+		---- A 0 setstatelabel("checkraise");
 	ungib:
 		SSWV V 4;
 		SSWV VUT 8;
 		SSWV SRQ 6;
 		SSWV PON 4;
-		goto checkraise;
+		---- A 0 setstatelabel("checkraise");
 	}
 }

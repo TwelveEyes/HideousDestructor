@@ -156,11 +156,29 @@ extend class HDPlayerPawn{
 
 		//weapon collision
 		if(!(player.cheats&CF_NOCLIP2 || player.cheats&CF_NOCLIP)){
-			double highheight=height-6;
+			double highheight=height-HDCONST_CROWNTOEYES;
 			double midheight=highheight-max(1,barreldepth)*0.5;
 			double lowheight=highheight-max(1,barreldepth);
 			double testangle=angle;
 			double testpitch=pitch;
+
+
+			//check for super-collision preventing only aligned sights		
+			if(
+				!barehanded
+				&&linetrace(
+					testangle,max(barrellength,HDCONST_MINEYERANGE),testpitch,flags:TRF_NOSKY,
+					offsetz:highheight
+				)
+			){
+				nocrosshair=12;
+				hudbobrecoil1.y+=10;
+				hudbobrecoil2.y+=10;
+				hudbobrecoil3.y+=10;
+				hudbobrecoil4.y+=10;
+				highheight=max(height*0.5,height-HDCONST_CROWNTOSHOULDER);
+			}else if(nocrosshair>0)highheight=max(height*0.5,height-HDCONST_CROWNTOSHOULDER);
+			barrellength-=(HDCONST_SHOULDERTORADIUS*player.crouchfactor);
 
 
 			//and now uh do stuff
@@ -293,7 +311,7 @@ extend class HDPlayerPawn{
 			if(muzzleblocked>=4){  
 				muzzlehit=false;
 			}else if(!muzzlehit){
-				if(hitsnd)A_PlaySound("weapons/guntouch",CHAN_AUTO,0.6);
+				if(hitsnd)A_StartSound("weapons/guntouch",8,CHANF_OVERLAP,0.6);
 				muzzlehit=true;
 				gunbraced=true;
 			}
@@ -309,6 +327,7 @@ extend class HDPlayerPawn{
 		//set everything and update old
 		if(anglechange)A_SetAngle(angle+anglechange,SPF_INTERPOLATE);
 		if(pitchchange)A_SetPitch(clamp(pitch+pitchchange,player.minpitch,player.maxpitch),SPF_INTERPOLATE);
+
 
 
 
@@ -336,7 +355,11 @@ extend class HDPlayerPawn{
 
 		//move pivot point a little behind the player's view
 		anglechange=deltaangle(angle,lastangle);
-		if(!teleported && player.onground && floorz==pos.z){
+		if(
+			!teleported
+			&&player.onground
+			&&floorz==pos.z
+		){
 			bool ongun=gunbraced&&!barehanded&&isFocussing;
 			if(abs(anglechange)>(ongun?0.05:0.7)){
 				int dir=90;
@@ -346,7 +369,7 @@ extend class HDPlayerPawn{
 				)dir=-90;
 				trymove(self.pos.xy-(cos(angle+dir),sin(angle+dir))*(ongun?0.3:0.6),false);
 			}
-			int ptchch=clamp(abs(pitchchange),0,10); //THE CLAMP IS A BANDAID
+			double ptchch=clamp(abs(pitchchange),0,10); //THE CLAMP IS A BANDAID
 			if(ptchch>1 && -30<pitch<30){  
 				trymove(pos.xy-(cos(angle)*ptchch,sin(angle)*ptchch)*0.1,false);
 				PlayRunning();

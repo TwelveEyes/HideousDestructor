@@ -6,6 +6,7 @@ class MagManager:HDWeapon{
 		+weapon.wimpy_weapon
 		+weapon.no_auto_switch
 		+hdweapon.alwaysshowstatus
+		+nointeraction
 		weapon.selectionorder 1011;
 	}
 	int which;
@@ -34,95 +35,28 @@ class MagManager:HDWeapon{
 		}
 	}
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
-		let thismag=magmanager(hdw).thismag;
 		if(!thismag||thismag.mags.size()<1)return;
-		int countermaxx=thismag.mags.size();
-		int countermax=countermaxx-1;
-
-		double scl=2.;
-		string magsprite="";
-		string roundsprite="";
-		name roundtype="";
-
-		int howmanylines=countermax/5;
-		int linecounter=countermax%5;
-		if(linecounter<0)linecounter=4;
-
-		int offx=-64-18*howmanylines;
-		int offy=80;
-		for(int i=0;i<countermaxx;i++){
-
-			bool imax=i==countermax;
-			if(imax){
-				offx=-6;
-				offy=50;
-			}else if(
-				linecounter<1
-			){
-				howmanylines--;
-				offx=-64-18*howmanylines;
-				offy=80;
-				linecounter=4;
-			}else{
-				if(i>0){
-					offx+=2;
-					offy-=9;
-				}
-				linecounter--;
-			}
-
-			int thismagamt=thismag.mags[i];
-			string magsprite="";
-			[magsprite,roundsprite,roundtype,scl]=thismag.getmagsprite(thismagamt);
-
-			sb.drawimage(magsprite,(offx,offy),
-				sb.DI_SCREEN_CENTER|sb.DI_ITEM_RIGHT_TOP,
-				scale:(scl,scl)*(imax?1.6:1.)
-			);
-			sb.drawstring(
-				imax?sb.pSmallFont:sb.mamountfont,sb.FormatNumber(thismag.mags[i]),
-				(offx+2,offy),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_LEFT,
-				imax?font.CR_SAPPHIRE:font.CR_BROWN
-			);
-		}
-
-		if(roundsprite!=""){
-			bool helptext=cvar.getcvar("hd_helptext",hpl.player).getbool();
-			offx+=40;
-			if(roundsprite=="CELPA0"){
-				scl=0.4;
-				let battt=HDBattery(thismag).chargemode;
-				string batts="uNone";
-				if(battt==hdbattery.BATT_CHARGEMAX)batts="eAuto";
-				else if(battt==hdbattery.BATT_CHARGETOP)batts="ySelected";
-				sb.drawstrings(
-					sb.pSmallFont,string.format("%s\c%s%s",helptext?"Charging: ":"",batts,helptext?"\n(\cqReload\cu to cycle)":""),
-					(offx+2,offy),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_LEFT
-				);
-			}else{
-				scl=1.6;
-				sb.drawstring(
-					sb.pSmallFont,sb.FormatNumber(hpl.countinv(roundtype)),
-					(offx+2,offy),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_LEFT,
-					font.CR_BROWN
-				);
-			}
-			sb.drawimage(roundsprite,(offx,offy),
-				sb.DI_SCREEN_CENTER|sb.DI_ITEM_RIGHT_TOP,
-				scale:(scl,scl)
-			);
-		}
+		thismag.DrawHUDStuff(sb,self,hpl);
 	}
 	override string gethelptext(){
 		return
 		WEPHELP_FIRE.."/"..WEPHELP_ALTFIRE.."  Previous/Next mag/clip\n"
+		..WEPHELP_ALTRELOAD.."  Select lowest unselected\n"
 		..WEPHELP_RELOAD.."/"..WEPHELP_UNLOAD.."  Insert/Remove round\n"
 		..WEPHELP_FIREMODE.."+"..WEPHELP_FIRE.."/"..WEPHELP_ALTFIRE.."  Previous/Next item type\n"
 		..WEPHELP_FIREMODE.."+"..WEPHELP_RELOAD.."/"..WEPHELP_UNLOAD.."  Insert/Remove from backpack\n"
+		..WEPHELP_FIREMODE.."+"..WEPHELP_DROP.."  Drop lowest mag\n"
 		;
 	}
 	override inventory createtossable(int amt){
-		if(owner)owner.A_DropInventory(thismagtype,1);
+		if(owner){
+			if(
+				thismag
+				&&owner.player
+				&&owner.player.cmd.buttons&BT_FIREMODE
+			)thismag.LowestToLast();
+			owner.A_DropInventory(thismagtype,1);
+		}
 		return null;
 	}
 	override void DropOneAmmo(int amt){
@@ -130,7 +64,7 @@ class MagManager:HDWeapon{
 		if(!mmm)return;
 		let what=mmm.roundtype;
 		if(!what)return;
-		int howmany=min(max(1,hdmath.maxinv(owner,what)*0.2),owner.countinv(what),100);
+		int howmany=int(min(max(1,getdefaultbytype((class<hdpickup>)(mmm.roundtype)).bulk?HDCONST_MAXPOCKETSPACE/getdefaultbytype((class<hdpickup>)(mmm.roundtype)).bulk*0.2:1),owner.countinv(what),100));
 		if(!howmany)return;
 		owner.A_DropInventory(what,howmany);
 	}
@@ -162,11 +96,13 @@ class MagManager:HDWeapon{
 		if(!GetMags())return;
 		invoker.thismag.Insert();
 		invoker.UpdateText();
+		A_SetTics(invoker.thismag.inserttime);
 	}
 	action void Extract(){
 		if(!GetMags())return;
 		invoker.thismag.Extract();
 		invoker.UpdateText();
+		A_SetTics(invoker.thismag.extracttime);
 	}
 	action void LastToFirst(bool forwards=true){
 		if(!GetMags())return;
@@ -176,12 +112,28 @@ class MagManager:HDWeapon{
 	}
 	action void LowestToLast(){
 		if(!GetMags())return;
-		invoker.thismag.LowestToLast();
+//		invoker.thismag.LowestToLast();
+
+		let m=invoker.thismag;
+		int magsize=m.mags.size()-1;
+		int which=-1;
+		int lowest=m.maxperunit;
+		for(int i=0;i<magsize;i++){
+			if(m.mags[i]<lowest){
+				which=i;
+				lowest=m.mags[i];
+			}
+		}
+		if(which>=0){
+			m.mags.delete(which);
+			m.mags.push(lowest);
+		}
+
 		invoker.UpdateText();
 	}
 	void UpdateText(){
 		string toui=string.format(
-			"\cf///\cyMag Manager\cf\\\\\\\n\n\cqFire\cu/\cqAltfire\cu  select mag\n\cqFiremode\cu+\cqF\cu/\cqAF\cu  select ammo type\n\cqReload\cu/\cqUnload\cu  load/unload selected mag\n\cqFM\cu+\cqR\cu/\cqU\cu  move to/from backpack\n\cqDrop\cu  drop current mag\n\cqAlt.Reload\cu bring up lowest mag\n\cqDrop one\cu drop some loose rounds\n\n\n\cj%s\n",thismag?thismag.nicename:"No mags selected."
+			"\cf///\cyMag Manager\cf\\\\\\\n\n\cqFire\cu/\cqAltfire\cu  select mag\n\cqFiremode\cu+\cqF\cu/\cqAF\cu  select ammo type\n\cqReload\cu/\cqUnload\cu  load/unload selected mag\n\cqFM\cu+\cqR\cu/\cqU\cu  move to/from backpack\n\cqDrop\cu  drop current mag\n\cqFM\cu+\cqDrop\cu  drop lowest mag\n\cqAlt.Reload\cu bring up lowest mag\n\cqDrop one\cu drop some loose rounds\n\n\n\cj%s\n",thismag?thismag.gettag():"No mags selected."
 		);
 		if(thismag){
 			thismagtype=thismag.getclassname();
@@ -249,10 +201,10 @@ class MagManager:HDWeapon{
 		TNT1 A 1 LastToFirst();
 		goto nope;
 	reload:
-		TNT1 A 8 Insert();
+		TNT1 A 1 Insert();
 		goto readyend;
 	unload:
-		TNT1 A 4 Extract();
+		TNT1 A 1 Extract();
 		goto readyend;
 	altreload:
 		TNT1 A 0 LowestToLast();
@@ -285,7 +237,7 @@ class MagManager:HDWeapon{
 		if(!mg)return;
 		let gdbt=getdefaultbytype((class<hdmagammo>)(type));
 		double minspace=gdbt.magbulk+gdbt.roundbulk*gdbt.maxperunit;
-		if(HDCONST_BPMAX-bp.bulk<minspace)return;
+		if(bp.maxcapacity-bp.bulk<minspace)return;
 		int which=bp.invclasses.find(type);
 		string newamts=bp.amounts[which];
 		newamts=newamts..(newamts==""?"":" ")..mg.mags[mg.mags.size()-1];

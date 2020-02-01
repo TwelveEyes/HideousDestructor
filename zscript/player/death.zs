@@ -55,7 +55,7 @@ extend class HDPlayerPawn{
 		else deathcounter=1;
 
 		if(hd_dropeverythingondeath){
-			array<inventory> keys;
+			array<inventory> keys;keys.clear();
 			for(inventory item=inv;item!=null;item=item.inv){
 				if(item is "Key"){
 					keys.push(item);
@@ -74,37 +74,27 @@ extend class HDPlayerPawn{
 		if(player){
 			let www=hdweapon(player.readyweapon);
 			if(www)www.OnPlayerDrop();
+			if(player.attacker is "HDFire")player.attacker=player.attacker.master;
 		}
-		if(player.attacker is "HDFire")player.attacker=player.attacker.master;
-
-
-		bool crouched=(!incapacitated)&&height<40;
 
 		if(hd_disintegrator){
 			A_SpawnItemEx("Telefog",0,0,0,vel.x,vel.y,vel.z,0,SXF_ABSOLUTEMOMENTUM);
 		}else{
 			playercorpse=spawn("HDPlayerCorpse",pos,ALLOW_REPLACE);
 			playercorpse.vel=vel;playercorpse.master=self;
-			if(
-				crouched
-			)playercorpse.sprite=GetSpriteIndex("PLYCA0");
-				else playercorpse.sprite=GetSpriteIndex("PLAYA0");
+			if(player)playercorpse.settag(player.getusername());
+
 			playercorpse.translation=translation;
-			playercorpse.A_SetSize(12,52);
+			ApplyUserSkin(true);
+			playercorpse.sprite=sprite;
 
 			if(
 				(!inflictor||!inflictor.bnoextremedeath)
 				&&(-health>gibhealth||aggravateddamage>40)
 			)playercorpse.A_Die("extreme");
-			else{
-				playercorpse.A_Die(MeansOfDeath);
-				if(!silentdeath){
-					A_PlayerScream();
-				}
-			}
+			else if(!silentdeath)A_StartSound(deathsound,CHAN_VOICE);
 		}
 
-		//THE BUG IS FIXED
 		super.die(source,inflictor,dmgflags,MeansOfDeath);
 	}
 	bool alldown(){
@@ -121,9 +111,10 @@ extend class HDPlayerPawn{
 			if(
 				playeringame[i]
 				&&players[i].mo
-				&&players[i].mo.health>0
+				&&players[i].mo.health>HDCONST_MINSTANDHEALTH
 				&&hdplayerpawn(players[i].mo)
 				&&hdplayerpawn(players[i].mo).incapacitated<1
+				&&hdplayerpawn(players[i].mo).incaptimer>10
 				&&(
 					!teamplay
 					||players[i].getteam()==player.getteam()
@@ -144,6 +135,7 @@ extend class HDPlayerPawn{
 		aggravateddamage=0;
 		stunned=0;
 		bloodloss=0;
+		secondflesh=0;
 	}
 }
 
@@ -159,10 +151,12 @@ extend class HDHandlers{
 //corpse substituter
 class HDPlayerCorpse:HDMobMan{
 	default{
-		monster; -countkill +solid +friendly
-		height 52;radius 12;health 100;mass 160;
+		monster; -countkill +friendly +nopain
+		health 100;mass 160;
+		tag "$CC_MARINE";
 	}
 	override void Tick(){
+		super.Tick();
 		let ppp=hdplayerpawn(master);
 		if(
 			ppp
@@ -173,20 +167,29 @@ class HDPlayerCorpse:HDMobMan{
 			ppp.levelreset();
 			master=null;
 		}
-		super.Tick();
+		if(
+			health>0
+			&&!instatesequence(curstate,resolvestate("raise"))
+			&&!instatesequence(curstate,resolvestate("ungib"))
+		)A_Die();
 	}
 	states{
 	spawn:
-		#### A -1;// nodelay A_Die();
+		#### AA -1;
 		PLAY A 0;
+	forcexdeath:
+		#### A -1;
 	death:
 		#### H 10{
-			A_NoBlocking();
-			bshootable=true;
-			scale.x*=randompick(-1,1);
+			let ppp=hdplayerpawn(master);
+			if(
+				ppp
+				&&ppp.incapacitated>(4<<2)
+			)setstatelabel("dead");
+			else scale.x*=randompick(-1,1);
 		}
 		#### IJ 8;
-		#### K 3 A_SetSize(12,13);
+		#### K 3;
 	deadfall:
 		#### K 2;
 		#### LM 4 A_JumpIf(abs(vel.z)>1,"deadfall");
@@ -196,29 +199,30 @@ class HDPlayerCorpse:HDMobMan{
 		wait;
 	xdeath:
 		#### O 5{
-			A_NoBlocking();
 			A_XScream();
 			scale.x=1;
 		}
 		#### PQRSTUV 5;
 		#### W -1;
 	xxxdeath:
-		#### O 5 A_SpawnItemEx("MegaBloodSplatter",0,0,34,flags:SXF_NOCHECKPOSITION);
+		#### O 5;
 		#### P 5 A_XScream();
-		#### QR 5 A_SpawnItemEx("MegaBloodSplatter",0,0,34,flags:SXF_NOCHECKPOSITION);
-		#### STUV 5;
+		#### QRSTUV 5;
 		#### W -1 canraise;
 		stop;
-	raisegibbed:
+	ungib:
 		---- A 0{
 			bnotargetswitch=false;
 			actor masbak=master;
-			A_SpawnItemEx("ReallyDeadRifleman",flags:
-				SXF_NOCHECKPOSITION|
-				SXF_TRANSFERPOINTERS|
-				SXF_TRANSFERTRANSLATION|
-				SXF_ISMASTER
-			);
+			let aaa=HDMarine(spawn("ReallyDeadRifleman",pos));
+			aaa.angle=angle;
+			aaa.translation=translation;
+			aaa.master=master;
+			aaa.target=target;
+			aaa.sprite=sprite;
+			aaa.givensprite=sprite;
+			aaa.bfriendly=bfriendly;
+			master=aaa;
 			A_RaiseMaster(RF_NOCHECKPOSITION|RF_TRANSFERFRIENDLINESS);
 			master.master=masbak;
 		}
@@ -226,14 +230,17 @@ class HDPlayerCorpse:HDMobMan{
 	raise:
 		#### MLKJIH 5;
 		---- A 0{
-			A_SpawnItemEx("UndeadRifleman",flags:
-				SXF_NOCHECKPOSITION|
-				SXF_TRANSFERPOINTERS|
-				SXF_TRANSFERTRANSLATION
-			);
+			let aaa=HDMarine(spawn("UndeadRifleman",pos));
+			aaa.angle=angle;
+			aaa.translation=translation;
+			aaa.master=master;
+			aaa.target=target;
+			aaa.sprite=sprite;
+			aaa.givensprite=sprite;
+			aaa.bfriendly=bfriendly;
 		}
+	falldown:
 		stop;
 	}
 }
-
 

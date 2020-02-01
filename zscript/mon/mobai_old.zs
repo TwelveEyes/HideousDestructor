@@ -6,21 +6,27 @@
 struct HDMobAI play{
 	//randomize size
 	static void resize(actor caller,double minscl=0.9,double maxscl=1.,int minhealth=0){
-		double scl=frandom(minscl,maxscl);
+		let hdmbb=hdmobbase(caller);
+		if(hdmbb){
+			hdmbb.resize(minscl,maxscl,minhealth);
+			return;
+		}
 		double drad=caller.radius;double dheight=caller.height;
 		double minchkscl=max(1.,minscl+0.1);
-		while(
-			//keep it smaller than the geometry
-			scl>minchkscl&&  
-			!caller.checkmove(caller.pos.xy,PCM_NOACTORS)
-		){
+		double scl;
+		do{
 			scl=frandom(minscl,maxscl);
 			caller.A_SetSize(drad*scl,dheight*scl);
 			maxscl=scl; //if this has to check again, don't go so high next time
 		}
-		caller.health*=max(scl,1);
+		while(
+			//keep it smaller than the geometry
+			scl>minchkscl&&  
+			!caller.checkmove(caller.pos.xy,PCM_NOACTORS)
+		);
+		caller.health=int(max(scl,1)*caller.health);
 		caller.scale*=scl;
-		caller.mass*=scl;
+		caller.mass=int(scl*caller.mass);
 		caller.speed*=scl;
 		caller.meleerange*=scl;
 	}
@@ -38,7 +44,7 @@ struct HDMobAI play{
 	){
 		caller.A_LookEx(flags,minseedist,maxseedist,maxheardist,fov,label);
 		if(!caller.bambush)caller.angle+=random(-10,10);
-		if(!random(0,soundchance))caller.A_PlaySound(caller.activesound);
+		if(!random(0,soundchance))caller.A_StartSound(caller.activesound,CHAN_VOICE);
 	}
 
 	//check if shot is clear
@@ -264,7 +270,7 @@ struct HDMobAI play{
 		if(!gravity)gravity=getdefaultbytype(missiletype).gravity;
 		double spd=getdefaultbytype(missiletype).speed*speedmult;
 		if(getdefaultbytype(missiletype).gravity&&dist>spd){    
-			int ticstotake=dist/spd;
+			int ticstotake=int(dist/spd);
 			int dropamt=0;
 			for(int i=1;i<=ticstotake;i++){
 				dropamt+=i;
@@ -333,16 +339,15 @@ class HDMobster:IdleDummy{
 		hdmb.target=caller.target;
 		hdmb.bfrightened=caller.bfrightened;
 		hdmb.meleerange=caller.meleerange;
+		hdmb.firstposition=caller.pos;
+		hdmb.leftright=randompick(-1,-1,-1,-1,0,1,1);
+		hdmb.threat=null;
+		hdmb.thraidius=256;
+		hdmb.bored=0;
+		hdmb.boredthreshold=20;
+		hdmb.healablecorpse=null;
+		hdmb.changetid(123); //only used for actoriterator
 		return hdmb;
-	}
-	override void postbeginplay(){
-		super.postbeginplay();
-		firstposition=pos;
-		leftright=randompick(-1,-1,-1,-1,0,1,1);
-		threat=null;thraidius=256;
-		bored=0;boredthreshold=20;
-		healablecorpse=null;
-		changetid(123); //only used for actoriterator
 	}
 	states{
 	spawn:
@@ -355,7 +360,11 @@ class HDMobster:IdleDummy{
 				destroy();return;
 			}
 			bfriendly=master.bfriendly;
-			if(bfriendly)return;
+			if(
+				bfriendly
+				||master.instatesequence(master.curstate,master.resolvestate("falldown"))
+				||master.instatesequence(master.curstate,master.resolvestate("pain"))
+			)return;
 			if(master.health<1){
 				threat=null;
 				return;
@@ -374,7 +383,6 @@ class HDMobster:IdleDummy{
 						itt.bcorpse
 						&&itt.canresurrect(self,true)
 						&&canresurrect(itt,false)
-//						&&itt.findstate("raise")
 						&&!random(0,4)
 						&&abs(itt.pos.z-master.pos.z)<master.maxstepheight*2
 						&&heat.getamount(itt)<50

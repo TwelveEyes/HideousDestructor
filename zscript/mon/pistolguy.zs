@@ -134,7 +134,7 @@ class UndeadHomeboy:HDMobMan{
 		angle+=frandom(0,spread)-frandom(0,spread);
 		HDBulletActor.FireBullet(self,"HDB_9",spread:2.,speedfactor:frandom(0.97,1.03));
 
-		A_PlaySound("weapons/pistol",CHAN_WEAPON);
+		A_StartSound("weapons/pistol",CHAN_WEAPON);
 		pitch+=frandom(-0.4,0.3);
 		angle+=frandom(-0.4,0.4);
 
@@ -142,10 +142,7 @@ class UndeadHomeboy:HDMobMan{
 		if(thismag>0)thismag--;
 		else chamber=0;
 	}
-	virtual void A_HDNoBlocking(){
-		A_NoBlocking();
-
-		//specific to undead homeboy
+	override void deathdrop(){
 		if(bhasdropped){
 			A_DropItem("HD9mMag15");
 		}else{
@@ -169,7 +166,7 @@ class UndeadHomeboy:HDMobMan{
 			);
 			hdmagammo(aaa).mags.clear();
 			hdmagammo(aaa).mags.push(thismag);
-			A_PlaySound("weapons/pismagclick",CHAN_WEAPON);
+			A_StartSound("weapons/pismagclick",8);
 		}
 		thismag=-1;
 	}
@@ -181,7 +178,7 @@ class UndeadHomeboy:HDMobMan{
 			chamber=2;
 			thismag--;
 		}
-		A_PlaySound("weapons/pismagclick",CHAN_WEAPON);
+		A_StartSound("weapons/pismagclick",8);
 		return true;
 	}
 
@@ -204,7 +201,7 @@ class UndeadHomeboy:HDMobMan{
 		painsound "grunt/pain";
 		deathsound "grunt/death";
 		activesound "grunt/active";
-		tag "$fn_zombie";
+		tag "$cc_zombie";
 
 		radius 10;
 		speed 12;
@@ -236,7 +233,7 @@ class UndeadHomeboy:HDMobMan{
 		#### G 1{
 			A_Recoil(frandom(-0.4,0.4));
 			A_SetTics(random(30,80));
-			if(!random(0,7))A_PlaySound("grunt/active");
+			if(!random(0,7))A_StartSound("grunt/active",CHAN_VOICE);
 		}
 		#### A 0 A_Jump(256,"spawn");
 	spawnswitch:
@@ -248,7 +245,7 @@ class UndeadHomeboy:HDMobMan{
 		#### CD 5 A_SetAngle(angle+random(-4,4));
 		#### A 0{
 			A_Look();
-			if(!random(0,127))A_PlaySound("grunt/active");
+			if(!random(0,127))A_StartSound("grunt/active",CHAN_VOICE);
 		}
 		#### AB 5 A_SetAngle(angle+random(-4,4));
 		#### B 1 A_SetTics(random(10,40));
@@ -256,7 +253,7 @@ class UndeadHomeboy:HDMobMan{
 	spawnwander:
 		#### CDAB 5 A_HDWander();
 		#### A 0{
-			if(!random(0,127))A_PlaySound("grunt/active");
+			if(!random(0,127))A_StartSound("grunt/active",CHAN_VOICE);
 		}
 		#### A 0 A_Jump(64,"spawn");
 		loop;
@@ -298,7 +295,7 @@ class UndeadHomeboy:HDMobMan{
 		#### A 7 A_HDUnload();
 		#### BC 7 A_HDChase();
 		#### D 8 A_HDReload();
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	melee:
 		#### C 8 A_FaceTarget();
@@ -310,7 +307,7 @@ class UndeadHomeboy:HDMobMan{
 		#### E 4 A_FaceTarget(10,10);
 		goto shoot;
 		#### A 4;
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		#### G 2;
 		#### G 3{
@@ -333,11 +330,11 @@ class UndeadHomeboy:HDMobMan{
 		}
 		#### ABCD 2 A_HDChase();
 		#### G 0{bfrightened=false;}
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
 		#### H 5;
 		#### I 5 A_Scream();
-		#### J 5 A_HDNoBlocking();
+		#### J 5 A_NoBlocking();
 		#### K 5;
 	dead:
 		#### K 3 canraise{if(abs(vel.z)<2.)frame++;}
@@ -357,7 +354,7 @@ class UndeadHomeboy:HDMobMan{
 			spawn("MegaBloodSplatter",pos+(0,0,34),ALLOW_REPLACE);
 			A_XScream();
 		}
-		#### O 0 A_HDNoBlocking();
+		#### O 0 A_NoBlocking();
 		#### OP 5 spawn("MegaBloodSplatter",pos+(0,0,34),ALLOW_REPLACE);
 		#### QRST 5;
 		goto xdead;

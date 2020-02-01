@@ -9,14 +9,11 @@ playerclasses="HDP_L1","HDP_L2","HDP_L3","HDP_L4","HDP_L5","HDP_L6","HDP_L7","HD
 	backpacktype="HDBackPack"
 	drawreadthis=true
 	advisorytime=0
-	addquitmessages="Run, baby! Run home to\nyour tiny baby guns!","Do you like imps?","Shall every man fall?","And as you perish each of you\nShall scream as you are sought!"
 
 	addeventhandlers="HDHandlers"
 	statusbarclass="HDStatusBar"
 }
 episode range{name="Hideous Firing Range" noskillmenu}
-
-
 
 adddefaultmap{
 	sucktime=0
@@ -37,66 +34,44 @@ map range "Firing Range"{
 
 
 clearskills
-skill "hd_nocover"{
-//	DamageFactor=0.3 //commenting out because it's now built right into player's damagemobj function
-	SpawnFilter="Hard"
-	ACSReturn=0
-	Name="Homely"
-}
-skill "hd_easy"{
-	DamageFactor=1.0
-	SpawnFilter="Easy"
-	ACSReturn=1
-	Name="Ugly"
+skill baby{
+	AutoUseHealth
+	AmmoFactor=2
+	DamageFactor=0.5
 	EasyBossBrain
+	SpawnFilter=Baby
+	Name="$SKILL_BABY"
+	Key="i"
 }
-skill "hd_normal"{
-	DamageFactor=1.0
-	SpawnFilter="Normal"
-	ACSReturn=2
-	Name="Grotesque"
-	defaultskill
+skill easy{
+	EasyBossBrain
+	SpawnFilter=Easy
+	Name="$SKILL_EASY"
+	Key="h"
 }
-skill "hd_hard"{
-	DamageFactor=1.0
-	SpawnFilter="Hard"
-	ACSReturn=3
-	Name="Hideous"
+skill normal{
+	SpawnFilter=Normal
+	Key="h"
+	Name="$SKILL_NORMAL"
+	DefaultSkill
 }
-skill "hd_nitemare"{
+skill hard{
+	SpawnFilter=Hard
+	Name="$SKILL_HARD"
+	Key="u"
+}
+skill nightmare{
 	AmmoFactor=2
 	FastMonsters
+	DisableCheats
 	RespawnTime=12
-	SpawnFilter="Nightmare"
-	ACSReturn=4
-//	PicName="M_NMARE"
-	Name="b e a u t i f u l"
+	SpawnFilter=Nightmare
+	Name="$SKILL_NIGHTMARE"
+	MustConfirm
 	Key="n"
-	mustconfirm
 }
-skill "hd_grimdark"{
-	DamageFactor=1.3
-	SpawnFilter="Hard"
-	FastMonsters
-//	RespawnTime=666
-	ACSReturn=5
-	Key="g"
-	ReplaceActor="stimpack","medikit"
-	ReplaceActor="megasphere","bluearmor"
-	Name="Grimdark"
-	mustconfirm="Extra damage, forced encumbrance, reviving monsters, hard spawns. Proceed? Y/N"
-}
-skill "hd_spooky"{
-	DamageFactor=1.3
-	SpawnFilter="Easy"
-	FastMonsters
-//	RespawnTime=666
-	ACSReturn=6
-	ReplaceActor="stimpack","medikit"
-	ReplaceActor="megasphere","bluearmor"
-	Name="Spooky"
-	mustconfirm="Extra damage, forced encumbrance, reviving monsters, easy spawns. Proceed? Y/N"
-}
+
+
 
 include "castingcall.txt"
 include "doomednums.txt"

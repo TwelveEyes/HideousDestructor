@@ -48,13 +48,13 @@ class HDStealthPorter:Actor{
 		loop;
 	missile:
 		TNT1 A 4 A_CheckPortIn();
-		goto see;
+		---- A 0 setstatelabel("see");
 	portin:
-		TNT1 A 70 A_PlaySound(
+		TNT1 A 70 A_StartSound(
 			getdefaultbytype(spawntype).seesound,
 			CHAN_VOICE,
+			0,
 			frandom(0.3,0.6),
-			false,
 			ATTN_NONE
 		);
 		TNT1 A 1 A_PortIn();
@@ -73,7 +73,7 @@ class HDStealthBaron:HDStealthPorter replaces StealthBaron{
 class HDStealthCacodemon:HDStealthPorter replaces StealthCacodemon{
 	default{
 		+float
-		hdstealthporter.spawntype "CaeloBite";
+		hdstealthporter.spawntype "Trilobite";
 	}
 }
 class HDStealthChaingunGuy:HDStealthPorter replaces StealthChaingunGuy{

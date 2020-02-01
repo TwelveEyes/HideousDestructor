@@ -17,7 +17,7 @@ class SoldierExtras:HDPickup{
 	default{
 		-hdpickup.fitsinbackpack
 		hdpickup.refid HDLD_SOLDIER;
-		hdpickup.nicename "Elite Soldier Kit";
+		tag "elite soldier kit";
 	}
 	states{
 	pickup:
@@ -81,7 +81,7 @@ class DoomguyLoadout:InvReset{
 		destroy();
 	}
 }
-//wait 1 tick and then select a weapon
+//wait a moment and then select a weapon
 //used to override default to fist on weapon removal
 class HDWeaponSelector:Thinker{
 	actor other;
@@ -104,9 +104,9 @@ class HDWeaponSelector:Thinker{
 
 
 
-//these constants need to be defined ONLY
-//where an item needs to be selectable
-//through custom loadouts.
+//these need to be defined ONLY where an item
+//needs to be selectable through custom loadouts.
+//all in one place for ease of checking for conflicts.
 
 const HDLD_SOLDIER="sol";
 
@@ -135,6 +135,7 @@ const HDLD_GREFRAG="frg";
 
 const HDLD_STIMPAK="stm";
 const HDLD_MEDIKIT="med";
+const HDLD_FINJCTR="2fl";
 const HDLD_BERSERK="zrk";
 const HDLD_BLODPAK="bld";
 const HDLD_RADSUIT="rad";
@@ -142,6 +143,7 @@ const HDLD_LITEAMP="lit";
 const HDLD_LADDER= "lad";
 const HDLD_DOORBUS="dbs";
 const HDLD_IEDKIT= "ied";
+const HDLD_JETPACK="jet";
 const HDLD_BACKPAK="bak";
 
 const HDLD_KEY=    "key";
@@ -390,6 +392,13 @@ extend class HDPlayerPawn{
 			}
 			class<actor> reff=allactorclasses[whichitemclass[i]];
 			if(reff is "HDWeapon"){
+				if(
+					getdefaultbytype((class<HDWeapon>)(reff)).bdebugonly
+					&&hd_debug<=0
+				){
+					A_Log("\caLoadout code \"\cx"..whichitem[i].."\ca\" ("..getdefaultbytype(reff).gettag()..") can only be used in debug mode.",true);
+					continue;
+				}
 				if(!i){
 					if(reff is "HDWeaponGiver"){
 						let greff=getdefaultbytype((class<HDWeaponGiver>)(reff)).weapontogive;
@@ -398,7 +407,11 @@ extend class HDPlayerPawn{
 						firstwep=reff.getclassname();
 					}
 				}
-				int thismany=clamp(howmany[i].toint(),1,40);
+
+				int thismany;
+				if(getdefaultbytype((class<hdweapon>)(reff)).bignoreloadoutamount)thismany=1;
+				else thismany=clamp(howmany[i].toint(),1,40);
+
 				while(thismany>0){
 					thismany--;
 					hdweapon newwep;
@@ -437,7 +450,7 @@ extend class HDPlayerPawn{
 				);
 				let iii=hdpickup(findinventory(reff.getclassname()));
 				if(iii){
-					iii.amount=min(iii.amount,iii.effectivemaxamount());
+					iii.amount=min(iii.amount,iii.maxamount);
 					if(hdmagammo(iii))hdmagammo(iii).syncamount();
 				}
 			}
@@ -445,6 +458,7 @@ extend class HDPlayerPawn{
 
 		//attend to backpack and contents
 		if(loadinput.indexof("-")>=0){
+			A_Log("Warning: deprecated loadout code for backpack. This may not be supported in future versions of Hideous Destructor.",true);
 			if(hd_debug)A_Log("Backpack Loadout: "..loadlist[1]);
 			A_GiveInventory("HDBackpack");
 			hdbackpack(findinventory("HDBackpack")).initializeamount(loadlist[1]);
@@ -538,11 +552,11 @@ class LoadoutItemList:CustomInventory{
 				string nnm="";
 				if(reff is "HDPickup"){
 					let gdb=getdefaultbytype((class<hdpickup>)(reff));
-					nnm=gdb.nicename;if(nnm=="")nnm=gdb.getclassname();
+					nnm=gdb.gettag();if(nnm=="")nnm=gdb.getclassname();
 					ref=gdb.refid;
 				}else if(reff is "HDWeapon"){
 					let gdb=getdefaultbytype((class<hdweapon>)(reff));
-					nnm=gdb.nicename;if(nnm=="")nnm=gdb.getclassname();
+					nnm=gdb.gettag();if(nnm=="")nnm=gdb.getclassname();
 					ref=gdb.refid;
 				}
 				if(ref!=""){
@@ -680,10 +694,17 @@ class InsurgentLoadout:Inventory{
 			}
 			//give some random ammo for the new weapon
 			if(ammoforwep){
-				let afwinv=hdpickup(owner.giveinventorytype(ammoforwep));
-				afwinv.amount=random(1,afwinv.effectivemaxamount()>>3);
-				let afwmag=hdmagammo(afwinv);
-				if(afwmag)afwmag.syncamount();
+				let thisinv=hdpickup(owner.giveinventorytype(ammoforwep));
+
+				let thismag=hdmagammo(thisinv);
+				if(thismag)thismag.syncamount();
+
+				int thismax=max(1,HDPickup.MaxGive(owner,thisinv.getclass(),
+					thismag?thismag.getbulk():thisinv.bulk
+				));
+
+				thisinv.amount=random(1,max(1,thismax>>2));
+				if(thismag)thismag.syncamount();
 			}
 		}
 		//give random other gear
@@ -709,17 +730,29 @@ class InsurgentLoadout:Inventory{
 		for(int i=0;i<imax;i++){
 			let thisclass=supplies[random(0,smax)];
 			let thisitem=HDPickup(owner.GiveInventoryType(thisclass));
+			int thismax=1;
 			if(thisitem){
 				if(hd_debug)A_Log("insurgent input: "..thisclass);
-				thisitem.amount=random(1,max(1,thisitem.effectivemaxamount()>>3));
-				if(hdmagammo(thisitem))hdmagammo(thisitem).syncamount();
+				let thismag=hdmagammo(thisitem);
+				if(thismag)thismag.syncamount();
+
+				thismax=max(1,HDPickup.MaxGive(owner,thisitem.getclass(),
+					thismag?thismag.getbulk():thisitem.bulk
+				));
+
+				thisitem.amount=random(1,max(1,thismax>>2));
+				if(thismag)thismag.syncamount();
 				if(hd_debug)A_Log(thisitem.getclassname().."  "..thisitem.amount);
 			}else{
 				let thiswitem=HDWeapon(owner.GiveInventoryType(thisclass));
 				if(thiswitem){
 					if(hd_debug)A_Log("insurgent input: "..thisclass);
-					thiswitem.amount=random(1,max(1,thiswitem.maxamount>>3));
-					if(hdmagammo(thiswitem))hdmagammo(thiswitem).syncamount();
+
+					let wb=thiswitem.weaponbulk();
+					if(wb)thismax=int(max(1,HDCONST_MAXPOCKETSPACE/wb));
+					else thismax=thiswitem.maxamount>>3;
+
+					thiswitem.amount=random(1,max(1,thismax>>2));
 					if(hd_debug)A_Log(thiswitem.getclassname().."  "..thiswitem.amount);
 				}
 			}
@@ -730,7 +763,10 @@ class InsurgentLoadout:Inventory{
 			armourstored.syncamount();
 			bool nomega=armourstored.amount>2;
 			for(int i=0;i<armourstored.amount;i++){
-				if(!nomega&&!random(0,12)){
+				if(
+					!nomega
+					&&!random(0,12)
+				){
 					armourstored.mags[i]=random(1001,1000+HDCONST_BATTLEARMOUR);
 				}else{
 					armourstored.mags[i]=random(1,HDCONST_GARRISONARMOUR);
@@ -740,7 +776,9 @@ class InsurgentLoadout:Inventory{
 		let armourworn=HDArmourWorn(owner.findinventory("HDArmourWorn"));
 		if(armourworn){
 			armourworn.mega=!random(0,12);
-			armourworn.durability=random(1,armourworn.mega?HDCONST_BATTLEARMOUR:HDCONST_GARRISONARMOUR);
+			armourworn.durability=random(1,
+				armourworn.mega?HDCONST_BATTLEARMOUR:HDCONST_GARRISONARMOUR
+			);
 		}
 
 		let bp=hdbackpack(owner.findinventory("HDBackpack"));
@@ -749,5 +787,7 @@ class InsurgentLoadout:Inventory{
 		destroy();
 	}
 }
+
+
 
 

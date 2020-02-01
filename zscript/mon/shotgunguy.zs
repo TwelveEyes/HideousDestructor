@@ -29,7 +29,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		painsound "shotguy/pain";
 		deathsound "shotguy/death";
 		activesound "shotguy/active";
-		tag "$fn_shotgun";
+		tag "jackboot";
 
 		speed 10;
 		decal "BulletScratch";
@@ -43,30 +43,14 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		obituary "%o was shot up by the Tyrant's jack-booted thugs.";
 		hitobituary "%o was beaten up by the Tyrant's jack-booted thugs.";
 	}
-	override string getobituary(actor victim,actor inflictor,name mod,bool playerattack){
-		bool sausage=true;
-		for(int i=0;i<MAXPLAYERS;i++){
-			if(playeringame[i]&&(players[i].getgender()!=0)){
-				sausage=false;
-				break;
-			}
-		}
-		if(
-			sausage
-			&&!wep //"pumped"
-			&&inflictor is "HDBulletActor" //"brutally!" "full!" - not just bleeding!
-			&&!random(0,4) //novelty value
-		)return "%o was brutally pumped full of a shotgun sergeant's hot, manly lead.";
-		else if(inflictor==self) return hitobituary;
-		else return obituary;
-	}
 	bool jammed;
 	bool semi;
 	int gunloaded;
 	int gunspent;
 	int wep;
 	int turnamount;
-	double shotspread;
+	int choke; //record here because the gun should only drop once
+	double shotspread; //related to aim, NOT choke. Sorry about shitty names
 	override void beginplay(){
 		super.beginplay();
 		bhasdropped=0;
@@ -87,14 +71,19 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 			sprite=GetSpriteIndex("PLAYA1");
 			A_SetTranslation("HattedJackboot");
 			gunloaded=random(10,50);
+			givearmour(1.,0.06,-0.4);
 		}else{
 			sprite=GetSpriteIndex("SPOSA1");
 			A_SetTranslation("ShotgunGuy");
 			gunloaded=wep?random(1,2):random(3,8);
+			if(random(0,7))choke=(wep?(7+8*7):1);else{
+				choke=random(0,7);
+				//set second barrel
+				if(wep)choke+=8*random(0,7);
+			}
 		}
 		semi=randompick(0,0,1);
 		hdmobster.spawnmobster(self);
-		givearmour(0.12,0.12);
 	}
 	override void deathdrop(){
 		A_NoBlocking();
@@ -129,6 +118,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 				if(gunloaded>0)wp.weaponstatus[HUNTS_TUBE]=gunloaded;
 				wp.weaponstatus[SHOTS_SIDESADDLE]=random(0,12);
 				wp.weaponstatus[0]&=~HUNTF_CANFULLAUTO;
+				wp.weaponstatus[HUNTS_CHOKE]=choke;
 
 				gunloaded=8;
 			}
@@ -139,6 +129,8 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 				if(gunloaded>0)wp.weaponstatus[SLAYS_CHAMBER1]=2;
 				else if(gunspent>0)wp.weaponstatus[SLAYS_CHAMBER1]=1;
 				wp.weaponstatus[SHOTS_SIDESADDLE]=random(0,12);
+				wp.weaponstatus[SLAYS_CHOKE1]=(choke&(1|2|4));
+				wp.weaponstatus[SLAYS_CHOKE2]=(choke>>3);
 
 				gunloaded=2;
 			}
@@ -157,8 +149,9 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 	}
 	states{
 	spawn:
-		SPOS A 0 nodelay A_JumpIf(wep>=0,2);
+		SPOS A 0 nodelay A_JumpIf(wep>=0,"spawn2");
 		PLAY A 0;
+	spawn2:
 		#### EEEEEE 1{
 			A_Look();
 			A_Recoil(frandom(-0.1,0.1));
@@ -180,8 +173,8 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 			A_Recoil(frandom(-0.4,0.4));
 			A_SetTics(random(30,80));
 		}
-		#### A 0 A_PlaySound("grunt/active",CHAN_VOICE);
-		goto spawn;
+		#### A 0 A_StartSound(activesound,CHAN_VOICE);
+		---- A 0 setstatelabel("spawn2");
 	spawnstill:
 		#### C 0{
 			A_Look();
@@ -190,16 +183,16 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		#### CD 5{angle+=random(-4,4);}
 		#### A 0{
 			A_Look();
-			if(!random(0,15))A_PlaySound("grunt/active",CHAN_VOICE);
+			if(!random(0,15))A_StartSound(activesound,CHAN_VOICE);
 		}
 		#### AB 5{angle+=random(-4,4);}
 		#### B 1 A_SetTics(random(10,40));
-		goto spawn;
+		---- A 0 setstatelabel("spawn2");
 	spawnwander:
 		#### CD 5{hdmobai.wander(self,false);}
-		#### A 0{if(!random(0,15))A_PlaySound("grunt/active",CHAN_VOICE);}
+		#### A 0{if(!random(0,15))A_StartSound(activesound,CHAN_VOICE);}
 		#### AB 5{hdmobai.wander(self,false);}
-		#### A 0 A_Jump(64,"spawn");
+		#### A 0 A_Jump(64,"spawn2");
 		loop;
 
 	see:
@@ -227,7 +220,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		#### DD 3{hdmobai.chase(self);}
 		#### A 0 A_Jump(200,"Roam");
 		#### A 0{
-			A_PlaySound(seesound,CHAN_VOICE);
+			A_StartSound(seesound,CHAN_VOICE);
 			A_AlertMonsters();
 		}
 		#### A 0 A_JumpIfTargetInLOS("see");
@@ -238,7 +231,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		#### A 0 A_FaceTarget(15,0);
 		#### E 2 A_JumpIfTargetInLOS("missile2",40);
 		#### AABBCCDD 2{hdmobai.chase(self);}
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	missile:
 		#### A 0 A_JumpIfTargetInLOS(3,120);
@@ -266,8 +259,8 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		}//fallthrough to turntoaim
 	turntoaim:
 		#### E 2 A_FaceTarget(turnamount,turnamount);
-		#### A 0 A_JumpIfTargetInLOS(1);
-		goto see;
+		#### A 0 A_JumpIfTargetInLOS(2);
+		---- A 0 setstatelabel("see");
 		#### A 0 A_JumpIfTargetInLOS(1,10);
 		loop;
 		#### A 0 A_FaceTarget(turnamount,turnamount);
@@ -306,7 +299,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 	shootzm662:
 		#### F 1 bright light("SHOT"){
 			if(!random(0,999)){
-				A_PlaySound("weapons/rifleclick",CHAN_WEAPON);
+				A_StartSound("weapons/rifleclick",8);
 				gunloaded=-gunloaded;
 				setstatelabel("ohforfuckssake");
 				return;
@@ -315,14 +308,14 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 			angle+=frandom(-0.5,0.5);
 			pitch+=frandom(-0.5,0.5);
 
-			A_PlaySound("weapons/rifle",CHAN_WEAPON);
+			A_StartSound("weapons/rifle",CHAN_WEAPON);
 
 			gunspent++;
 			gunloaded--;
 			HDBulletActor.FireBullet(self,"HDB_426");
 			if(random(0,2000)<gunspent+2){
 				jammed=true;
-				A_PlaySound("weapons/rifleclick",5);
+				A_StartSound("weapons/rifleclick",8);
 				setstatelabel("jammed");
 			}
 		}
@@ -341,20 +334,20 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 				return;
 			}
 
-			A_PlaySound("weapons/slayersingle",CHAN_WEAPON);
+			A_StartSound("weapons/slayersingle",CHAN_WEAPON);
 			if(gunloaded>1&&!random(0,5)){
 				//both barrels
-				A_PlaySound("weapons/slayersingle",5);
+				A_StartSound("weapons/slayersingle",CHAN_WEAPON,CHANF_OVERLAP);
 				gunspent=2;
 				gunloaded=0;
-				Slayer.Fire(self,0);
-				Slayer.Fire(self,1);
+				Slayer.Fire(self,0,(choke&(1|2|4)));
+				Slayer.Fire(self,1,(choke>>3));
 			}else{
 				//single barrel
 				gunspent++;
 				gunloaded--;
-				if(gunspent)Slayer.Fire(self,1);
-				else Slayer.Fire(self,0);
+				if(gunspent)Slayer.Fire(self,1,(choke>>3));
+				else Slayer.Fire(self,0,(choke&(1|2|4)));
 			}
 		}
 		#### E 1 A_SetTics(random(2,4));
@@ -372,11 +365,13 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 				return;
 			}
 
-			if(Hunter.Fire(self)<=0.905)semi=false;
+			if(Hunter.Fire(self,choke)<=Hunter.HUNTER_MINSHOTPOWER)semi=false;
+			gunspent=1;
 		}
 		#### E 3{
 			if(semi){
 				A_SetTics(0);
+				if(gunloaded>0)gunloaded--;
 				gunspent=0;
 				A_SpawnItemEx("HDSpentShell",
 					cos(pitch)*8,0,height-7-sin(pitch)*8,
@@ -399,8 +394,9 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		#### E 8{
 			if(gunspent){
 				A_SetTics(random(3,10));
-				A_PlaySound("weapons/huntrack",5);
+				A_StartSound("weapons/huntrack",8);
 				gunspent=0;
+				if(gunloaded>0)gunloaded--;
 				A_SpawnItemEx("HDSpentShell",
 					cos(pitch)*8,0,height-7-sin(pitch)*8,
 					vel.x+cos(pitch)*cos(angle-random(86,90))*6,
@@ -419,8 +415,8 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 	jammed:
 		#### E 8;
 		#### E 0 A_Jump(128,"see");
-		#### E 4 A_PlaySound(random(0,2)?seesound:painsound,CHAN_VOICE);
-		goto see;
+		#### E 4 A_StartSound(random(0,2)?seesound:painsound,CHAN_VOICE);
+		---- A 0 setstatelabel("see");
 
 	ohforfuckssake:
 		#### E 6;
@@ -435,13 +431,13 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 	reloadzm66:
 		#### A 0{bfrightened=true;}
 		#### AA 1{hdmobai.chase(self,"melee",null);}
-		#### A 0 A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+		#### A 0 A_StartSound("weapons/rifleclick2",8);
 		#### BCD 2{hdmobai.chase(self,"melee",null);}
 		#### A 2{
 			hdmobai.wander(self,true);
 			if(gunspent==999)return;
 
-			A_PlaySound("weapons/rifleload");
+			A_StartSound("weapons/rifleload",8);
 			if(!gunloaded)A_SpawnProjectile("HD4mmMagEmpty",38,0,random(90,120));
 			else{
 				HDMagAmmo.SpawnMag(self,"HD4mMag",gunloaded);
@@ -449,11 +445,11 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 			}
 		}
 		#### BCD 2{hdmobai.chase(self,"melee",null);}
-		#### A 4 A_PlaySound("weapons/pocket");
+		#### A 4 A_StartSound("weapons/pocket",9);
 		#### BC 4{hdmobai.wander(self,true);}
-		#### E 6 A_PlaySound("weapons/rifleload");
+		#### E 6 A_StartSound("weapons/rifleload",8);
 		#### E 2{
-			A_PlaySound("weapons/rifleclick2");
+			A_StartSound("weapons/rifleclick2");
 			gunloaded=50;
 			gunspent=0;
 			bfrightened=false;
@@ -464,7 +460,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 
 	reloadssg:
 		#### E 2;
-		#### E 2 A_PlaySound("weapons/sshoto",6);
+		#### E 2 A_StartSound("weapons/sshoto",8);
 		#### E 0{
 			while(gunspent>0){
 				gunspent--;
@@ -480,47 +476,47 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 
 		#### EEDD 1{hdmobai.chase(self,"melee",null);}
 		#### DAAB 3{hdmobai.chase(self,"melee",null);}
-		#### B 1 A_PlaySound("weapons/sshotl",6);
+		#### B 1 A_StartSound("weapons/sshotl",8);
 		#### CCD 4;
 		#### E 6{
-			A_PlaySound("weapons/sshotc",6);
+			A_StartSound("weapons/sshotc",8);
 			gunloaded=2;
 		}
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	reloadsg:
 		#### A 0{bfrightened=true;}
 		#### AA 1{hdmobai.chase(self,"melee",null);}
-		#### A 0 A_PlaySound("weapons/huntopen",CHAN_WEAPON);
+		#### A 0 A_StartSound("weapons/huntopen",8);
 		#### BCDA 2{hdmobai.chase(self,"melee",null);}
 	reloadsg2:
 		#### BB 3{hdmobai.chase(self,null,null,flee:true);}
 		#### B 0{
 			gunloaded++;
-			A_PlaySound("weapons/huntreload",CHAN_WEAPON);
+			A_StartSound("weapons/huntreload",8);
 			if(gunloaded>=8)setstatelabel("reloadsgend");
 		}
 		#### CC 3{hdmobai.chase(self,null,null,flee:true);}
 		#### C 0{
 			gunloaded++;
-			A_PlaySound("weapons/huntreload",CHAN_WEAPON);
+			A_StartSound("weapons/huntreload",8);
 			if(gunloaded>=8)setstatelabel("reloadsgend");
 		}
 		#### DD 3{hdmobai.chase(self,null,null,flee:true);}
 		#### D 0{
 			gunloaded++;
-			A_PlaySound("weapons/huntreload",CHAN_WEAPON);
+			A_StartSound("weapons/huntreload",8);
 			if(gunloaded>=8)setstatelabel("reloadsgend");
 		}
-		#### A 0 A_PlaySound("weapons/pocket",CHAN_BODY);
+		#### A 0 A_StartSound("weapons/pocket",9);
 		#### AABBCCDDAA 2{hdmobai.chase(self,null,null,flee:true);}
 		loop;
 	reloadsgend:
 		#### A 0{bfrightened=false;}
 		#### BBCCDD 2{hdmobai.chase(self,null,null);}
-		#### A 0 A_PlaySound("weapons/huntopen",CHAN_WEAPON);
+		#### A 0 A_StartSound("weapons/huntopen",8);
 		#### EEE 1 A_Chase("melee","missile",CHF_DONTMOVE);
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	melee:
 		#### C 6 A_FaceTarget();
@@ -533,14 +529,14 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 				if(!random(0,5))A_SpawnItemEx("HDSmokeChunk",12,0,height-12,4,frandom(-2,2),frandom(2,4));
 				A_SpawnItemEx("BulletPuffBig",12,0,42,1,0,1);
 				jammed=false;
-				A_PlaySound("weapons/rifleclick",5);
+				A_StartSound("weapons/rifleclick",8);
 			}
 		}
 		#### E 3 A_JumpIfCloser(64,2);
 		#### E 3 A_FaceTarget();
 		goto missile;
 		#### A 3;
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		#### G 3 A_Jump(12,1);
 		#### G 3{
@@ -553,7 +549,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		}
 		#### ABCD 2{hdmobai.chase(self);}
 		#### G 0{bfrightened=false;}
-		goto see;
+		---- A 0 setstatelabel("see");
 
 	death:
 		#### H 5;
@@ -608,7 +604,7 @@ class HideousShotgunGuy:HDMobMan replaces ShotgunGuy{
 		#### L 4 spawn("MegaBloodSplatter",pos+(0,0,34),ALLOW_REPLACE);
 		#### LK 6;
 		#### JIH 4;
-		goto see;
+		---- A 0 setstatelabel("see");
 	ungib:
 		#### U 12;
 		#### T 8;

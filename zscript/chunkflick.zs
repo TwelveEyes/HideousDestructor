@@ -37,7 +37,8 @@ class FlickChunk:FastProjectile{
 			A_Scream();
 		}
 		TNT1 A 0{
-			if(tracer&&tracer.health>0&&(tracer.player||!random(0,3)))tracer.A_Pain();
+			if(tracer&&tracer.health>0&&(tracer.player||!random(0,3)))
+				tracer.A_StartSound(tracer.painsound,CHAN_VOICE);
 		}
 		TNT1 A random(0,32);
 		TNT1 A 0{if(!random(0,tracer?2:10))A_AlertMonsters(32);}
@@ -73,7 +74,7 @@ extend class HDFist{
 			p.deathsound="weapons/chunksplat";
 			p.A_SetTranslation(isrobot?"allred":"booger");
 		}else A_TakeInventory("WallChunkAmmo",1);
-		A_PlaySound("weapons/chunkflick",CHAN_WEAPON,0.3);
+		A_StartSound("weapons/chunkflick",CHAN_WEAPON,volume:0.3);
 	}
 	action void A_ChunkPick(){
 		if(countinv("WallChunkAmmo")){
@@ -81,7 +82,7 @@ extend class HDFist{
 			return;
 		}
 		A_SetTics(30);
-		A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		A_StartSound("weapons/pocket",9);
 		if(player.getgender()==3)
 		A_Log("For want of random wall-punched debris or a natural mucus system, you scrape some tainted lubricant off of some of your unseen parts and wad it into a filthy, flickable lump.",true);
 		else A_Log("For want of random wall-punched debris in your pockets, you pick your nose to flick it at the offending thing.",true);

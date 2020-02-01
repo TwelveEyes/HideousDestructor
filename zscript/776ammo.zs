@@ -1,7 +1,7 @@
 // ------------------------------------------------------------
 // 7.76mm Ammo
 // ------------------------------------------------------------
-class SevenMilAmmo:HDAmmo{
+class SevenMilAmmo:HDRoundAmmo{
 	default{
 		+forcexybillboard +cannotpush
 		+inventory.ignoreskill
@@ -9,9 +9,14 @@ class SevenMilAmmo:HDAmmo{
 		xscale 0.7;yscale 0.8;
 		inventory.pickupmessage "Picked up a 7.76mm round.";
 		hdpickup.refid HDLD_SEVNMIL;
-		hdpickup.nicename "7.76mm Round";
+		tag "7.76mm round";
 		hdpickup.bulk ENC_776;
-		inventory.icon "RBRSA3A7";
+		inventory.icon "TEN7A0";
+	}
+	override void SplitPickup(){
+		SplitPickupBoxableRound(10,50,"HD7mBoxPickup","TEN7A0","RBRSA0");
+		if(amount==10)scale.y=(0.8*0.83);
+		else scale.y=0.8;
 	}
 	override void GetItemsThatUseThis(){
 		itemsthatusethis.push("LiberatorRifle");
@@ -21,6 +26,7 @@ class SevenMilAmmo:HDAmmo{
 	states{
 	spawn:
 		RBRS A -1;
+		TEN7 A -1;
 	}
 }
 class HD7mMag:HDMagAmmo{
@@ -34,7 +40,7 @@ class HD7mMag:HDMagAmmo{
 		hdmagammo.roundbulk ENC_776_LOADED;
 		hdmagammo.magbulk ENC_776MAG_EMPTY;
 		hdpickup.refid HDLD_SEVNMAG;
-		hdpickup.nicename "7.76mm Magazine";
+		tag "7.76mm magazine";
 		inventory.pickupmessage "Picked up a 7.76mm magazine.";
 		scale 0.8;
 	}
@@ -67,9 +73,10 @@ class HD7mClip:HDMagAmmo{
 		hdmagammo.roundbulk ENC_776;
 		hdmagammo.magbulk ENC_776CLIP_EMPTY;
 		hdpickup.refid HDLD_SEVCLIP;
-		hdpickup.nicename "7.76mm Clip";
+		tag "7.76mm clip";
 		inventory.pickupmessage "Picked up a 7.76mm clip.";
 		scale 0.6;
+		inventory.maxamount 1000;
 	}
 	override string,string,name,double getmagsprite(int thismagamt){
 		string magsprite;
@@ -108,7 +115,7 @@ class SevenMilBrass:HDAmmo{
 		+hdpickup.multipickup
 		+hdpickup.cheatnogive
 		height 16;radius 8;
-		hdpickup.nicename "7.76mm Casing";
+		tag "7.76mm casing";
 		hdpickup.refid HDLD_SEVNBRA;
 		hdpickup.bulk ENC_776B;
 		xscale 0.7;yscale 0.8;
@@ -135,7 +142,7 @@ class LiberatorEmptyMag:IdleDummy{
 class HDSpent7mm:HDUPK{
 	override void postbeginplay(){
 		super.postbeginplay();
-		A_ChangeVelocity(random(-3,3),frandom(-0.4,0.4),0,CVF_RELATIVE);
+		A_ChangeVelocity(frandom(-3,3),frandom(-0.4,0.4),0,CVF_RELATIVE);
 	}
 	default{
 		+missile

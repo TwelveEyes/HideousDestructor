@@ -18,6 +18,7 @@ extend class HDHandlers{
 
 		else if(alive&&e.name~=="hd_lean")Lean(ppp,e.args[0]);
 		else if(alive&&e.name~=="hd_taunt")Taunt(ppp);
+		else if(alive&&e.name~=="hd_showskins")ShowSkins(ppp);
 		else if(alive&&e.name~=="hd_findrange")FindRange(ppp);
 		else if(alive&&e.name~=="hd_purge")PurgeUselessAmmo(ppp);
 		else if(alive&&e.name~=="hd_dropone")DropOne(ppp,ppp.player,e.args[0]);
@@ -36,6 +37,8 @@ extend class HDHandlers{
 
 		else if(e.name~=="doorbuster")SetDB(ppp,e.args[0],e.args[1]);
 		else if(e.name~=="doorbustertag")SetDB(ppp,-abs(e.args[0]));
+
+		else if(e.name~=="clearweaponspecial")ClearWeaponSpecial(ppp);
 
 		else if(
 			e.name~=="teamspawn"

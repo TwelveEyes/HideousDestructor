@@ -78,7 +78,7 @@ class manjuice:hdfireball{
 				false
 			);
 			A_SpawnChunks("HDSmokeChunk",random(2,4),6,20);
-			A_PlaySound("misc/fwoosh",CHAN_WEAPON);
+			A_StartSound("misc/fwoosh",CHAN_WEAPON);
 			scale=(0.9*randompick(-1,1),0.9);
 		}
 		MISL BBBB 1{
@@ -111,13 +111,14 @@ class CombatSlug:HDMobBase replaces Fatso{
 		painsound "fatso/pain";
 		deathsound "fatso/death";
 		activesound "fatso/active";
-		tag "$fn_mancu";
+		tag "$cc_mancu";
 
 		+dontharmspecies
 		deathheight 20;
 		radius 28;
 		height 60;
 		damagefactor "Thermal", 0.7;
+		hdmobbase.shields 500;
 		obituary "%o was smoked by a CombatSlug.";
 		painchance 80;
 	}
@@ -143,10 +144,10 @@ class CombatSlug:HDMobBase replaces Fatso{
 		}
 		FATT E 0 A_JumpIfTargetInLOS("raiseshoot",30);
 		FATT E 0 A_JumpIfTargetInLOS("missile");
-		goto see;
+		---- A 0 setstatelabel("see");
 	raiseshoot:
 		FATT G 4{
-			A_PlaySound("fatso/raiseguns",CHAN_VOICE);
+			A_StartSound("fatso/raiseguns",CHAN_VOICE);
 			A_FaceTarget(40,40);
 		}
 		FATT G 4 A_FaceTarget(20,20);
@@ -186,7 +187,7 @@ class CombatSlug:HDMobBase replaces Fatso{
 			angle+=leadoffset.x;pitch+=leadoffset.y;
 		}
 		FATT H 10 bright{
-			A_PlaySound("weapons/bronto",CHAN_WEAPON);
+			A_StartSound("weapons/bronto",CHAN_WEAPON);
 
 			hdmobai.DropAdjust(self,"ManJuice");
 
@@ -227,11 +228,11 @@ class CombatSlug:HDMobBase replaces Fatso{
 				setstatelabel("shoot");
 			}else accuracy=0;
 		}
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		FATT J 3;
 		FATT J 3 A_Pain;
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
 		FATT K 6 A_SpawnItemEx("HDExplosion",0,0,36,flags:SXF_SETTARGET);
 		FATT L 6 A_Scream();
@@ -254,7 +255,7 @@ class CombatSlug:HDMobBase replaces Fatso{
 		FATT ST 14 damagemobj(self,self,1,"maxhpdrain",DMG_NO_PAIN|DMG_FORCED|DMG_NO_FACTOR);
 		FATT TSR 10;
 		FATT QPONMLK 5;
-		goto see;
+		---- A 0 setstatelabel("see");
 	death.maxhpdrain:
 		FATT STST 14 A_SpawnItemEx("MegaBloodSplatter",
 			frandom(-1,1),frandom(-1,1),frandom(10,16),
@@ -264,3 +265,4 @@ class CombatSlug:HDMobBase replaces Fatso{
 		stop;
 	}
 }
+

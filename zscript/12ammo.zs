@@ -1,13 +1,13 @@
 // ------------------------------------------------------------
 // Shotgun Shells
 // ------------------------------------------------------------
-class HDShellAmmo:HDAmmo{
+class HDShellAmmo:HDRoundAmmo{
 	default{
 		+inventory.ignoreskill
 		+hdpickup.multipickup
 		inventory.pickupmessage "Picked up a shotgun shell.";
 		scale 0.3;
-		hdpickup.nicename "Shotgun Shells";
+		tag "shotgun shells";
 		hdpickup.refid HDLD_SHOTSHL;
 		hdpickup.bulk ENC_SHELL;
 		inventory.icon "SHELA0";
@@ -17,22 +17,11 @@ class HDShellAmmo:HDAmmo{
 		itemsthatusethis.push("Slayer");
 	}
 	override void SplitPickup(){
-		while(amount>4){
-			let sss=hdpickup(spawn("HDShellAmmo",pos+(frandom(-1,1),frandom(-1,1),frandom(-1,1))));
-			sss.amount=4;
-			sss.vel=vel+(frandom(-0.6,0.6),frandom(-0.6,0.6),frandom(-0.6,0.6));
-			sss.angle=angle;
-			amount-=4;
-		}
-		if(amount<1){
-			destroy();
-			return;
-		}
-		if(amount==4){
-			sprite=getspriteindex("SHELA0");
-			return;
-		}
-		super.splitpickup();
+		SplitPickupBoxableRound(4,20,"ShellBoxPickup","SHELA0","SHL1A0");
+	}
+	override string pickupmessage(){
+		if(amount>1)return "Picked up some shotgun shells.";
+		return super.pickupmessage();
 	}
 	states{
 	spawn:
@@ -40,6 +29,7 @@ class HDShellAmmo:HDAmmo{
 		stop;
 	death:
 		ESHL A -1{
+			if(Wads.CheckNumForName("id",0)==-1)A_SetTranslation("FreeShell");
 			frame=randompick(0,0,0,0,4,4,4,4,2,2,5);
 		}stop;
 	}
@@ -52,6 +42,7 @@ class HDSpentShell:Actor{
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
+		if(Wads.CheckNumForName("id",0)==-1)A_SetTranslation("FreeShell");
 		if(vel==(0,0,0))A_ChangeVelocity(0.0001,0,-0.1,CVF_RELATIVE);
 	}
 	states{
@@ -119,11 +110,13 @@ class ShellBoxPickup:HDUPK{
 		hdupk.pickupsound "weapons/pocket";
 		hdupk.pickupmessage "Picked up some shotgun shells.";
 		hdupk.pickuptype "HDShellAmmo";
-		translation "160:167=80:95";
+		translation "160:167=80:105";
 	}
 	states{
 	spawn:
-		SBOX A -1;
+		SBOX A -1 nodelay{
+			if(Wads.CheckNumForName("id",0)==-1)scale=(0.25,0.25);
+		}
 	}
 }
 class ShellPickup:IdleDummy{

@@ -58,7 +58,7 @@ extend class HDActor{
 }
 //fire actor
 class HDFire:IdleDummy{
-	int halfrad;int minz;int maxz;int lastheight;
+	double halfrad,minz,maxz,lastheight;
 	default{
 		+bloodlessimpact
 		obituary "%o was burned by %k.";
@@ -69,7 +69,7 @@ class HDFire:IdleDummy{
 			stamina=target.ApplyDamageFactor("Thermal",stamina);
 			if(target is "PlayerPawn" || target is "HDPlayerCorpse"){
 				changetid(-7677);
-				if(!skill||hd_lowdamage)stamina=max(1,stamina*0.3);
+				stamina=int(max(1,(!skill)?(hd_damagefactor*0.3*stamina):(hd_damagefactor*stamina)));
 			}
 			if(!target.bshootable && stamina>20)stamina=20;
 		}
@@ -107,7 +107,7 @@ class HDFire:IdleDummy{
 				return;
 			}
 			setorigin(target.pos,false);
-			A_SetTics(clamp(random(3,30-stamina*0.1),2,12));
+			A_SetTics(clamp(random(3,int(30-stamina*0.1)),2,12));
 			if(stamina<=0 || target.countinv("HDFireEnder")){
 				A_TakeFromTarget("HDFireEnder");
 				spawn("HDSmoke",pos,ALLOW_REPLACE);
@@ -131,13 +131,13 @@ class HDFire:IdleDummy{
 
 			//position and spawn flame
 			setorigin(pos+(
-					random(-halfrad,halfrad),
-					random(-halfrad,halfrad),
-					random(minz,maxz)
+					frandom(-halfrad,halfrad),
+					frandom(-halfrad,halfrad),
+					frandom(minz,maxz)
 			),false);
 			actor sp=spawn("HDFlameRed",pos,ALLOW_REPLACE);
 			sp.vel+=target.vel+(frandom(-2,2),frandom(-2,2),frandom(-1,3));
-			A_PlaySound("misc/firecrkl",CHAN_AUTO,0.4,0,6);
+			A_StartSound("misc/firecrkl",CHAN_AUTO,volume:0.4,attenuation:6.);
 
 			//check if player
 			let tgt=HDPlayerPawn(target);
@@ -322,10 +322,10 @@ class Heat:Inventory{
 					heatlight.args[0]=200;
 					heatlight.args[1]=150;
 					heatlight.args[2]=90;
-					heatlight.args[3]=min(realamount*0.1,256);
+					heatlight.args[3]=int(min(realamount*0.1,256));
 				}
 				aaa.target=owner;
-				aaa.A_PlaySound("misc/firecrkl",CHAN_BODY,clamp(realamount*0.001,0,0.2));
+				aaa.A_StartSound("misc/firecrkl",CHAN_BODY,volume:clamp(realamount*0.001,0,0.2));
 			}
 		}
 
@@ -341,7 +341,7 @@ class Heat:Inventory{
 				&&(frandom(0.,1.)<dmgamt)
 			)dmgamt=1.;
 			setxyz(owner.pos);
-			owner.damagemobj(self,self,dmgamt,"thermal",DMG_NO_ARMOR|DMG_THRUSTLESS);
+			owner.damagemobj(self,self,int(dmgamt),"thermal",DMG_NO_ARMOR|DMG_THRUSTLESS);
 			if(!owner){destroy();return;}
 		}
 
@@ -388,7 +388,7 @@ class Heat:Inventory{
 
 		double aang=absangle(angle,owner.angle);
 		if(aang>4.)reduce*=clamp(aang*0.4,1.,4.);
-		if((!skill||hd_lowdamage)&&owner.player)reduce*=3;
+		if((!skill)&&owner.player)reduce*=2;
 		realamount-=reduce;
 		angle=owner.angle;
 
@@ -416,7 +416,7 @@ class HDFireLight:PointLight{
 			args[2]=0;
 			args[3]=0;
 		}
-		else args[3]*=frandom(0.9,0.99);
+		else args[3]=int(frandom(0.9,0.99)*args[3]);
 	}
 }
 

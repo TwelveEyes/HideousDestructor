@@ -104,13 +104,13 @@ extend class HDPlayerPawn{
 				vel.z=3;
 			}
 			else if(
-				!stunned
-				&&(
+				(
 					fatigue<HDCONST_SPRINTFATIGUE
 					||zerk
 					||cansprint
 				)
 				&&!MantleCheck()
+				&&!stunned
 				&&!(oldinput & BT_JUMP)
 			){
 				double jumppower=jumppower();
@@ -177,7 +177,7 @@ extend class HDPlayerPawn{
 
 
 	//all use button stuff other than normal using should go here
-	virtual void UseButtonCheck(int input,int fm,int sm){
+	virtual void UseButtonCheck(int input){
 		if(corpsekicktimer>0)corpsekicktimer--;
 		if(!(input&BT_USE)){
 			bpickup=false;
@@ -195,7 +195,7 @@ extend class HDPlayerPawn{
 			&&linetrace(angle,42,pitch,flags:TRF_THRUACTORS,offsetz:height*0.4)
 		){
 			hasgrabbed=true;
-			corpsekicktimer=20+unstablewoundcount*0.5;
+			corpsekicktimer=20+(unstablewoundcount>>1);
 			stunned+=25;
 			bool zk=zerk>0;
 			double kickback=zk?1:4;
@@ -210,7 +210,7 @@ extend class HDPlayerPawn{
 			if(!random(0,db?3:6))woundcount++;
 			A_MuzzleClimb((0,-1),(0,-1),(0,-1),(0,-1));
 			A_ChangeVelocity(-kickback,0,0,CVF_RELATIVE);
-			A_PlaySound("*fist",CHAN_BODY);
+			A_StartSound("*fist",CHAN_BODY,CHANF_OVERLAP);
 			LineAttack(angle,48,pitch,0,"none",
 				zk?"BulletPuffBig":"BulletPuffMedium",
 				flags:LAF_OVERRIDEZ,
@@ -234,6 +234,7 @@ extend class HDPlayerPawn{
 			vector2 kv=AngleToVector(angle,5);
 			for(int i=7;i;i--){
 				if(!k.TryMove(k.pos.xy+kv,true) && k.blockingmobj){
+					hasgrabbed=true;
 					let kbmo=k.blockingmobj;
 					double kbmolowerby=pos.z-kbmo.pos.z;
 					if(
@@ -247,9 +248,9 @@ extend class HDPlayerPawn{
 					){
 						if(!(oldinput&BT_USE)){
 							int forc=80;if(zerk>0)forc*=3;
-							corpsekicktimer=20+unstablewoundcount*0.5;
+							corpsekicktimer=20+(unstablewoundcount>>1);
 							kbmo.vel+=(kv.x,kv.y,4)*forc/kbmo.mass;
-							kbmo.A_PlaySound("misc/punch");
+							kbmo.A_StartSound("misc/punch",CHAN_BODY,CHANF_OVERLAP);
 							kbmo.A_DropInventory("HDArmourWorn");
 							kicked=true;
 						}
@@ -260,14 +261,14 @@ extend class HDPlayerPawn{
 							&&!isteammate(kbmo)
 						)
 					){
-						corpsekicktimer=17+unstablewoundcount*0.5;
+						corpsekicktimer=17+(unstablewoundcount>>1);
 						kicked=true;
 						HDFist.kick(self,kbmo,k);
 					}else{
 						double forc=0.4;if(zerk>0)forc=1.2;
-						corpsekicktimer=20+unstablewoundcount*0.6;
+						corpsekicktimer=20+unstablewoundcount*3/5;
 						vel-=(kv.x,kv.y,4)*forc;
-						kbmo.A_PlaySound("misc/punch");
+						kbmo.A_StartSound("misc/punch",CHAN_BODY,CHANF_OVERLAP);
 						kicked=true;
 					}
 					break;
@@ -297,13 +298,18 @@ extend class HDHandlers{
 		if(hd_debug)ppp.A_Log(string.format("(%.2f DU%s)",c,c==1?"":"s"),true);
 	}
 	void Taunt(hdplayerpawn ppp){
-		ppp.A_PlaySound("*taunt",CHAN_VOICE);
+		ppp.A_StartSound(ppp.tauntsound,CHAN_VOICE);
 		ppp.A_TakeInventory("powerfrightener");
 		ppp.A_SpawnItemEx("DelayedTaunter",12,0,ppp.height-6,
 			flags:SXF_NOCHECKPOSITION|SXF_SETTARGET
 		);
 		if(ppp.findinventory("HDBlurSphere"))
 			HDBlursphere(ppp.findinventory("HDBlurSphere")).intensity=-200;
+	}
+	void ClearWeaponSpecial(hdplayerpawn ppp){
+		if(!ppp.player)return;
+		let www=hdweapon(ppp.player.readyweapon);
+		if(www)www.special=0;
 	}
 }
 class DelayedTaunter:IdleDummy{

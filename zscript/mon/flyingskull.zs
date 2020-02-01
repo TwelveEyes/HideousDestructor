@@ -10,7 +10,7 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 		attacksound "skull/melee";
 		painsound "skull/pain";
 		deathsound "skull/death";
-		tag "$fn_lost";
+		tag "$cc_lost";
 
 		+noblood +pushable -floorclip +avoidmelee
 		+bright
@@ -52,7 +52,7 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 		hdmobai.chase(self);
 		vel.z+=frandom(-0.3,0.3);
 		if(!random(0,64)&&!A_JumpIfTargetInLOS("null")){
-			A_PlaySound("skull/melee",CHAN_VOICE);
+			A_StartSound("skull/melee",CHAN_VOICE);
 		}
 	}
 	void A_SkullStrafe(){
@@ -62,7 +62,7 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 	}
 	void A_SkullLaunch(){
 		latched=null;
-		A_PlaySound("skull/melee",CHAN_VOICE);
+		A_StartSound("skull/melee",CHAN_VOICE);
 		spawn("HDSmoke",pos,ALLOW_REPLACE);
 		A_FaceTarget(16,16);
 		A_ChangeVelocity(cos(pitch)*20,0,-sin(pitch)*20,CVF_RELATIVE);
@@ -110,8 +110,8 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 			if(bounce){
 				vel.xy=rotatevector(vel.xy,frandom(120,240));
 				vel.z*=frandom(0.4,0.9)*randompick(-1,1);
-				A_PlaySound("weapons/fragknock",CHAN_BODY);
-				setstatelabel("pain");
+				A_StartSound("weapons/fragknock",CHAN_BODY);
+				forcepain(self);
 			}
 		}
 	}
@@ -130,8 +130,8 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 			latched=null;
 			vel.xy=rotatevector(vel.xy,frandom(120,240));
 			vel.z*=frandom(0.4,0.9)*randompick(-1,1);
-			A_PlaySound("weapons/fragknock",CHAN_BODY);
-			setstatelabel("pain");
+			A_StartSound("weapons/fragknock",CHAN_BODY);
+			forcepain(self);
 			return;
 		}
 		//omnomnom
@@ -158,7 +158,7 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 		SKUL AB 6{hdmobai.wander(self);}
 		SKUL A 0 A_Jump(12,1);
 		loop;
-		SKUL A 0 A_PlaySound("skull/melee");
+		SKUL A 0 A_StartSound("skull/melee",CHAN_VOICE);
 		loop;
 	see:
 		SKUL AB 3 A_SkullChase();
@@ -166,7 +166,7 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 	strafe:
 		SKUL A 0 A_SkullStrafe();
 		SKUL ABAB 2 bright;
-		goto see;
+		---- A 0 setstatelabel("see");
 	missile:
 		SKUL A 0 A_Jump(64,"strafe");
 		SKUL A 0 A_Jump(200,2);
@@ -185,7 +185,7 @@ class FlyingSkull:HDMobBase replaces LostSoul{
 			spitter=null;
 		}
 		SKUL E 3 A_Pain();
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
 		SKUL E 2 bright{
 			A_SetTranslucent(1,1);
@@ -235,42 +235,20 @@ class SkullSpitter:HDMobBase replaces PainElemental{
 		painsound "pain/pain";
 		deathsound "pain/death";
 		activesound "pain/active";
-		tag "$fn_pain";
+		tag "$cc_pain";
 
 		+pushable
 		pushfactor 0.3;
 		obituary "%o braved the elements.";
 		hitobituary "%o thought it was elementary that certain monsters had no melee attack.";
-		damagefactor "SmallArms0", 0.8;
-		damagefactor "SmallArms1", 0.9;
+		hdmobbase.shields 1000;
 		speed 3;
-		bloodtype "ShieldNotBlood";
-	}
-	int shields;
-	enum SkullSpitterStats{
-		PE_SHIELDMAX=200,
-	}
-	override int damagemobj(
-		actor inflictor,actor source,int damage,
-		name mod,int flags,double angle
-	){
-		if(damage==TELEFRAG_DAMAGE)
-			return super.damagemobj(inflictor,source,TELEFRAG_DAMAGE,"Telefrag");
-
-		//shields
-		[shields,damage]=hdf.gothroughshields(shields,damage,inflictor,mod,flags);
-
-		if(damage<1)return 0;
-		return super.damagemobj(
-			inflictor,source,damage,mod,flags,angle
-		);
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
 		hdmobster.spawnmobster(self);
 		hdmobai.resize(self,0.9,1.1);
 		brewing=21;
-		shields=PE_SHIELDMAX;
 	}
 	int brewing;
 	states{
@@ -280,7 +258,6 @@ class SkullSpitter:HDMobBase replaces PainElemental{
 	see:
 		PAIN AAABBBCCC 8{
 			hdmobai.chase(self);
-			if(health>0&&shields<PE_SHIELDMAX)shields+=12;
 		}loop;
 	missile:
 		PAIN ABCB 3 A_FaceTarget(10,10);
@@ -288,7 +265,7 @@ class SkullSpitter:HDMobBase replaces PainElemental{
 		TNT1 A 0 A_ChangeVelocity(0.8,0,frandom(-0.4,0.4),CVF_RELATIVE);
 		TNT1 A 0 A_JumpIfTargetInLOS("missile");
 		TNT1 A 0 A_Jump(40,"missile2");
-		goto see;
+		---- A 0 setstatelabel("see");
 	missile2:
 		PAIN DE 4 A_FaceTarget(5,5);
 		PAIN F 6 A_FaceTarget(10,10);
@@ -310,20 +287,20 @@ class SkullSpitter:HDMobBase replaces PainElemental{
 				A_SpawnProjectile("ShieldImpBall");
 				shields=max(shields,shields+24);
 			}
-		}goto see;
+		}---- A 0 setstatelabel("see");
 	melee:
 		PAIN DE 4 A_FaceTarget(10,10);
 		PAIN F 6 A_FaceTarget(10,10);
 		PAIN C 12 A_CustomMeleeAttack(random(20,40));
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		PAIN G 6 A_ScaleVelocity(0.6);
 		PAIN G 6 A_Pain();
-		goto missile;
+		---- A 0 setstatelabel("missile");
 	death.telefrag:
 		TNT1 A 0 spawn("Telefog",pos,ALLOW_REPLACE);
 		TNT1 A 0 A_NoBlocking();
-		TNT1 AAAAAAAAAAAAA 0 A_SpawnItemEx("BFGVileShard",
+		TNT1 AAAAAAAAAAAAA 0 A_SpawnItemEx("BFGNecroShard",
 			frandom(-4,4),frandom(-4,4),frandom(6,24),
 			frandom(1,6),0,frandom(1,3),
 			frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS|SXF_SETMASTER
@@ -355,7 +332,7 @@ class SkullSpitter:HDMobBase replaces PainElemental{
 		stop;
 	raise:
 		PAIN MLKJIH 8;
-		goto checkraise;
+		---- A 0 setstatelabel("checkraise");
 	}
 }
 

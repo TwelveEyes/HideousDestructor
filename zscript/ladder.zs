@@ -23,10 +23,12 @@ class hdladdertop:hdactor{
 		//$Title "Ladder Top"
 		//$Sprite "LADDA0"
 
-		+missile //testing
 		+flatsprite
 		+nointeraction
-		height 1;radius 10;
+
+		height 4;radius 10;
+		maxstepheight 64;
+		maxdropoffheight 640;
 		mass int.MAX;
 	}
 	states{
@@ -45,10 +47,14 @@ class hdladdertop:hdactor{
 		for(int i=0;i<20;i++){
 
 			mvlast+=mv;
-			checkmove(mvlast,PCM_DROPOFF|PCM_NOACTORS,tm);
+			if(
+				!checkmove(mvlast,PCM_NOACTORS,tm)
+				&&!!master //don't break if placed by mapper
+			)break;
+			A_UnsetSolid();
 
 			//found a place for the ladder to hang down
-			int htdiff=clamp(floorz-tm.floorz,0,LADDER_MAX);
+			double htdiff=clamp(floorz-tm.floorz,0,LADDER_MAX);
 			if(
 				htdiff
 			){
@@ -82,7 +88,7 @@ class hdladdertop:hdactor{
 
 				//only complete if start or within throwable range, else abort
 				if(!master)return;
-				A_PlaySound("misc/ladder");
+				A_StartSound("misc/ladder");
 				if(pos.z-master.pos.z<108){
 					master.A_Log(string.format("You hang up a ladder.%s",master.getcvar("hd_helptext")?" Use the ladder to climb.":""),true);
 					master.A_TakeInventory("PortableLadder",1);
@@ -96,13 +102,13 @@ class hdladdertop:hdactor{
 			master.A_Log("Can't hang a ladder here.",true);
 		}else{
 			actor hdl=spawn("PortableLadder",pos,ALLOW_REPLACE);
-			hdl.A_PlaySound("misc/ladder");
+			hdl.A_StartSound("misc/ladder");
 		}
 		destroy();
 	}
 }
-const LADDER_MAX=800.;
 const LADDER_SECTIONLENGTH=12.;
+const LADDER_MAX=LADDER_SECTIONLENGTH*67.;
 const LADDER_SECTIONS=LADDER_MAX/LADDER_SECTIONLENGTH;
 
 
@@ -124,6 +130,23 @@ class hdladderbottom:hdactor{
 			disengageladder();
 			return false;
 		}
+
+		//check if user can reach
+		double dst=distance2d(user)*HDCONST_SQRTTWO;
+		vector2 check2d=user.vec2to(self);
+		for(int i=0;i<6;i++){ //12*6=72
+			if(
+				abs(pos.x-user.pos.x)<16
+				&&abs(pos.y-user.pos.y)<16
+			)break;
+			if(!checkmove(
+				pos.xy+check2d*i,
+				PCM_DROPOFF
+			)){
+				return false;
+			}
+		}
+
 		currentuser=user;
 		currentuser.vel.z+=1;
 		currentuserz=user.pos.z;
@@ -148,6 +171,8 @@ class hdladderbottom:hdactor{
 				target.pos.z+LADDER_MAX
 			)
 		);
+
+		A_SetSize(-1,min(LADDER_MAX,target.pos.z-pos.z)+32);
 
 		if(currentuser){
 			if(currentuser.health<1){disengageladder(false);return;}
@@ -180,7 +205,7 @@ class hdladderbottom:hdactor{
 						){
 							currentuser.A_Log("Ladder taken up.",true);
 							actor hdl=spawn("PortableLadder",target.pos,ALLOW_REPLACE);
-							hdl.A_PlaySound("misc/ladder");
+							hdl.A_StartSound("misc/ladder");
 							hdl.translation=translation;
 							target.destroy();
 							if(self)destroy();
@@ -268,7 +293,7 @@ class hdladderbottom:hdactor{
 							currentuser.A_Log("Ladder taken down.",true);
 
 							actor hdl=spawn("PortableLadder",target.pos,ALLOW_REPLACE);
-							hdl.A_PlaySound("misc/ladder");
+							hdl.A_StartSound("misc/ladder");
 							hdl.vel.xy=vl.xy*2;
 							hdl.translation=translation;
 
@@ -319,7 +344,7 @@ class PortableLadder:HDPickup{
 		height 20;radius 8;
 		hdpickup.bulk ENC_LADDER;
 		hdpickup.refid HDLD_LADDER;
-		hdpickup.nicename "Ladder";
+		tag "portable ladder";
 	}
 	states{
 	spawn:

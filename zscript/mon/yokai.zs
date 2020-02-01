@@ -13,6 +13,7 @@ class Yokai:HDMobBase{
 		+hdmobbase.noshootablecorpse
 		height 42;radius 10;
 		renderstyle "Add";
+		tag "yokai";
 		maxtargetrange 666;health 66;
 		bloodtype "IdleDummy";
 		obituary "%o watched a yokai.";
@@ -66,7 +67,7 @@ class Yokai:HDMobBase{
 				return;
 			}
 
-			A_PlaySound("putto/sight",CHAN_AUTO,1,0,0.9);
+			A_StartSound("putto/sight",CHAN_AUTO,0,1.,0.9);
 			A_SetScale(0.666);
 			GiveBody(4);
 			if(!target)return;
@@ -83,18 +84,18 @@ class Yokai:HDMobBase{
 		}
 	posthurt:
 		#### C 0 A_JumpIfCloser(random(600,666),1);
-		goto see;
+		---- A 0 setstatelabel("see");
 		#### C 0 A_MonsterRefire(0,"see");
 		#### C 0 A_JumpIfInTargetLOS("hurt",40);
 		#### C 0 A_SetScale(0.666);
 		#### CDA 1 bright;
 		#### C 0 A_JumpIfInTargetLOS("missile2",80);
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		---- A 1;
 		---- A 0{
 			bfrightened=true;
-			A_PlaySound("putto/sight");
+			A_StartSound("putto/sight");
 			A_SetTranslucent(1,1);
 			A_UnsetShootable();
 		}
@@ -111,7 +112,7 @@ class Yokai:HDMobBase{
 			A_SetShootable();
 		}
 		PINS DABCD 1{alpha+=0.18;}
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
 		#### DABCD 1{alpha-=0.18;}
 		stop;

@@ -46,21 +46,19 @@ extend class HDPlayerPawn{
 
 		if(inflictor&&inflictor.bpiercearmor)flags|=DMG_NO_ARMOR;
 		let armr=HDArmourWorn(findinventory("HDArmourWorn"));
-		if(armr){
-			if(armr.durability<1){
-				armr.durability=0;
-				if(!random(0,3)){
-					armr.destroy();
-				}
-			}else if(armr.durability<random(2,8)){
-				//it just goes through one of the gaping holes in your armour
-				armr=null;
-			}
+		//it just goes through one of the gaping holes in your armour
+		if(
+			armr
+			&&armr.durability<random(2,8)
+		){
+			armr=null;
 		}
 
-
 		//factor in cheats and skills
-		if(!(flags&DMG_FORCED)){
+		if(
+			!(flags&DMG_FORCED)
+			&&damage!=TELEFRAG_DAMAGE
+		){
 			if(
 				binvulnerable||!bshootable
 				||(player&&(
@@ -68,9 +66,14 @@ extend class HDPlayerPawn{
 				))
 			){
 				A_TakeInventory("Heat");
+				woundcount=0;
+				oldwoundcount=0;
+				unstablewoundcount=0;
+				burncount=0;
+				aggravateddamage=0;
 				return 0;
 			}
-			if(!skill||hd_lowdamage)damage=max(1,damage/3);
+			damage=int(damage*hd_damagefactor);
 		}
 
 		//credit and blame where it's due
@@ -107,15 +110,20 @@ extend class HDPlayerPawn{
 		if(mod=="fire"&&!inflictor)mod="slime";
 
 		//radsuit
-		if(mod=="slime")A_GiveInventory("Heat",damage*frandom(2.3,2.7));
+		if(mod=="slime")A_GiveInventory("Heat",int(damage*frandom(2.3,2.7)));
 		if(countinv("PowerIronFeet"))A_GiveInventory("WornRadsuit");
 		let radsuit=wornradsuit(findinventory("WornRadsuit"));
-		if(radsuit&&!(flags&DMG_NO_ARMOR)){
+		if(
+			radsuit
+			&&!(flags&DMG_NO_ARMOR)
+		){
 			radsuit.stamina+=random(1,damage);
 			if(mod=="slime"){
-				if(damage>10 && radsuit.stamina>2100){
-					A_TakeInventory("WornRadsuit");
-					A_PlaySound("radsuit/burst",CHAN_AUTO);
+				if(
+					damage>10
+					&&radsuit.stamina>2100
+				){
+					destroyradsuit();
 				}else if(damage>random(10,50)){
 					damage=1;
 				}else return 0;
@@ -169,28 +177,18 @@ extend class HDPlayerPawn{
 
 			bool actuallybleeding=(mod!="internal");
 			if(actuallybleeding){
-				if(!skill || hd_nobleed){
+				if(hd_nobleed){
 					woundcount=0;
 					return 0;
 				}
 
 				if(hd_yolo)bloodloss=min(bloodloss+(damage<<2),666);
 				else bloodloss+=(damage<<2);
-				if(level.time&(1|2))return -1;
-				damage>>=2;
 
-				if(!(flags&DMG_FORCED))damage=min(damage,health-1);
-				if(!random(0,health)){
-					beatcap--;
-					if(!(level.time%4))bloodpressure--;
-				}
-				if(damage<health)source=null;
-			}
-
-			if(mod=="bleedout"){
 				if(
 					!waterlevel
 					&&!checkliquidtexture()
+					&&bloodloss<HDCONST_MAXBLOODLOSS*1.4
 				){
 					for(int i=0;i<damage;i+=2){
 						a_spawnitemex("HDBloodTrailFloor",
@@ -201,6 +199,16 @@ extend class HDPlayerPawn{
 						);
 					}
 				}
+
+				if(level.time&(1|2))return -1;
+				damage>>=2;
+
+				if(!(flags&DMG_FORCED))damage=min(damage,health-1);
+				if(!random(0,health)){
+					beatcap--;
+					if(!(level.time%4))bloodpressure--;
+				}
+				if(damage<health)source=null;
 			}
 		}else if(
 			mod=="thermal"||
@@ -216,28 +224,27 @@ extend class HDPlayerPawn{
 			if(radsuit){
 				radsuit.stamina+=random(1,damage);
 				if(damage<random(0,6))return 0;else{
-					damage*=0.4;
+					damage=int(damage*0.4);
 					if(radsuit.stamina>2100){
-						A_TakeInventory("WornRadsuit");
-						A_PlaySound("misc/fwoosh",CHAN_AUTO);
+						destroyradsuit();
 					}else if(damage<4)mod="slime";
 				}
 			}
 			if(armr&&random(0,5)){
 				if(alv==3){
 					damage-=30;
-					if(!random(0,200-damage))armr.durability-=max(0,damage*0.2);
+					if(!random(0,200-damage))armr.durability-=max(0,damage/5);
 				}
 				else if(alv==1){
 					damage-=30;
-					if(!random(0,220-damage))armr.durability-=max(0,damage*0.1);
+					if(!random(0,220-damage))armr.durability-=max(0,damage/10);
 				}
 			}
 			if(damage<=1){
 				damage=1;
 				if(!random(0,27))toburn++;
-			}else toburn+=max(damage*frandom(0.1,0.6),random(0,1));
-			if(!random(0,30+alv*3))towound+=max(1,damage*0.03);
+			}else toburn+=int(max(damage*frandom(0.1,0.6),random(0,1)));
+			if(!random(0,30+alv*3))towound+=max(1,damage*3/100);
 		}else if(
 			mod=="electro"||
 			mod=="electrical"||
@@ -247,12 +254,11 @@ extend class HDPlayerPawn{
 			//electrocuted
 			if(radsuit){
 				if(damage<100)return 0;
-				A_TakeInventory("WornRadsuit");
-				A_PlaySound("misc/fwoosh",CHAN_AUTO);
-				damage*=0.8;
+				destroyradsuit();
+				damage=int(damage*0.8);
 			}
-			toburn+=max(damage*frandom(0.2,0.5),random(0,1));
-			if(!random(0,35))towound+=max(1,damage*0.05);
+			toburn+=int(max(damage*frandom(0.2,0.5),random(0,1)));
+			if(!random(0,35))towound+=max(1,damage/20);
 			if(!random(0,1))tostun+=damage;
 		}else if(
 			mod=="balefire"||
@@ -260,8 +266,8 @@ extend class HDPlayerPawn{
 			mod=="unholy"
 		){
 			//balefired
-			toburn+=damage*frandom(0.6,1.1);
-			if(!random(0,1+alv))towound+=max(1,damage*0.06);
+			toburn+=int(damage*frandom(0.6,1.1));
+			if(!random(0,1+alv))towound+=max(1,damage*6/100);
 			if(random(1,50)<damage*tmd)aggravateddamage++;
 			A_AlertMonsters();
 		}else if(
@@ -275,8 +281,7 @@ extend class HDPlayerPawn{
 
 			//radsuit
 			if(random(1,damage)>10){
-				A_TakeInventory("WornRadsuit");
-				A_PlaySound("imp/melee",CHAN_AUTO);
+				destroyradsuit();
 				damage-=5;
 				if(damage<1)return 0;
 			}
@@ -289,25 +294,24 @@ extend class HDPlayerPawn{
 				if(!random(0,mod=="teeth"?12:36))aggravateddamage++;
 				if(random(1,15)<damage)towound++;
 			}
-			tostun+=damage*frandom(0,0.6);
+			tostun+=int(damage*frandom(0,0.6));
 		}else if(
 			mod=="GhostSquadAttack"
 		){
-			//what to do here?
-			if(health<90)givebody(1);
-			damage=1;
+			//do nothing here, rely on GhostMarine.A_GhostShot
 		}else if(
-			mod=="staples"||
-			mod=="falling"||
-			mod=="drowning"||
-			mod=="slime"
+			mod=="staples"
+			||mod=="falling"
+			||mod=="drowning"
+			||mod=="slime"
 		){
 			//noarmour
 			flags|=DMG_NO_ARMOR;
 
 			if(mod=="falling"){
 				if(!source)return -1; //ignore regular fall damage
-				else tostun+=damage*random(20,25);
+				tostun+=damage*random(20,30);
+				damage>>=1;
 			}
 			else if(mod=="slime"&&!random(0,99))aggravateddamage++;
 		}else if(mod=="bashing"){
@@ -315,13 +319,15 @@ extend class HDPlayerPawn{
 			damage>>=2;
 		}else if(mod=="cutting"){
 			//swords, chainsaw, etc.
-			damage*=(1.-(alv*0.3));
-			if(!random(0,10+alv*2))towound+=max(1,damage*0.04);
-			armr.durability-=(damage>>(1+alv));
+			damage=int(damage*(1.-(alv*0.3)));
+			if(!random(0,10+alv*2))towound+=max(1,damage*4/100);
+			if(armr)armr.durability-=(damage>>(1+alv));
+			if(damage>random(5,30))destroyradsuit();
 		}else{
 			//anything else
-			damage*=(1.-(alv*0.2));
-			if(!random(0,10+alv*2))towound+=max(1,damage*0.03);
+			damage=int(damage*(1.-(alv*0.2)));
+			if(!random(0,10+alv*2))towound+=max(1,damage*3/100);
+			if(towound>random(4,20))destroyradsuit();
 		}
 
 
@@ -342,6 +348,12 @@ extend class HDPlayerPawn{
 		}
 
 
+		//check for destruction after armour depleted, not before
+		if(armr&&armr.durability<1){
+			armr.durability=0;
+			armr.destroy();
+		}
+
 		//abort if damage is less than zero
 		if(damage<0)return 0;
 
@@ -352,8 +364,8 @@ extend class HDPlayerPawn{
 
 		//add to wounds and burns after team damage multiplier
 		//(super.damagemobj() takes care of the actual damage amount)
-		towound*=tmd;
-		toburn*=tmd;
+		towound=int(towound*tmd);
+		toburn=int(toburn*tmd);
 		if(towound){
 			lastthingthatwoundedyou=source;
 			woundcount+=towound;
@@ -450,17 +462,23 @@ extend class HDPlayerPawn{
 			health>0
 			&&player
 			&&incapacitated<1
-			&&health<random(-1,max((originaldamage>>3),3))
 			&&(
+				health<random(-1,max((originaldamage>>3),3))
+				||tostun>(health<<2)
+			)&&(
 				mod!="bleedout"
 				||bloodloss>random(2048,3072)
 			)
-		){
-			let plr=player;
-			A_Incapacitated((originaldamage>10)?HDINCAP_SCREAM:0,originaldamage<<3);
-		}
+		)A_Incapacitated((originaldamage>10)?HDINCAP_SCREAM:0,originaldamage<<3);
 
 		return finaldmg;
+	}
+	void DestroyRadsuit(){
+		if(!!findinventory("WornRadsuit")){
+			A_TakeInventory("WornRadsuit");
+			A_TakeInventory("PowerIronFeet");
+			A_StartSound("radsuit/burst",CHAN_AUTO);
+		}
 	}
 	//disarm
 	static void Disarm(actor victim){
@@ -471,8 +489,7 @@ extend class HDPlayerPawn{
 		if(
 			pwep
 			&&pwep.owner==victim //onplayerdrop might change this
-			&&!(pwep is "HDGrenadeThrower")
-			&&!(pwep is "HDFist")
+			&&!pwep.bdontdisarm
 		){
 			victim.DropInventory(pwep);
 		}
@@ -492,18 +509,16 @@ extend class HDPlayerPawn{
 				if(bloodpressure<100)bloodpressure+=20;
 				if(beatmax>12)beatmax=max(beatmax-randompick(10,20),8);
 				A_SetBlend("00 00 00",0.8,40,"00 00 00");
+				double jerkamt=(stimcount>8)?2.:4.;
 				A_MuzzleClimb(
-					(frandom(-4,4),frandom(-4,4)),
+					(frandom(-jerkamt,jerkamt),frandom(-jerkamt,jerkamt)),
 					(0,0),(0,0),(0,0)
 				);
 				A_TakeInventory("PowerFrightener");
 			}
-			if(incapacitated){
-				A_Pain();
-				setstatelabel("spawn");
-			}
+			if(incapacitated)frame=clamp(6+abs(incapacitated>>2),6,11);
 		}
-		#### G 3 A_Pain();
+		---- A 3 A_StartSound(painsound,CHAN_VOICE);
 		---- A 0 setstatelabel("spawn");
 	pain.slime:
 		#### G 3{

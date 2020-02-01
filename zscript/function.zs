@@ -87,7 +87,7 @@ class HDHandlers:EventHandler{
 					lll.flags&line.ML_BLOCKEVERYTHING
 					||lll.flags&line.ML_BLOCKPROJECTILE
 					||lll.flags&line.ML_BLOCKHITSCAN
-//					||lll.flags&line.ML_BLOCKING
+//					||lll.flags&line.ML_BLOCKING	//still undecided so just comment not delete
 				)
 				&&!lll.sidedef[0].gettexture(side.mid)
 				&&!lll.sidedef[1].gettexture(side.mid)
@@ -105,23 +105,9 @@ class HDHandlers:EventHandler{
 class HDActor:Actor{
 	default{
 		+noblockmonst
+		renderstyle "translucent";
 	}
-	//advance to the next tic without doing anything
-	//don't actually use this, it's just for reference
-	void nexttic(){
-		if(CheckNoDelay()){
-			if(tics>0)tics--;  
-			while(!tics){
-				if(!SetState(CurState.NextState)){
-					return;
-				}
-			}
-		}
-	}
-	//decorate wrapper for HDMath.CheckLump()
-	bool CheckLump(string lumpname){
-		return HDMath.CheckLump(lumpname);
-	}
+
 	//"After that many drinks anyone would be blowing chunks all night!"
 	//"Chunks is the name of my dog."
 	//for frags: A_SpawnChunks("HDB_frag",42,100,700);
@@ -131,23 +117,12 @@ class HDActor:Actor{
 		double minvel=10,
 		double maxvel=20
 	){
-		if(
-			chunk is "WallChunk"
-		){
-			int ch=0;
-			thinkeriterator chit=thinkeriterator.create(chunk,STAT_DEFAULT);
-			while(chit.Next(exact:false))ch++;
-			if(ch>500){  
-				if(hd_debug)A_Log(string.format("%i is too many chunks, %s not spawned",ch,chunk.getclassname()));
-				return;
-			}
-		}
 		double burstz=pos.z+height*0.5;
 		double minpch=burstz-floorz<56?9:90;
 		double maxpch=ceilingz-burstz<56?-9:-90;
 		burstz-=pos.z;
+		bool gbg;actor frg;
 		for(int i=0;i<number;i++){
-			bool gbg;actor frg;
 			double pch=frandom(minpch,maxpch);
 			double vl=frandom(minvel,maxvel);
 			[gbg,frg]=A_SpawnItemEx(
@@ -157,13 +132,15 @@ class HDActor:Actor{
 				frandom(0,360),
 				SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH|SXF_TRANSFERPOINTERS
 			);
-			frg.vel+=vel;
-			frg.bincombat=true; //work around hack that normally lets HDBulletActor out
+			if(gbg){
+				frg.vel+=vel;
+				if(HDBulletActor(frg))frg.bincombat=true; //work around hack that normally lets HDBulletActor out
+			}
 		}
 	}
 	//roughly equivalent to CacoZapper
 	static void ArcZap(actor caller){
-		caller.A_CustomRailgun((random(4,8)),frandom(-12,12),"","azure",
+		caller.A_CustomRailgun((random(4,8)),random(-12,12),"","azure",
 			RGF_SILENT|RGF_FULLBRIGHT,
 			1,4000,"HDArcPuff",180,180,frandom(32,128),4,0.4,0.6
 		);
@@ -183,7 +160,7 @@ class HDArcPuff:HDActor{
 	}
 	states{
 	spawn:
-		TNT1 A 5 A_PlaySound("misc/arczap",0,0.1,0,0.4);
+		TNT1 A 5 A_StartSound("misc/arczap",CHAN_ARCZAP,CHANF_OVERLAP,volume:0.1,attenuation:0.4);
 		stop;
 	}
 }
@@ -246,17 +223,6 @@ class CheckPuff:IdleDummy{
 		stamina 1;
 	}
 }
-//mostly for doing TryMove checks to grab blockingline data
-class TMChecker:HDActor{
-	default{
-		radius 3;height 1;maxstepheight 0;
-	}
-	states{
-	spawn:
-		TNT1 A 1;
-		stop;
-	}
-}
 
 
 // Blocker to prevent shotguns from overpenetrating multiple targets
@@ -283,92 +249,52 @@ class tempshield:HDActor{
 		sss.stamina=shieldlength;
 		return sss;
 	}
+	override void Tick(){
+		if(!master||stamina<1){destroy();return;}
+		setorigin(master.pos,false);
+		stamina--;
+	}
 	states{
 	spawn:
-		TNT1 A 1 nodelay{
-			if(!master||stamina<1){destroy();return;}
-			setorigin(master.pos,false);
-			stamina--;
-		}wait;
+		TNT1 A -1;
+		stop;
 	}
-}
-class tempshield2:tempshield{
-	default{
-		radius 18;height 26;
-		stamina 10;
-	}
-}
-class tempshieldyellow:tempshield{
-	default{bloodcolor "aa 99 22";}
-}
-class tempshieldgreen:tempshield{
-	default{bloodcolor "44 99 22";}
-}
-class tempshield2green:tempshield2{
-	default{bloodcolor "44 99 22";}
-}
-class tempshieldblue:tempshield{
-	default{bloodcolor "00 00 99";}
-}
-class tempshield2blue:tempshield2{
-	default{bloodcolor "00 00 99";}
-}
-class tempshieldpuff:tempshield{
-	default{+noblood}
-}
-class tempshield2puff:tempshield2{
-	default{+noblood}
 }
 
 
 //collection of generic math functions
 struct HDMath{
+	//deprecated function, DO NOT USE
+	//kept here to keep too much stuff from breaking the moment 4.2.4a comes out)
+	static int MaxInv(actor holder,class<inventory> inv){
+		console.printf("HDMath.MaxInv() is now deprecated as of HD 4.2.4a. Its contents have been stripped to return only the item's maxamount. Please use HDPickup.MaxGive() instead, which returns actual space left in pockets rather than a theoretical maximum.");
+		if(holder.findinventory(inv))return holder.findinventory(inv).maxamount;
+		return getdefaultbytype(inv).maxamount;
+	}
+
+
 	//return true if lump exists
 	//mostly for seeing if we're playing D1 or D2
 	//HDMath.CheckLump("SHT2A0")
 	static bool CheckLump(string lumpname){
 		return Wads.CheckNumForName(lumpname,wads.ns_sprites,-1,false)>=0;
 	}
-	//return the maximum capacity for this actor and this inventory
-	//HDMath.MaxInv(self,"FourMilAmmo")
-	static int MaxInv(actor holder,class<inventory> inv){
-		if(holder.findinventory(inv))return holder.findinventory(inv).maxamount;
-		else if((class<hdpickup>)(inv)){
-			double gdpsp;
-			if(hdplayerpawn(holder))gdpsp=hdplayerpawn(holder).maxpocketspace;
-			else gdpsp=getdefaultbytype("hdplayerpawn").maxpocketspace;
-			let mag=(class<hdmagammo>)(inv);
-			if(mag){
-				let minvv=getdefaultbytype((class<hdmagammo>)(inv));
-				double unitbulk=(minvv.roundbulk*minvv.maxperunit*0.6)+minvv.magbulk;
-				return unitbulk?max(1,gdpsp/unitbulk):int.MAX;
-			}else{
-				let invv=getdefaultbytype((class<hdpickup>)(inv));
-				double bulk=invv.bulk;
-				return bulk?max(1,gdpsp/bulk):int.MAX;
-			}
-		}
-		return getdefaultbytype(inv).maxamount;
-	}
 	//checks encumbrance multiplier
 	//hdmath.getencumbrancemult()
 	static double GetEncumbranceMult(){
-		if(deathmatch||skill>=5)return clamp(hd_encumbrance,1.,2.);
-		return clamp(hd_encumbrance,0.,2.);
-	}
-	//counts stuff
-	//HDMath.CountThinkers("IdleDummy")
-	static int Count(name type,bool exactmatch=false){
-		int count=0;
-		thinkeriterator it=thinkeriterator.create(type);
-		while(it.Next(exact:exactmatch))count++;
-		return count;
+		return clamp(skill?hd_encumbrance:hd_encumbrance*0.5,0.,2.);
 	}
 	//get the opposite sector of a line
 	static sector OppositeSector(line hitline,sector hitsector){
 		if(!hitline||!hitline.backsector)return null;
 		if(hitline.backsector==hitsector)return hitline.frontsector;
 		return hitline.backsector;
+	}
+	//calculate whether 2 actors are approaching each other
+	static double IsApproaching(actor a1,actor a2){
+		vector3 veldif=a1.vel-a2.vel;
+		vector3 posdif=a1.pos-a2.pos;
+		return (veldif dot posdif)<0;
 	}
 	//calculate the speed at which 2 actors are moving towards each other
 	static double TowardsEachOther(actor a1, actor a2){
@@ -390,9 +316,8 @@ struct HDMath{
 		return atan2(this.z-that.z,(this.xy-that.xy).length());
 	}
 	//return a string indicating a rough cardinal direction
-	static string CardinalDirection(int angle){
-		angle%=360;
-		if(angle<0)angle+=360;
+	static string CardinalDirection(double angle){
+		angle=actor.deltaangle(0,angle);
 		if(angle>=22&&angle<=66)return("northeast");
 		else if(angle>=67&&angle<=113)return("north");
 		else if(angle>=114&&angle<=158)return("northwest");
@@ -414,24 +339,21 @@ struct HDMath{
 			if(sls<col)col=-1;
 		}
 
-		string pic;if(pnd<0)pic="";else pic=input.left(pnd);
-		string nam;if(col<0)nam="";else nam=input.left(col);
-		string desc;if(sls<0)desc="";else desc=input.mid(sls+1);
-		if(nam!="")pic.replace(nam,"");	//delete these !="" checks later, it's a GZ bug that's been fixed
-		pic.replace("#","");
-		pic.replace(":","");
-		if(pic!="")nam.replace(pic,"");
-		nam.replace("#","");
-		nam.replace(":","");
-		desc.replace("/","");
-
+		string pic=""; if(pnd>-1)pic=input.left(pnd);
+		string nam=""; if(col>-1)nam=input.left(col);
 		string lod=input;
-		if(pic!="")lod.replace(pic,"");
-		if(nam!="")lod.replace(nam,"");
-		if(desc!="")lod.replace(desc,"");
-		lod.replace("#","");
-		lod.replace(":","");
-		lod.replace("/","");
+		string desc="";
+
+		if(sls>-1){
+			desc=input.mid(sls+1);
+			lod.remove(sls,int.Max);
+		}
+
+		if(col>-1){
+			if(pnd>-1)nam.remove(0,pnd+1);
+			lod.remove(0,col+1);
+		}else if(pnd>-1)lod.remove(0,pnd+1);
+
 		if(!keepspaces)lod.replace(" ","");
 		lod=lod.makelower();
 
@@ -448,6 +370,14 @@ struct HDMath{
 	static int GetFromBase32FakeArray(int input,int slot){
 		input=(input>>(5*slot));
 		return input&(1|2|4|8|16);
+	}
+	//get a nice name for any actor
+	//mostly for exceptions for players and monsters
+	static string GetName(actor named){
+		if(named.player)return named.player.getusername();
+		string tagname=named.gettag();
+		if(tagname!="")return tagname;
+		return named.getclassname();
 	}
 }
 struct HDF play{
@@ -469,14 +399,6 @@ struct HDF play{
 			}
 		}
 		return counter;
-	}
-	//split inventory item to match pickup sprite
-	static void SplitAmmoSpawn(inventory caller,int maxunit=1){
-		while(caller.amount>maxunit){
-			caller.amount-=maxunit;
-			inventory bbb=inventory(caller.spawn(caller.getclass(),caller.pos,ALLOW_REPLACE));
-			bbb.amount=maxunit;bbb.vel=caller.vel+(frandom(-1,1),frandom(-1,1),frandom(-1,1));
-		}
 	}
 	//figure out if something hit some map geometry that isn't (i.e., "sky").
 	//why is GetTexture play!?
@@ -508,32 +430,6 @@ struct HDF play{
 			)
 		);
 	}
-	//process shields
-	//[shields,damage]=hdf.gothroughshields(shields,damage,inflictor,mod,flags);
-	static int,int GoThroughShields(int shields,int damage,actor inflictor=null,name mod="none",int flags=0){
-		if(
-			shields<1
-			||!(flags&DMG_NO_FACTOR)
-			||flags&DMG_FORCED
-			||mod=="internal"
-			||mod=="falling"
-		)return shields,damage;
-
-		int blocked=min(shields,damage,100);
-		if(blocked==damage&&!random(0,3))blocked--;
-		damage-=blocked;
-
-		shields=clamp(shields-(mod=="BFGBallAttack"?blocked*100:blocked-20),0,shields);
-
-		if(inflictor&&!inflictor.bismonster&&!inflictor.player){
-			int shrd=max(random(0,1),damage/50);
-			for(int i=0;i<shrd;i++){
-				actor aaa=inflictor.spawn("FragShard",inflictor.pos,ALLOW_REPLACE);
-				aaa.vel=(frandom(-3,3),frandom(-3,3),frandom(-3,3));
-			}
-		}
-		return shields,damage;
-	}
 }
 
 
@@ -542,11 +438,20 @@ struct HDF play{
 
 
 //debug thingy
-class HDRaiseWep:HDWeapon{
+class HDCheatWep:HDWeapon{
 	default{
+		+inventory.undroppable
 		-weapon.no_auto_switch
 		+weapon.cheatnotweapon
+		+hdweapon.debugonly
+		+nointeraction
+	}
+}
+class HDRaiseWep:HDCheatWep{
+	default{
 		weapon.slotnumber 0;
+		hdweapon.refid "rvv";
+		tag "monster reviver (cheat!)";
 	}
 	states{
 	ready:
@@ -566,25 +471,6 @@ class HDRaiseWep:HDWeapon{
 				RaiseActor(rlt.hitactor,RF_NOCHECKPOSITION);
 			}else a_weaponmessage("click on something\nto raise it.",25);
 		}goto nope;
-	}
-}
-class HDRaise:CustomInventory{
-	states{
-	spawn:TNT1 A 0;stop;
-	pickup:
-		TNT1 A 0{
-			flinetracedata rlt;
-			LineTrace(
-				angle,128,pitch,
-				TRF_ALLACTORS,
-				offsetz:height-6,
-				data:rlt
-			);
-			if(rlt.hitactor){
-				a_log(rlt.hitactor.getclassname().." raised!");
-				RaiseActor(rlt.hitactor,RF_NOCHECKPOSITION);
-			}else a_log("point at something\nto raise it.",true);
-		}fail;
 	}
 }
 

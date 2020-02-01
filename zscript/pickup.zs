@@ -10,9 +10,6 @@ class GrabThinker:Thinker{
 		grabthink.picktarget=grabber;
 		grabthink.pickobj=grabee;
 	}
-	override void postbeginplay(){
-		super.postbeginplay();
-	}
 	override void ondestroy(){
 		if(pickobj)pickobj.bsolid=true;
 	}
@@ -30,6 +27,7 @@ class GrabThinker:Thinker{
 			pickobj.bsolid=false;
 		}else{
 			let pt=hdpickup(pickobj);if(pt)pt.bisbeingpickedup=false;
+			let mt=hdmagammo(pickobj);
 			let wt=hdweapon(pickobj);
 			let ht=hdupk(pickobj);
 			let tt=inventory(pickobj);
@@ -46,6 +44,9 @@ class GrabThinker:Thinker{
 				pickobj.args[1],pickobj.args[2],
 				pickobj.args[3],pickobj.args[4]
 			);
+
+			//I can't think of any situation where a pickup's special is designed to be triggered twice
+			pickobj.special=0;
 
 			vector2 shiftpk=actor.rotatevector((frandom(-0.4,-0.8),frandom(0.8,1.1)),picktarget.angle);
 			pickobj.vel.xy+=shiftpk;
@@ -75,29 +76,80 @@ class GrabThinker:Thinker{
 			}
 
 			//check for pocket space
+			let hdpt=hdplayerpawn(picktarget);
+			bool maglimited=
+				hdpt
+				&&mt
+				&&hdpt.hd_maglimit.getint()>0
+				&&hdpt.countinv(mt.getclassname())>=hdpt.hd_maglimit.getint()
+			;
+			bool holdingfiremode=
+				picktarget.player
+				&&picktarget.player.cmd.buttons&BT_FIREMODE
+			;
 			if(
-				!wt
-				&&hdplayerpawn(picktarget)
-				&&hdplayerpawn(picktarget).itemenc*hdmath.getencumbrancemult()
-					>hdplayerpawn(picktarget).maxpocketspace
-				&&(
-					!tt
-					||(
-						!tt.balwayspickup
-						&&picktarget.countinv(pickobj.getclassname())
-					)
-				)
-				&&(
-					!pt
-					||pt.bulk>0
-					||(
-						hdmagammo(pickobj)&&(
-							hdmagammo(pickobj).magbulk>0
-							||hdmagammo(pickobj).roundbulk>0
+				!tt.balwayspickup
+				&&!(
+					hdarmour(pt)
+					&&picktarget.player
+					&&picktarget.player.cmd.buttons&BT_USE
+					&&!picktarget.countinv("HDArmourWorn")
+				)&&(
+					(
+						pt
+						&&!pt.bnotinpockets
+						&&HDPickup.MaxGive(picktarget,pt.getclass(),
+							mt?mt.getbulk():pt.bulk
+						)<1
+					)||(
+						ht
+						&&ht.pickuptype!="none"
+						&&HDPickup.MaxGive(picktarget,pt.getclass(),
+							getdefaultbytype(ht.pickuptype).bulk
+						)<1
+					)||(
+						mt
+						&&(
+							holdingfiremode
+							||maglimited
 						)
 					)
 				)
 			){
+				//make one last check for mags
+				//do a single 1:1 switch with the lowest mag
+				if(mt){
+					name gcn=mt.getclassname();
+					let alreadygot=HDMagAmmo(picktarget.findinventory(gcn));
+					if(alreadygot){
+						alreadygot.syncamount();
+						int thismag=mt.mags[0];
+						bool thisisbetter=false;
+						for(int i=0;!thisisbetter&&i<alreadygot.amount;i++){
+							if(thismag>alreadygot.mags[i])thisisbetter=true;
+						}
+						if(thisisbetter){
+							alreadygot.LowestToLast();
+							if(hd_debug)alreadygot.logamounts();
+							picktarget.A_DropInventory(gcn,1);
+							if(cvar.getcvar("hd_helptext",picktarget.player).getbool())picktarget.A_Log("Discarding inferior mag to make room.",true);
+							mt.actualpickup(picktarget);
+							destroy();
+							return;
+						}else{
+							if(cvar.getcvar("hd_helptext",picktarget.player).getbool()){
+								if(maglimited){
+									picktarget.A_Log("hd_maglimit "..hdpt.hd_maglimit.getint().." exceeded.",true);
+								}else if(holdingfiremode){
+									picktarget.A_Log("Firemode held but target mag not better. Swap aborted.",true);
+								}
+							}
+							destroy();
+							return;
+						}
+					}
+				}
+
 				if(cvar.getcvar("hd_helptext",picktarget.player).getbool())picktarget.A_Log("No room in pockets.",true);
 				destroy();
 				return;
@@ -124,7 +176,7 @@ class HDPickerUpper:Actor{
 		radius 2;
 	}
 	override bool cancollidewith(actor other,bool passive){
-		return (inventory(other)||hdupk(other));
+		return (!passive&&(inventory(other)||hdupk(other)));
 	}
 }
 
@@ -134,14 +186,16 @@ extend class HDPlayerPawn{
 		if(!hasgrabbed){
 			actor grabbed=null;
 
-			//get an antenna
+			//get a pickerupper
 			hdpickerupper hdpu=null;
 			ThinkerIterator hdpuf=ThinkerIterator.Create("HDPickerUpper");
 			while(hdpu=HDPickerUpper(hdpuf.Next())){
 				if(hdpu.master==self)break;
 			}
-			if(!hdpu||hdpu.master!=self)hdpu=HDPickerUpper(spawn("HDPickerUpper",pos,ALLOW_REPLACE));
-			hdpu.master=self;
+			if(!hdpu||hdpu.master!=self){
+				hdpu=HDPickerUpper(spawn("HDPickerUpper",pos,ALLOW_REPLACE));
+				hdpu.master=self;
+			}
 
 			double cp=cos(pitch+3);
 			vector3 pudir=2*(cp*cos(angle),cp*sin(angle),-sin(pitch+3));
@@ -150,8 +204,9 @@ extend class HDPlayerPawn{
 			for(int i=0;i<putimes;i++){
 				hdpu.setorigin(hdpu.pos+pudir,false);
 				if(
-					!hdpu.checkmove(hdpu.pos.xy,PCM_DROPOFF|PCM_NOLINES)
+					!hdpu.checkmove(hdpu.pos.xy,PCM_NOLINES)
 					&&hdpu.blockingmobj
+					&&abs(hdpu.pos.z-hdpu.blockingmobj.pos.z)<putimes
 				){
 					grabbed=hdpu.blockingmobj;
 
@@ -219,6 +274,7 @@ class HDPickup:CustomInventory{
 	flagdef IsBeingPickedUp:HDPickupFlags,3;
 	flagdef CheatNoGive:HDPickupFlags,4;
 	flagdef MustShowInMagManager:HDPickupFlags,5;
+	flagdef NotInPockets:HDPickupFlags,6;
 
 	actor picktarget;
 	double bulk;
@@ -226,7 +282,6 @@ class HDPickup:CustomInventory{
 	int maxunitamount;
 	property maxunitamount:maxunitamount;
 	string refid;property refid:refid;
-	string nicename;property nicename:nicename;
 	default{
 		+solid
 		+inventory.invbar +inventory.persistentpower
@@ -239,11 +294,10 @@ class HDPickup:CustomInventory{
 		-hdpickup.isbeingpickedup
 
 		inventory.interhubamount int.MAX;
-		inventory.maxamount int.MAX;
+		inventory.maxamount 1000;
 
 		hdpickup.bulk 0;
 		hdpickup.refid "";
-		hdpickup.nicename "";
 
 		radius 8; height 10; scale 0.8;
 		inventory.pickupsound "weapons/pocket";
@@ -266,13 +320,32 @@ class HDPickup:CustomInventory{
 		}
 		return iii;
 	}
-	virtual int effectivemaxamount(){
-		if(!bulk)return maxamount;
-		double gdpsp;
-		if(hdplayerpawn(owner))gdpsp=hdplayerpawn(owner).maxpocketspace;
-		else gdpsp=getdefaultbytype("hdplayerpawn").maxpocketspace;
-		return max(1,gdpsp/bulk);
+
+	//these functions are responsible for capping a player's inventory.
+	//DO NOT attempt to use anything not here!
+	static double MaxPocketSpace(actor caller){
+		let hdp=hdplayerpawn(caller);
+		if(hdp)return hdp.maxpocketspace;
+		return HDCONST_MAXPOCKETSPACE;
 	}
+	static double PocketSpaceTaken(actor caller){
+		double pocketenc=0;
+		for(inventory hdww=caller.inv;hdww!=null;hdww=hdww.inv){
+			let hdp=hdpickup(hdww);
+			if(
+				hdp
+				&&!hdp.bnotinpockets
+			)pocketenc+=abs(hdp.getbulk());
+		}
+		return pocketenc*hdmath.getencumbrancemult();
+	}
+	static int MaxGive(actor caller,class<inventory> type,double unitbulk){
+		unitbulk*=hdmath.getencumbrancemult();
+		if(unitbulk<=0)return getdefaultbytype(type).maxamount-caller.countinv(type);
+		double spaceleft=HDPickup.MaxPocketSpace(caller)-HDPickup.PocketSpaceTaken(caller);
+		return int(max(0,min(getdefaultbytype(type).maxamount-caller.countinv(type),spaceleft/unitbulk)));
+	}
+
 
 	override void doeffect(){
 		if(!amount)destroy();
@@ -284,24 +357,23 @@ class HDPickup:CustomInventory{
 		if(!other)other=picktarget;
 		if(!other)return;
 		if(heat.getamount(self)>50)return;
-		name gcn=getclassname();
-		int maxtake=HDMath.MaxInv(other,gcn)-other.countinv(gcn);
 		if(balwayspickup){
 			inventory.touch(other);
 			return;
-		}else if(maxtake<1){
-			return;
 		}
+		name gcn=getclassname();
+		int maxtake=min(amount,HDPickup.MaxGive(other,gcn,getbulk()));
+		if(maxtake<1)return;
+
+		other.A_StartSound(pickupsound,CHAN_AUTO);
+		other.A_Log(string.format("\cg%s",pickupmessage()),true);
+
 		bool gotpickedup=false;
+		HDF.Give(other,gcn,maxtake);
 		if(maxtake<amount){
 			amount-=maxtake;
-			HDF.Give(other,gcn,maxtake);
-			gotpickedup=true;
-		}else gotpickedup=trypickup(other);
-		if(gotpickedup){
-			other.A_PlaySound(pickupsound,CHAN_AUTO);
-			other.A_Log(string.format("\cg%s",pickupmessage()),true);
-		}
+			SplitPickup();
+		}else destroy();
 	}
 
 	//delete once no longer needed
@@ -325,8 +397,6 @@ class HDPickup:CustomInventory{
 		GotoSpawn();
 	}
 	override void postbeginplay(){
-		maxamount=min(maxamount,effectivemaxamount());
-		if(maxunitamount<0)maxunitamount=abs(getdefaultbytype(getclass()).amount);
 		itemsthatusethis.clear();
 		GetItemsThatUseThis();
 		super.postbeginplay();
@@ -400,6 +470,41 @@ class HDAmmo:HDPickup{
 		return false;
 	}
 }
+class HDRoundAmmo:HDAmmo{
+	void SplitPickupBoxableRound(
+		int packnum,
+		int boxnum,
+		class<actor> boxtype,
+		name packsprite,
+		name singlesprite
+	){
+		//abort if death state - ejected shell uses this
+		if(curstate==resolvestate("death"))return;
+
+		while(amount>packnum){
+			if(amount>=boxnum){
+				actor aaa=spawn(boxtype,pos+(frandom(-1,1),frandom(-1,1),frandom(-1,1)));
+				aaa.vel=vel+(frandom(-0.6,0.6),frandom(-0.6,0.6),frandom(-0.6,0.6));
+				aaa.angle=angle;
+				amount-=boxnum;
+			}else{
+				let sss=hdpickup(spawn(getclassname(),pos+(frandom(-1,1),frandom(-1,1),frandom(-1,1))));
+				sss.amount=packnum;
+				sss.vel=vel+(frandom(-0.6,0.6),frandom(-0.6,0.6),frandom(-0.6,0.6));
+				sss.angle=angle;
+				amount-=packnum;
+			}
+			if(amount<1){
+				destroy();
+				return;
+			}
+		}
+		if(amount==packnum)sprite=getspriteindex(packsprite);
+		else super.SplitPickup();
+		if(amount==1)sprite=getspriteindex(singlesprite);
+	}
+}
+
 
 
 
@@ -416,7 +521,7 @@ class HDUPK:HDActor{
 	flagdef MultiPickup:HDUPKFlags,0;
 
 	actor picktarget;
-	class<inventory> pickuptype;
+	class<hdpickup> pickuptype;
 	string pickupmessage;
 	sound pickupsound;
 	int maxunitamount;
@@ -462,7 +567,7 @@ class HDUPK:HDActor{
 			target=picktarget;
 			setstatelabel("give");
 			if(!bdestroyed)return;
-			picktarget.A_PlaySound(pickupsound,5);
+			picktarget.A_StartSound(pickupsound,5);
 			if(pickupmessage!="")picktarget.A_Log(string.format("\cg%s",pickupmessage),true);
 			return;
 		}
@@ -484,7 +589,7 @@ class HDUPK:HDActor{
 				}
 				int maxtake;
 				defunitbulk*=hdmath.getencumbrancemult();
-				if(!defunitbulk)maxtake=int.MAX;else maxtake=(HDCONST_BPMAX-bp.bulk)/defunitbulk;
+				if(!defunitbulk)maxtake=int.MAX;else maxtake=int((bp.maxcapacity-bp.bulk)/defunitbulk);
 				int increase=min(maxtake,amount);
 				amount-=increase;
 				bp.amounts[bpindex]=""..(bp.amounts[bpindex].toint()+increase);
@@ -496,34 +601,25 @@ class HDUPK:HDActor{
 		}
 
 		//check effective maxamount and take as appropriate
-		int maxtake=getdefaultbytype(pickuptype).maxamount;
-		let hdpk=(class<hdpickup>)(pickuptype);
+		let mt=(class<hdmagammo>)(pickuptype);
+		int maxtake=min(amount,hdpickup.maxgive(
+			picktarget,pickuptype,
+			mt?getdefaultbytype(mt).maxperunit+getdefaultbytype(mt).roundbulk+getdefaultbytype(mt).magbulk
+			:getdefaultbytype(pickuptype).bulk
+		));
 		let hdp=hdplayerpawn(picktarget);
-		if(hdp&&hdpk){
-			double defunitbulk=getdefaultbytype(hdpk).bulk;
-			let hdpm=(class<hdmagammo>)(pickuptype);
-			if(hdpm){
-				let hdpmdef=getdefaultbytype(hdpm);
-				defunitbulk=max(defunitbulk,hdpmdef.magbulk+hdpmdef.roundbulk*hdpmdef.maxperunit);
-			}
-			double divamt=defunitbulk*hdmath.getencumbrancemult();
-			if(!divamt)maxtake=int.MAX;
-			else maxtake=min(maxtake,
-				(hdp.maxpocketspace-hdp.itemenc*hdmath.getencumbrancemult())
-				/divamt
-			);
-		}
-		int increase=amount;
-		increase=min(maxtake,amount);
-		if(heat.getamount(self)>50)increase=0;
-		if(increase<1){ //didn't pick any up
+		if(
+			maxtake<1
+			||heat.getamount(self)>50
+		){
+			//didn't pick any up
 			setstatelabel("spawn");
 			return;
 		}
-		picktarget.A_PlaySound(pickupsound,5);
+		picktarget.A_StartSound(pickupsound,5);
 		picktarget.A_Log(string.format("\cg%s",pickupmessage),true);
-		HDF.Give(picktarget,pickuptype,increase);
-		amount-=increase;
+		HDF.Give(picktarget,pickuptype,maxtake);
+		amount-=maxtake;
 		if(amount>0){ //only picked some up  
 			setstatelabel("spawn");
 			return;

@@ -3,16 +3,21 @@
 // ------------------------------------------------------------
 extend class HDHandlers{
 	void PlayDead(hdplayerpawn ppp){
+		if(!ppp||ppp.incapacitated>0)return;
 		ppp.A_Incapacitated(hdplayerpawn.HDINCAP_FAKING);
 	}
 }
+const HDCONST_MINSTANDHEALTH=12;
 extend class HDPlayerPawn{
 	int incapacitated;
 	int incaptimer;
 	inventory invselbak;
 	void IncapacitatedCheck(){
 		if(!incapacitated)return;
-		if(incaptimer>0)incaptimer--;
+		if(incaptimer>0){
+			incaptimer--;
+			muzzleclimb1.y+=(level.time&1)?-1:1;
+		}
 
 		if(incapacitated>0){
 			A_SetSize(radius,max(16,height-3));
@@ -56,7 +61,7 @@ extend class HDPlayerPawn{
 		speed=0.02;
 		userange=20;
 		if(
-			health>13
+			health>HDCONST_MINSTANDHEALTH+1
 			&&incapacitated>0
 			&&incaptimer<1
 			&&(
@@ -70,8 +75,8 @@ extend class HDPlayerPawn{
 		}
 		if(
 			incaptimer>0
-			&&health>12
-			&&health<15
+			&&health>HDCONST_MINSTANDHEALTH
+			&&health<HDCONST_MINSTANDHEALTH+3
 		){
 			damagemobj(null,null,min(5,health-10),"maxhpdrain");
 		}
@@ -119,7 +124,7 @@ extend class HDPlayerPawn{
 			&&health<10
 		)GiveBody(7);
 		incapacitated=1;
-		incaptimer=incaptime;
+		incaptimer=max(incaptimer,incaptime);
 		setstatelabel("spawn");
 	}
 	enum IncapFlags{
@@ -224,6 +229,9 @@ class HDIncapWeapon:SelfBandage{
 			A_SetHelpText();
 		}
 		goto readyend;
+	try2:
+		TNT1 A 0 A_SetTics(max(0,random(0,100-health)));
+		goto super::try2;
 	firemode:
 		TNT1 A 1{
 			int yofs=max(4,invoker.weaponstatus[INCS_YOFS]*3/2);
@@ -236,14 +244,14 @@ class HDIncapWeapon:SelfBandage{
 		TNT1 A 0 A_JumpIf(pressingfiremode(),"firemode");
 		goto readyend;
 	fumbleforsomething:
-		TNT1 A 20 A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		TNT1 A 20 A_StartSound("weapons/pocket",CHAN_WEAPON);
 		TNT1 A 0 A_PickInventoryType();
 		goto nope;
 	altfire:
 	althold:
 		TNT1 A 0 A_JumpIf(invoker.weaponstatus[0]&INCF_PINOUT,"holdfrag");
-		TNT1 A 10 A_JumpIf(health<12&&!random(0,7),"nope");
-		TNT1 A 20 A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		TNT1 A 10 A_JumpIf(health<HDCONST_MINSTANDHEALTH&&!random(0,7),"nope");
+		TNT1 A 20 A_StartSound("weapons/pocket",CHAN_WEAPON);
 		TNT1 A 0 A_JumpIf(!countinv(invoker.inventorytype),"fumbleforsomething");
 		TNT1 A 0 A_JumpIf(invoker.inventorytype=="HDFragGrenadeAmmo","pullpin");
 		TNT1 A 0 A_JumpIf(
@@ -255,8 +263,8 @@ class HDIncapWeapon:SelfBandage{
 		TNT1 A 1{
 			A_SetBlend("7a 3a 18",0.1,4);
 			A_SetPitch(pitch+2,SPF_INTERPOLATE);
-			A_PlaySound("*usemeds",CHAN_VOICE);
-			A_PlaySound("misc/bulletflesh",CHAN_WEAPON);
+			A_StartSound("*usemeds",CHAN_VOICE);
+			A_StartSound("misc/bulletflesh",CHAN_WEAPON,CHANF_OVERLAP);
 			actor a=spawn(invoker.injecttype,pos,ALLOW_REPLACE);
 			a.accuracy=40;a.target=self;
 		}
@@ -265,17 +273,17 @@ class HDIncapWeapon:SelfBandage{
 		TNT1 A 0{
 			actor a=spawn(invoker.spentinjecttype,pos+(0,0,height-8),ALLOW_REPLACE);
 			a.angle=angle;a.vel=vel;a.A_ChangeVelocity(3,1,2,CVF_RELATIVE);
-			a.A_PlaySound("weapons/grenopen",CHAN_WEAPON);
-			A_TakeInventory(invoker.inventorytype,1);
+			a.A_StartSound("weapons/grenopen",CHAN_WEAPON,CHANF_OVERLAP);
+			A_TakeInjector(invoker.inventorytype);
 			invoker.inventorytype="";
 		}
 		goto nope;
 	pullpin:
-		TNT1 A 3 A_JumpIf(health<12&&!random(0,4),"readyend");
+		TNT1 A 3 A_JumpIf(health<HDCONST_MINSTANDHEALTH&&!random(0,4),"readyend");
 		TNT1 A 0{
 			if(!countinv(invoker.inventorytype))return;
 			invoker.weaponstatus[0]|=INCF_PINOUT;
-			A_PlaySound("weapons/fragpinout",CHAN_WEAPON);
+			A_StartSound("weapons/fragpinout",CHAN_WEAPON,CHANF_OVERLAP);
 			A_TakeInventory(invoker.inventorytype,1);
 		}
 		//fallthrough
@@ -291,9 +299,9 @@ class HDIncapWeapon:SelfBandage{
 		goto readyend;
 	pinbackin:
 		TNT1 A 10;
-		TNT1 A 0 A_JumpIf(health<12&&!random(0,2),"holdfrag");
+		TNT1 A 0 A_JumpIf(health<HDCONST_MINSTANDHEALTH&&!random(0,2),"holdfrag");
 		TNT1 A 20{
-			A_PlaySound("weapons/fragpinout",CHAN_WEAPON);
+			A_StartSound("weapons/fragpinout",CHAN_WEAPON);
 			invoker.weaponstatus[0]&=~INCF_PINOUT;
 			A_GiveInventory("HDFragGrenadeAmmo",1);
 		}

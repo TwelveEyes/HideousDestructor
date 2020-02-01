@@ -9,7 +9,7 @@ class HDBattery:HDMagAmmo{
 
 		hdmagammo.maxperunit 20;
 		hdmagammo.roundtype "";
-		hdpickup.nicename "Batteries";
+		tag "battery";
 		hdpickup.refid HDLD_BATTERY;
 		hdpickup.bulk ENC_BATTERY;
 		hdmagammo.magbulk ENC_BATTERY;
@@ -154,6 +154,23 @@ class HDBattery:HDMagAmmo{
 		else if(thismagamt>0)magsprite="CELLC0";
 		else magsprite="CELLD0";
 		return magsprite,"CELPA0","HDBattery",0.8;
+	}
+	override void DrawRoundCount(HDStatusBar sb,HDPlayerPawn hpl,name roundsprite,double scl,int offx,int offy){
+		bool helptext=cvar.getcvar("hd_helptext",hpl.player).getbool();
+		offx+=40;
+		scl=0.4;
+		let battt=chargemode;
+		string batts="uNone";
+		if(battt==hdbattery.BATT_CHARGEMAX)batts="eAuto";
+		else if(battt==hdbattery.BATT_CHARGETOP)batts="ySelected";
+		sb.drawstrings(
+			sb.pSmallFont,string.format("%s\c%s%s",helptext?"Charging: ":"",batts,helptext?"\n(\cqReload\cu to cycle)":""),
+			(offx+2,offy),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_LEFT
+		);
+		sb.drawimage("CELPA0",(offx,offy),
+			sb.DI_SCREEN_CENTER|sb.DI_ITEM_RIGHT_TOP,
+			scale:(scl,scl)
+		);
 	}
 	override void GetItemsThatUseThis(){
 		itemsthatusethis.push("BFG9k");

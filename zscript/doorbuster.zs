@@ -1,7 +1,13 @@
 // ------------------------------------------------------------
 // Because sometimes, things get caught in map geometry.
 // ------------------------------------------------------------
-class SectorDamageCounter:IdleDummy{double counter;}
+class SectorDamageCounter:IdleDummy{
+	double counter;
+	override void tick(){
+		super.tick();
+		if(!isfrozen()&&accuracy>0)accuracy--;
+	}
+}
 class doordestroyer:hdactor{
 	default{
 		+solid +nogravity +dontgib +ghost
@@ -18,7 +24,7 @@ class doordestroyer:hdactor{
 	override void postbeginplay(){
 		super.postbeginplay();
 		vector2 vvv=(v2pos-v1pos);
-		llit=max(1,llength/10); //see chunkspeed
+		llit=int(max(1,llength/10)); //see chunkspeed
 		vfrac=vvv/llit;
 	}
 	override bool cancollidewith(actor other,bool passive){
@@ -81,7 +87,8 @@ class doordestroyer:hdactor{
 		actor caller,
 		double maxwidth=140,double maxdepth=32,
 		double range=0,double ofsz=-1,
-		double angle=361,double pitch=99
+		double angle=361,double pitch=99,
+		bool dedicated=false
 	){
 		if(!range)range=max(4,caller.radius*2);
 		if(ofsz<0)ofsz=caller.height*0.5;
@@ -99,14 +106,19 @@ class doordestroyer:hdactor{
 		if(!dlt.hitactor){
 			caller.lineattack(
 				angle,range,pitch,
-				maxwidth*maxdepth,
+				int(maxwidth*maxdepth),
 				"SmallArms3","CheckPuff",
 				flags:LAF_OVERRIDEZ|LAF_NORANDOMPUFFZ|LAF_NOIMPACTDECAL,
 				offsetz:ofsz
 			);
 		}
-
-		if(hd_nodoorbuster)return false;
+		if(
+			hd_nodoorbuster==1
+			||(
+				!dedicated
+				&&hd_nodoorbuster>1
+			)
+		)return false;
 
 		//figure out if it hit above or below
 		//0 top, 1 middle, 2 bottom - same as dlt.linepart
@@ -207,18 +219,22 @@ class doordestroyer:hdactor{
 
 		//see how big the sector is
 		vector2 centerspot=othersector.centerspot;
-		double maxradius=0;
 		int othersectorlinecount=othersector.lines.size();
+		vector2 maxradco=(0,0);
 		for(int i=0;i<othersectorlinecount;i++){
 			double xdif=abs(othersector.lines[i].v1.p.x-centerspot.x);
-			if(xdif>maxradius)maxradius=xdif;
+			if(xdif>maxradco.x)maxradco.x=xdif;
 			double ydif=abs(othersector.lines[i].v1.p.y-centerspot.y);
-			if(ydif>maxradius)maxradius=ydif;
+			if(ydif>maxradco.y)maxradco.y=ydif;
 		}
-		if(maxradius*2.>maxwidth)return false;
+		double maxradius=(maxradco.x+maxradco.y)*0.5;
+
+		//abort if this would suddenly completely alter the level in stupid ways
+		if(max(maxradco.x,maxradco.y)>1024)return false;
 
 
-		double damageinflicted=maxdepth*frandom(8,12)/maxradius;
+		double damageinflicted=maxdepth*frandom(5,8)/maxradius;
+		if(maxradius*2.>maxwidth)damageinflicted/=max(1.,maxradius-(0.5*maxwidth));
 
 
 		//damage bonus if you can blast right through that spot
@@ -257,10 +273,13 @@ class doordestroyer:hdactor{
 		//see if we're going to kill or damage
 		bool blowitup=false;
 		if(buttecracked.counter+damageinflicted>2.)blowitup=true;
-		else{
+		else if(
+			damageinflicted>(buttecracked.accuracy>0?0.02:0.1)  //must deal at least x% damage to count
+		){
 			buttecracked.counter+=damageinflicted*0.1;
 			if(buttecracked.counter>1.)blowitup=true;
 		}
+		buttecracked.accuracy=3;
 		if(hd_debug)caller.A_Log("Sector damage factor:  "..buttecracked.counter);
 
 		if(!blowitup){
@@ -291,8 +310,7 @@ class doordestroyer:hdactor{
 		bool floornotdoor=whichflat==2; //may revise this later
 		othersector.flags|=sector.SECF_SILENTMOVE;
 		if(floornotdoor){
-			double lowestsurrounding;vertex garbage;
-			[lowestsurrounding,garbage]=othersector.findlowestfloorsurrounding();
+			double lowestsurrounding=othersector.findlowestfloorsurrounding();
 			double justoverthereheight=othersector.floorplane.zatpoint(justoverthere);
 			blockpoint=min(
 				justoverthereheight,
@@ -304,8 +322,7 @@ class doordestroyer:hdactor{
 			holeheight=justoverthereheight-blockpoint;
 			othersector.MoveFloor(abs(holeheight),abs(blockpoint),0,-1,false,true);
 		}else{
-			double lowestsurrounding;vertex garbage;
-			[lowestsurrounding,garbage]=othersector.findlowestceilingsurrounding();
+			double lowestsurrounding=othersector.findlowestceilingsurrounding();
 			double justoverthereheight=othersector.ceilingplane.zatpoint(justoverthere);
 			blockpoint=max(
 				justoverthereheight,
@@ -317,6 +334,8 @@ class doordestroyer:hdactor{
 			holeheight=justoverthereheight-blockpoint;
 			othersector.MoveCeiling(abs(holeheight),blockpoint,0,1,false);
 		}
+
+		if(!holeheight)return false;
 
 		//replace some textures
 		textureid shwal=texman.checkfortexture("ASHWALL2",texman.type_any);
@@ -379,19 +398,12 @@ class doordestroyer:hdactor{
 		db.llength=doorwidth;
 		hdactor.HDBlast(caller,
 			pushradius:doorwidth,pushamount:24,
-			fragradius:doorwidth*2,fragtype:"HDB_scrap",fragvariance:8.,fragspeedfactor:0.3,
+			fragradius:doorwidth*2,fragtype:"HDB_scrapDB",
 			immolateradius:doorwidth,
 			immolateamount:random(10,30),
 			immolatechance:12
 		);
 		return true;
-	}
-}
-class doorball:doomimpball{
-	states{
-	death:
-		BAL1 C 0{if(doordestroyer.destroydoor(self))A_Log("Ding dong, motherfucker!");}
-		goto super::death;
 	}
 }
 
@@ -411,7 +423,7 @@ class DoorBuster:HDPickup{
 		+inventory.invbar
 		hdpickup.bulk ENC_DOORBUSTER;
 		hdpickup.refid HDLD_DOORBUS;
-		hdpickup.nicename "Door Buster";
+		tag "door buster";
 		inventory.pickupmessage "Picked up a Door Buster.";
 		inventory.icon "BGRNA3A7";
 		scale 0.6;
@@ -439,7 +451,7 @@ class DoorBuster:HDPickup{
 		}
 		ddd.botid=invoker.botid;
 		ddd.ChangeTid(HDDB_TID);
-		ddd.A_PlaySound("doorbuster/stick",CHAN_BODY);
+		ddd.A_StartSound("doorbuster/stick",CHAN_BODY);
 		ddd.stuckline=dlt.hitline;
 		ddd.angle=angle;
 		ddd.translation=translation;
@@ -503,8 +515,16 @@ class DoorBusterPlanted:HDUPK{
 	void A_DBStuck(){
 		if(
 			!stuckline
-			||ceilingz<pos.z
+			||ceilingz<pos.z+height
 			||floorz>pos.z
+			||(
+				stucktier==1
+				&&stuckbacksector.ceilingplane.zatpoint(stuckpoint)+stuckheight+height>ceilingz
+			)
+			||(
+				stucktier==-1
+				&&stuckbacksector.floorplane.zatpoint(stuckpoint)+stuckheight<floorz
+			)
 		){
 			if(!stuckline)setstatelabel("death");
 			else setstatelabel("unstucknow");
@@ -522,21 +542,21 @@ class DoorBusterPlanted:HDUPK{
 		BGRN A 1 A_DBStuck();
 		loop;
 	unstucknow:
-		---- A 2 A_PlaySound("misc/fragknock",5);
+		---- A 2 A_StartSound("misc/fragknock",CHAN_AUTO);
 		---- A 1{
 			actor dbs=spawn("DoorBuster",pos,ALLOW_REPLACE);
 			dbs.angle=angle;dbs.translation=translation;
 			dbs.A_ChangeVelocity(1,0,0,CVF_RELATIVE);
 			A_SpawnChunks("BigWallChunk",15);
-			A_PlaySound("weapons/bigcrack",4);
+			A_StartSound("weapons/bigcrack",CHAN_AUTO);
 		}
 		stop;
 	death:
-		---- A 2 A_PlaySound("misc/fragknock",5);
+		---- A 2 A_StartSound("misc/fragknock",CHAN_AUTO);
 		---- A 1{
 			bnointeraction=true;
 			int boost=min(accuracy*accuracy,256);
-			bool busted=doordestroyer.destroydoor(self,140+boost,32+boost);
+			bool busted=doordestroyer.destroydoor(self,140+boost,32+boost,dedicated:true);
 
 			A_SprayDecal(busted?"Scorch":"BrontoScorch",16);
 
@@ -547,8 +567,8 @@ class DoorBusterPlanted:HDUPK{
 			}else{
 				dbs.A_ChangeVelocity(-20,frandom(-4,4),frandom(-4,4),CVF_RELATIVE);
 			}
-			A_PlaySound("weapons/bigcrack",4);
-			A_PlaySound("word/explode",CHAN_VOICE);
+			A_StartSound("weapons/bigcrack",CHAN_AUTO);
+			A_StartSound("word/explode",CHAN_VOICE);
 
 			target=master;
 			A_AlertMonsters();
@@ -560,13 +580,13 @@ class DoorBusterPlanted:HDUPK{
 				DistantQuaker.Quake(self,4,35,512,10);
 				A_HDBlast(
 					pushradius:256,pushamount:128,fullpushradius:96,
-					fragradius:256,fragtype:"HDB_scrap",fragvariance:7.,fragspeedfactor:0.3
+					fragradius:256,fragtype:"HDB_scrapDB"
 				);
 			}else{
 				DistantQuaker.Quake(self,2,35,256,10);
 				A_HDBlast(
 					pushradius:128,pushamount:64,fullpushradius:16,
-					fragradius:128,fragtype:"HDB_scrap",fragvariance:7.,fragspeedfactor:0.2
+					fragradius:128,fragtype:"HDB_scrapDB"
 				);
 			}
 		}
@@ -632,7 +652,7 @@ extend class HDHandlers{
 		}
 		let dbbb=DoorBuster(ppp.findinventory("DoorBuster"));
 		int botid=dbbb?dbbb.botid:1;
-		array<doorbusterplanted> detonating;
+		array<doorbusterplanted> detonating;detonating.clear();
 		if(cmd!=999&&cmd!=123){
 			ppp.A_Log(string.format("DoorBuster Command format:\n\cu db <option> <tag number> \n\cjOptions:\n 999 = DETONATE\n 123 = QUERY\n -n = set tag number\n\cj  tag number on next deployment: \cy%i",botid),true);
 		}

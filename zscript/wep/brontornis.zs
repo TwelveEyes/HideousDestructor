@@ -45,7 +45,7 @@ class BrontornisRound:HDAmmo{
 	default{
 		+inventory.ignoreskill
 		inventory.pickupmessage "Picked up a bolt.";
-		hdpickup.nicename "Brontornis Shell";
+		tag "Brontornis shell";
 		hdpickup.refid HDLD_BROBOLT;
 		hdpickup.bulk ENC_BRONTOSHELL;
 		scale 0.3;
@@ -77,7 +77,7 @@ class Brontornis:HDWeapon{
 		inventory.pickupmessage "You got the Brontornis!";
 		obituary "%o was terrorized by %k's Brontornis cannon.";
 		hdweapon.barrelsize 24,1,2;
-		hdweapon.nicename "Brontornis Cannon";
+		tag "Brontornis cannon";
 		hdweapon.refid HDLD_BRONTO;
 	}
 	override bool AddSpareWeapon(actor newowner){return AddSpareWeaponRegular(newowner);}
@@ -102,7 +102,7 @@ class Brontornis:HDWeapon{
 		if(hdw.weaponstatus[BRONS_CHAMBER]>1)sb.drawwepdot(-16,-10,(5,3));
 		sb.drawwepnum(
 			hpl.countinv("BrontornisRound"),
-			HDMath.MaxInv(hpl,"BrontornisRound")
+			(HDCONST_MAXPOCKETSPACE/ENC_BRONTOSHELL)
 		);
 	}
 	override string gethelptext(){
@@ -179,9 +179,9 @@ class Brontornis:HDWeapon{
 				return;
 			}
 			A_GunFlash();
-			A_PlaySound("weapons/bronto",CHAN_WEAPON);
-			A_PlaySound("weapons/bronto",6);
-			A_PlaySound("weapons/bronto2",7);
+			A_StartSound("weapons/bronto",CHAN_WEAPON);
+			A_StartSound("weapons/bronto",CHAN_WEAPON,CHANF_OVERLAP);
+			A_StartSound("weapons/bronto2",CHAN_WEAPON,CHANF_OVERLAP);
 			let tb=HDBulletActor.FireBullet(
 				self,"HDB_bronto",
 				aimoffy:(invoker.weaponstatus[0]&BRONF_ZOOM)?-2:0
@@ -195,6 +195,23 @@ class Brontornis:HDWeapon{
 		BLSF A 1 bright{
 			HDFlashAlpha(0,true);
 			A_Light1();
+
+			if(gunbraced())A_GiveInventory("IsMoving",2);
+			else A_GiveInventory("IsMoving",7);
+			if(!binvulnerable
+				&&(
+					countinv("IsMoving")>6
+					||floorz<pos.z
+				)
+			){
+				givebody(max(0,11-health));
+				damagemobj(invoker,self,10,"bashing");
+				A_GiveInventory("IsMoving",5);
+				A_ChangeVelocity(
+					cos(pitch)*-frandom(2,4),0,sin(pitch)*frandom(2,4),
+					CVF_RELATIVE
+				);
+			}
 		}
 		TNT1 A 2{
 			A_ZoomRecoil(0.5);
@@ -203,7 +220,6 @@ class Brontornis:HDWeapon{
 		TNT1 A 0{
 			int recoilside=randompick(-1,1);
 			if(gunbraced()){
-				A_GiveInventory("IsMoving",2);
 				hdplayerpawn(self).gunbraced=false;
 				A_ChangeVelocity(
 					cos(pitch)*-frandom(0.8,1.4),0,
@@ -220,7 +236,6 @@ class Brontornis:HDWeapon{
 					sin(pitch)*frandom(1.8,3.2),
 					CVF_RELATIVE
 				);
-				A_GiveInventory("IsMoving",7);
 				A_MuzzleClimb(
 					recoilside*5,-frandom(5.,13.),
 					recoilside*5,-frandom(5.,13.)
@@ -229,20 +244,6 @@ class Brontornis:HDWeapon{
 					recoilside*5,-frandom(5.,13.),
 					recoilside*5,-frandom(5.,13.),
 					wepdot:true
-				);
-			}
-			if(!binvulnerable
-				&&(
-					countinv("IsMoving")>6
-					||floorz<pos.z
-				)
-			){
-				givebody(max(0,11-health));
-				damagemobj(invoker,self,10,"bashing");
-				A_GiveInventory("IsMoving",5);
-				A_ChangeVelocity(
-					cos(pitch)*-frandom(2,4),0,sin(pitch)*frandom(2,4),
-					CVF_RELATIVE
 				);
 			}
 		}
@@ -266,7 +267,7 @@ class Brontornis:HDWeapon{
 			-frandom(0.5,0.6),frandom(0.5,0.6),
 			-frandom(0.5,0.6),frandom(0.5,0.6)
 		);
-		BLSG B 3 A_PlaySound("weapons/brontunload",CHAN_WEAPON);
+		BLSG B 3 A_StartSound("weapons/brontunload",8);
 		BLSG BBBBBBBB 0{invoker.drainheat(BRONS_HEAT,12);}
 		BLSG B 12 offset(0,34){
 			int chm=invoker.weaponstatus[BRONS_CHAMBER];
@@ -276,14 +277,14 @@ class Brontornis:HDWeapon{
 				return;
 			}
 
-			A_PlaySound("weapons/brontoload",CHAN_AUTO);
+			A_StartSound("weapons/brontoload",8,CHANF_OVERLAP);
 			if(chm>1){
 				if(
 					PressingUnload()
 					&&!A_JumpIfInventory("BrontornisRound",0,"null")
 				){
 					A_SetTics(18);
-					A_PlaySound("weapons/pocket");
+					A_StartSound("weapons/pocket",9);
 					A_GiveInventory("BrontornisRound");
 				}
 				else A_SpawnItemEx("BrontornisRound",
@@ -304,7 +305,7 @@ class Brontornis:HDWeapon{
 			}
 		}
 		BLSG B 1 offset(0,36) A_JumpIf(invoker.weaponstatus[0]&BRONF_JUSTUNLOAD,"reloadend");
-		BLSG B 1 offset(0,41) A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		BLSG B 1 offset(0,41) A_StartSound("weapons/pocket",9);
 		BLSG B 1 offset(0,38);
 		BLSG B 3 offset(0,36);
 		BLSG B 3 offset(0,34);
@@ -312,16 +313,16 @@ class Brontornis:HDWeapon{
 		BLSG B 4 offset(0,34){
 			invoker.weaponstatus[BRONS_CHAMBER]=2;
 			A_TakeInventory("BrontornisRound",1,TIF_NOTAKEINFINITE);
-			A_PlaySound("weapons/brontoload",CHAN_WEAPON);
+			A_StartSound("weapons/brontoload",8);
 		}
 		BLSG B 6 offset(0,33);
 	reloadend:
 		BLSG B 6 offset(0,34);
-		BLSG B 2 offset(0,34) A_PlaySound("weapons/brontunload",CHAN_WEAPON);
+		BLSG B 2 offset(0,34) A_StartSound("weapons/brontunload",8);
 		BLSG B 1 offset(0,36);
 		BLSG B 1 offset(0,34);
 		BLSG BA 4;
-		BLSG A 0 A_PlaySound("weapons/brontoclose",CHAN_WEAPON);
+		BLSG A 0 A_StartSound("weapons/brontoclose",8);
 		goto ready;
 
 	spawn:

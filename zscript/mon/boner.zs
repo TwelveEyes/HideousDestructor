@@ -27,11 +27,11 @@ class bonerball:hdactor{
 	states{
 	spawn:
 		TNT1 A 0;
-		TNT1 A 0 A_PlaySound("skeleton/attack",CHAN_VOICE);
+		TNT1 A 0 A_StartSound("skeleton/attack",CHAN_VOICE);
 	spawn2:
 		FATB AB 2 bright;
 		TNT1 A 0{
-			A_PlaySound("world/rocketfar",CHAN_BODY,0.4);
+			A_StartSound("world/rocketfar",CHAN_BODY,volume:0.4);
 			oldvel=vel;
 			if(A_JumpIfTargetInLOS("spawn",0,JLOSF_CHECKTRACER)){
 				A_ScaleVelocity(0.9);
@@ -77,6 +77,7 @@ class bonerball:hdactor{
 			A_SprayDecal("Scorch",10);
 			bmissile=false;
 			bnointeraction=true;
+			A_Scream();
 		}
 		TNT1 AAAAAAAAAAA 0 A_SpawnItemEx("BigWallChunk",random(-4,4),random(-4,4),random(2,14),oldvel.x+random(-6,6),oldvel.y+random(-6,6),oldvel.z+random(-4,18),random(0,360),SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
 		TNT1 AA 0 A_SpawnItemEx("HDSmokeChunk",random(-4,4),random(-4,4),random(2,14),oldvel.x+random(-6,6),oldvel.y+random(-6,6),oldvel.z+random(-4,18),random(0,360),SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,160);
@@ -103,12 +104,13 @@ class Boner:HDMobBase replaces Revenant{
 		+floorclip
 		+hdmobbase.smallhead
 		+hdmobbase.biped
+		hdmobbase.downedframe 15;
 		seesound "skeleton/sight";
 		painsound "skeleton/pain";
 		deathsound "skeleton/death";
 		activesound "skeleton/active";
 		meleesound "skeleton/melee";
-		tag "$fn_reven";
+		tag "$CC_REVEN";
 
 		+noblooddecals
 		-longmeleerange
@@ -162,21 +164,19 @@ class Boner:HDMobBase replaces Revenant{
 		SKEL H 2;
 		SKEL I 6 A_SkelFist();
 		SKEL H 4;
-		goto see;
+		---- A 0 setstatelabel("see");
 	missile:
 		SKEL II 4 A_FaceTarget();
 		SKEL J 3 bright A_SpawnProjectile("BonerBall",42,4,-24,2,4);
 		SKEL J 7 bright A_SpawnProjectile("BonerBall",42,-4,24,2,4);
 		SKEL K 12{balls=0;}
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
 		SKEL L 5;
 		SKEL L 5 A_Pain();
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
-		TNT1 A 0 A_SpawnItemEx("tempshieldpuff",flags:SXF_NOCHECKPOSITION|SXF_SETMASTER);
 		SKEL LM 7;
-		TNT1 A 0 A_SpawnItemEx("tempshield2puff",flags:SXF_NOCHECKPOSITION|SXF_SETMASTER);
 		SKEL N 7 A_Scream();
 		SKEL O 7 A_NoBlocking();
 	dead:
@@ -187,7 +187,21 @@ class Boner:HDMobBase replaces Revenant{
 	raise:
 		SKEL Q 5;
 		SKEL PONML 5;
-		goto see;
+		---- A 0 setstatelabel("see");
+	falldown:
+		SKEL L 5;
+		SKEL M 5 A_Pain();
+		SKEL NNOOP 2 A_SetSize(-1,max(deathheight,height-10));
+		SKEL L 0 A_SetSize(-1,deathheight);
+		SKEL Q 10 A_KnockedDown();
+		wait;
+	standup:
+		SKEL P 6;
+		SKEL O 0 A_Jump(160,2);
+		SKEL O 0 A_StartSound(seesound,CHAN_VOICE);
+		SKEL PO 4 A_Recoil(-0.3);
+		SKEL NML 4;
+		---- A 0 setstatelabel("see");
 	}
 }
 

@@ -23,30 +23,17 @@ class HDHandgun:HDWeapon{
 			return;
 		}
 		A_WeaponBusy();
-		int bk=mwt.weaponstatus0[pistindex];
-		mwt.weaponstatus0[pistindex]=invoker.weaponstatus[0];
-		invoker.weaponstatus[0]=bk;
-		bk=mwt.weaponstatus1[pistindex];
-		mwt.weaponstatus1[pistindex]=invoker.weaponstatus[1];
-		invoker.weaponstatus[1]=bk;
-		bk=mwt.weaponstatus2[pistindex];
-		mwt.weaponstatus2[pistindex]=invoker.weaponstatus[2];
-		invoker.weaponstatus[2]=bk;
-		bk=mwt.weaponstatus3[pistindex];
-		mwt.weaponstatus3[pistindex]=invoker.weaponstatus[3];
-		invoker.weaponstatus[3]=bk;
-		bk=mwt.weaponstatus4[pistindex];
-		mwt.weaponstatus4[pistindex]=invoker.weaponstatus[4];
-		invoker.weaponstatus[4]=bk;
-		bk=mwt.weaponstatus5[pistindex];
-		mwt.weaponstatus5[pistindex]=invoker.weaponstatus[5];
-		invoker.weaponstatus[5]=bk;
-		bk=mwt.weaponstatus6[pistindex];
-		mwt.weaponstatus6[pistindex]=invoker.weaponstatus[6];
-		invoker.weaponstatus[6]=bk;
-		bk=mwt.weaponstatus7[pistindex];
-		mwt.weaponstatus7[pistindex]=invoker.weaponstatus[7];
-		invoker.weaponstatus[7]=bk;
+
+		array<string> wepstat;
+		string wepstat2="";
+		mwt.weaponstatus[pistindex].split(wepstat,",");
+		for(int i=0;i<wepstat.size();i++){
+			if(i)wepstat2=wepstat2..",";
+			wepstat2=wepstat2..invoker.weaponstatus[i];
+			invoker.weaponstatus[i]=wepstat[i].toint();
+		}
+		mwt.weaponstatus[pistindex]=wepstat2;
+
 		invoker.wronghand=!invoker.wronghand;
 	}
 }
@@ -64,7 +51,7 @@ class HDPistol:HDHandgun replaces Pistol{
 		weapon.bobstyle "normal";
 		obituary "%o got capped by %k's pea shooter.";
 		inventory.pickupmessage "You got the pistol!";
-		hdweapon.nicename "Pistol";
+		tag "pistol";
 		hdweapon.refid HDLD_PISTOL;
 		hdweapon.barrelsize 10,0.3,0.5;
 		inventory.maxamount 3;
@@ -234,7 +221,7 @@ class HDPistol:HDHandgun replaces Pistol{
 		#### B 3 offset(0,34);
 		#### C 4 offset(0,37){
 			A_MuzzleClimb(frandom(0.4,0.5),-frandom(0.6,0.8));
-			A_PlaySound("weapons/pismagclick",CHAN_WEAPON);
+			A_StartSound("weapons/pismagclick",8);
 			int psch=invoker.weaponstatus[PISS_CHAMBER];
 			invoker.weaponstatus[PISS_CHAMBER]=0;
 			if(psch==2){
@@ -285,7 +272,7 @@ class HDPistol:HDHandgun replaces Pistol{
 			);
 			invoker.weaponstatus[PISS_CHAMBER]=0;
 			if(invoker.weaponstatus[PISS_MAG]<1){
-				A_PlaySound("weapons/pistoldry",7,0.9);
+				A_StartSound("weapons/pistoldry",8,CHANF_OVERLAP,0.9);
 				setweaponstate("nope");
 			}
 		}
@@ -321,7 +308,7 @@ class HDPistol:HDHandgun replaces Pistol{
 			A_ZoomRecoil(0.995);
 			A_MuzzleClimb(-frandom(0.4,1.2),-frandom(0.4,1.6));
 		}
-		---- A 0 A_PlaySound("weapons/pistol",CHAN_WEAPON,1.0);
+		---- A 0 A_StartSound("weapons/pistol",CHAN_WEAPON);
 		---- A 0 A_Light0();
 		stop;
 	unload:
@@ -331,14 +318,14 @@ class HDPistol:HDHandgun replaces Pistol{
 		}goto chamber_manual;
 	loadchamber:
 		---- A 0 A_JumpIf(invoker.weaponstatus[PISS_CHAMBER]>0,"nope");
-		---- A 1 offset(0,34) A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		---- A 1 offset(0,34) A_StartSound("weapons/pocket",9);
 		---- A 1 offset(2,36);
 		#### C 3 offset(5,40);
 		#### C 6 offset(4,39){
 			if(countinv("HDPistolAmmo")){
 				A_TakeInventory("HDPistolAmmo",1,TIF_NOTAKEINFINITE);
 				invoker.weaponstatus[PISS_CHAMBER]=2;
-				A_PlaySound("weapons/pischamber1",CHAN_WEAPON);
+				A_StartSound("weapons/pischamber1",8);
 			}
 		}
 		#### B 3 offset(2,36);
@@ -357,7 +344,7 @@ class HDPistol:HDHandgun replaces Pistol{
 		---- A 1 offset(0,34) A_SetCrosshair(21);
 		---- A 1 offset(1,38);
 		---- A 2 offset(2,42);
-		---- A 3 offset(3,46) A_PlaySound("weapons/pismagclick",CHAN_WEAPON);
+		---- A 3 offset(3,46) A_StartSound("weapons/pismagclick",8,CHANF_OVERLAP);
 		---- A 0{
 			int pmg=invoker.weaponstatus[PISS_MAG];
 			invoker.weaponstatus[PISS_MAG]=-1;
@@ -371,7 +358,7 @@ class HDPistol:HDHandgun replaces Pistol{
 			}
 			else{
 				HDMagAmmo.GiveMag(self,"HD9mMag15",pmg);
-				A_PlaySound("weapons/pocket",CHAN_WEAPON);
+				A_StartSound("weapons/pocket",9);
 				setweaponstate("pocketmag");
 			}
 		}
@@ -386,14 +373,14 @@ class HDPistol:HDHandgun replaces Pistol{
 
 	loadmag:
 		---- A 4 offset(0,46) A_MuzzleClimb(frandom(-0.2,0.8),frandom(-0.2,0.4));
-		---- A 0 A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		---- A 0 A_StartSound("weapons/pocket",9);
 		---- A 5 offset(0,46) A_MuzzleClimb(frandom(-0.2,0.8),frandom(-0.2,0.4));
 		---- A 3;
 		---- A 0{
 			let mmm=hdmagammo(findinventory("HD9mMag15"));
 			if(mmm){
 				invoker.weaponstatus[PISS_MAG]=mmm.TakeMag(true);
-				A_PlaySound("weapons/pismagclick",CHAN_BODY);
+				A_StartSound("weapons/pismagclick",8);
 			}
 			if(
 				invoker.weaponstatus[PISS_CHAMBER]<1
@@ -403,7 +390,7 @@ class HDPistol:HDHandgun replaces Pistol{
 				invoker.weaponstatus[PISS_MAG]--;
 			}else setweaponstate("reloadend");
 		}
-		#### A 3 offset(0,48) A_PlaySound("weapons/pischamber2",CHAN_WEAPON);
+		#### A 3 offset(0,48) A_StartSound("weapons/pischamber2",8,CHANF_OVERLAP);
 		#### A 2 offset(0,45);
 		goto reloadend;
 	reloadend:
@@ -415,20 +402,13 @@ class HDPistol:HDHandgun replaces Pistol{
 		goto ready;
 
 	user1:
+	altreload:
 	swappistols:
 		---- A 0 A_SwapHandguns();
 		---- A 0{
 			bool id=(Wads.CheckNumForName("id",0)!=-1);
 			bool offhand=invoker.wronghand;
-			bool lefthanded=(
-				(
-					id
-					&&!offhand
-				)||(
-					!id
-					&&offhand
-				)
-			);
+			bool lefthanded=(id!=offhand);
 			if(lefthanded){
 				A_Overlay(1025,"raiseleft");
 				A_Overlay(1026,"lowerright");
@@ -515,7 +495,7 @@ class HDPistol:HDHandgun replaces Pistol{
 			weaponstatus[0]|=PISF_SELECTFIRE;
 		}
 		if(weaponstatus[0]&PISF_SELECTFIRE){
-			int firemode=getloadoutvar(input,"auto",1);
+			int firemode=getloadoutvar(input,"firemode",1);
 			if(!firemode)weaponstatus[0]&=~PISF_FIREMODE;
 			else if(firemode>0)weaponstatus[0]|=PISF_FIREMODE;
 		}
@@ -541,7 +521,7 @@ class HDAutoPistol:HDWeaponGiver{
 		//$Sprite "PISTA0"
 		+hdweapon.fitsinbackpack
 		hdweapon.refid HDLD_PISTAUT;
-		hdweapon.nicename "Pistol (select-fire)";
+		tag "pistol (select-fire)";
 		hdweapongiver.bulk 34;
 		hdweapongiver.weapontogive "HDPistol";
 		hdweapongiver.config "selectfire";

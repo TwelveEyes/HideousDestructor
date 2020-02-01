@@ -2,11 +2,20 @@
 //   Misc. effects
 // ------------------------------------------------------------
 
+//channel constants
+enum HDSoundChannels{
+	CHAN_WEAPONBODY=8,  //for weapon sounds that are not the gun firing
+	CHAN_POCKETS=9,  //for pocket sounds in reloading, etc.
+	CHAN_ARCZAP=69420,  //electrical zapping arc noises
+	CHAN_DISTANT=4047,  //distant gunfire sounds
+}
+
+
 //debris actor: simplified physics, just bounce until dead and lie still, +noblockmap
 //basically we just need to account for conveyors and platforms
 class HDDebris:HDActor{
 	bool stopped;
-	int grav;
+	double grav;
 	double wdth;
 	double minrollspeed;
 	default{
@@ -38,13 +47,13 @@ class HDDebris:HDActor{
 		}
 
 		double velxylength=vel.xy.length();
-		int fracamount=max(1,velxylength/radius);
+		int fracamount=int(max(1,velxylength/radius));
 		vector3 frac=vel/fracamount;
 		bool keeptrymove=true;
 		for(int i=0;i<fracamount;i++){
 			addz(frac.z,true);
 			if(keeptrymove&&!trymove(pos.xy+frac.xy,true,true)){
-				A_PlaySound(bouncesound,CHAN_BODY);
+				A_StartSound(bouncesound);
 				if(blockingmobj){
 					vel*=-bouncefactor;
 				}else if(blockingline){
@@ -63,7 +72,7 @@ class HDDebris:HDActor{
 			onfloor
 			||ceilingz<=pos.z //most debris actors are negligible height
 		){
-			A_PlaySound(bouncesound,CHAN_BODY);
+			A_StartSound(bouncesound);
 			vel.xy=rotatevector(vel.xy,frandom(-0.1,0.1)*abs(vel.z))*bouncefactor;
 			vel.z*=-bouncefactor;
 		}
@@ -106,7 +115,7 @@ class WallChunk:HDDebris{
 		bwallsprite=randompick(0,0,0,1); //+wallsprite crashes software
 		roll=random(0,3)*90;
 		flip=random(1,4);
-		if(!random(0,9))A_PlaySound("misc/wallchunks");
+		if(!random(0,9))A_StartSound("misc/wallchunks");
 		frame=random(0,3);
 	}
 	void A_Dust(){
@@ -173,7 +182,7 @@ class HDSmokeChunk:HDDebris{
 			0,SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION
 		);
 		TNT1 A 0{
-			A_PlaySound("misc/firecrkl",0,0.4,0,3);
+			A_StartSound("misc/firecrkl",volume:0.4,attenuation:0.3);
 			accuracy++;
 			if(accuracy>=9)setstatelabel("death");
 		}
@@ -281,14 +290,16 @@ class HDBulletPuff:HDPuff{
 		if(max(abs(pos.x),abs(pos.y),abs(pos.z))>=32768){destroy();return;}
 		if(!random(0,scarechance)){
 			actor fff=spawn("idledummy",pos,ALLOW_REPLACE);
-			fff.stamina=random(60,120);
-			hdmobai.frighten(fff,256);
+			if(fff){
+				fff.stamina=random(60,120);
+				hdmobai.frighten(fff,256);
+			}
 		}
-		A_PlaySound("misc/bullethit",0,0.02*stamina*stamina);
+		int stm=stamina;
+		double vol=min(1.,0.1*stm);
+		A_StartSound("misc/bullethit",CHAN_BODY,CHANF_OVERLAP,vol);
 		A_ChangeVelocity(-0.4,0,frandom(0.1,0.4),CVF_RELATIVE);
 		trymove(pos.xy+vel.xy,false);
-		int stm=stamina;
-		fadeafter=frandom(0,1);
 		scale*=frandom(0.9,1.1);
 		for(int i=0;i<stamina;i++){
 			A_SpawnParticle("gray",
@@ -418,7 +429,7 @@ class HDRedFireLight:PointLight{
 	}
 	override void tick(){
 		if(!target||args[3]<1){destroy();return;}
-		args[3]*=frandom(0.8,1.09);
+		args[3]=int(frandom(0.8,1.09)*args[3]);
 		setorigin(target.pos,true);
 	}
 }
@@ -470,6 +481,7 @@ class HDExplosion:IdleDummy{
 	default{
 		+forcexybillboard +bright
 		alpha 0.9;renderstyle "add";
+		deathsound "world/explode";
 	}
 	states{
 	spawn:
@@ -477,7 +489,7 @@ class HDExplosion:IdleDummy{
 		MISL B 0 nodelay{
 			if(max(abs(pos.x),abs(pos.y),abs(pos.z))>=32768){destroy();return;}
 			vel.z+=4;
-			A_PlaySound("world/explode");
+			A_StartSound(deathsound,CHAN_BODY);
 			let xxx=spawn("HDExplosionLight",pos);
 			xxx.target=self;
 		}
@@ -506,7 +518,7 @@ class HDExplosionLight:PointLight{
 		args[4]=0;
 	}
 	override void tick(){
-		args[3]*=frandom(0.3,0.4);
+		args[3]=int(frandom(0.3,0.4)*args[3]);
 		if(args[3]<1)destroy();
 	}
 }
@@ -519,10 +531,9 @@ class HDCopyTrail:IdleDummy{
 	default{
 		+noclip +rollsprite +rollcenter +nointeraction
 		deathheight 0.6;
+		renderstyle "add";
 	}
-	states{
-	spawn:#### A -1;stop;
-	}
+	states{spawn:#### A -1;stop;}
 	override void Tick(){
 		clearinterpolation();
 		if(isfrozen())return;
@@ -540,10 +551,7 @@ class HDCopyTrail:IdleDummy{
 }
 extend class HDActor{
 	void A_Trail(double spread=0.6){
-		vector3 v;
-		v=(random(-10,10),random(-10,10),random(-10,10));
-		if(v==(0,0,0)) v.z=1;
-		v=v.unit();
+		vector3 v=(frandom(-1,1),frandom(-1,1),frandom(-1,1));
 		A_SpawnItemEx("HDCopyTrail",
 			0,0,0,vel.x+v.x,vel.y+v.y,vel.z+v.z,0,
 			SXF_TRANSFERALPHA|SXF_TRANSFERRENDERSTYLE|SXF_TRANSFERSCALE|
@@ -553,82 +561,73 @@ extend class HDActor{
 		);
 	}
 }
-
-//distant noise generator designed to imitate speed of sound
-//generates a noisemaker for each player with its own delay based on distance
-//special usages: deathsound=sound to make; mass=length of the sound
-class DistantDummy:IdleDummy{
-	default{
-		deathsound "world/riflefar";mass 20;
+class HDFader:HDCopyTrail{
+	default{+rollsprite +rollcenter +noblockmap +nointeraction deathheight 0.1;}
+	override void Tick(){
+		clearinterpolation();
+		if(isfrozen()||level.time&(1|2))return;
+		setorigin(pos+vel,true);
+		alpha-=deathheight;
+		if(alpha<0)destroy();
 	}
-	double dist;
-	states{
-	spawn:
-		TNT1 A 0 nodelay{
-			if(target)A_AlertMonsters();
-			for(int i=0;i<MAXPLAYERS;i++){
-				if((playeringame[i])&&(players[i].mo)){
-					dist=distance3d(players[i].mo);
-					if(dist>HDCONST_MINDISTANTSOUND){ //don't bother if too close
-						actor id=spawn("DistantNoisemaker",pos,ALLOW_REPLACE);
-						if(id){
-							id.target=players[i].mo;
-							id.deathsound=self.deathsound;
-							id.stamina=dist/HDCONST_SPEEDOFSOUND;
-							id.mass=self.mass;
-							id.bmissilemore=self.bmissilemore;
-						}
+}
+
+
+//thinker used to generate distant sound
+//DistantNoise.Make(self,"world/rocketfar");
+class DistantNoise:Thinker{
+	sound distantsound;
+	int distances[MAXPLAYERS];
+	int ticker;
+	double volume,pitch;
+	static void Make(
+		actor source,
+		sound distantsound,
+		double volume=1.,
+		double pitch=1.
+	){
+		DistantNoise dnt=new("DistantNoise");
+		dnt.ticker=0;
+		dnt.distantsound=distantsound;
+		dnt.volume=clamp(0.,volume,5.);
+		dnt.pitch=pitch;
+		for(int i=0;i<MAXPLAYERS;i++){
+			if(
+				playeringame[i]
+				&&!!players[i].mo
+			){
+				dnt.distances[i]=int(players[i].mo.distance3d(source)/HDCONST_SPEEDOFSOUND);
+			}else dnt.distances[i]=-1;
+		}
+	}
+	override void Tick(){
+		if(level.isfrozen())return;
+		int playersleft=0;
+		for(int i=0;i<MAXPLAYERS;i++){
+			if(distances[i]<0)continue;
+			if(
+				!!players[i].mo
+			){
+				playersleft++;
+				if(distances[i]==ticker){
+					distances[i]=-1;
+					while(volume>0){
+						players[i].mo.A_StartSound(
+							distantsound,CHAN_DISTANT,
+							CHANF_OVERLAP|CHANF_LOCAL,
+							min(1.,volume),  //if we ever stop needing this clamp, delete the loop
+							pitch:pitch
+						);
+						volume-=1.;
 					}
 				}
 			}
-		}stop;
-	}
-}
-class DistantNoisemaker:IdleDummy{
-	default{
-		mass 20;
-		deathsound "world/riflefar";
-	}
-	states{
-	spawn:
-		TNT1 A 1 nodelay A_SetTics(stamina);
-		TNT1 A 0{
-			if(
-				abs(pos.x)>30000
-				||abs(pos.y)>30000
-				||abs(pos.z)>30000
-			){
-				destroy();return;
-			}
-			A_PlaySound(deathsound,CHAN_VOICE,1,0,24);
-			if(bmissilemore)A_PlaySound(deathsound,CHAN_WEAPON,1,0,24);
 		}
-		TNT1 A 1{
-			if(target && mass>0){
-				self.mass--;
-				setxyz(target.pos);
-			}else{destroy();return;}
-		}wait;
+		if(playersleft)ticker++;
+		else destroy();
 	}
 }
-class DistantRifle:DistantDummy{
-	default{deathsound "world/riflefar";mass 18;}
-}
-class DistantShotgun:DistantDummy{
-	default{deathsound "world/shotgunfar";mass 34;}
-}
-class DistantRocket:DistantDummy{
-	default{deathsound "world/rocketfar";mass 21;}
-}
-class DistantBFG:DistantDummy{
-	default{deathsound "world/bfgfar";mass 44;}
-}
-class DoubleDistantRifle:DistantRifle{
-	default{+missilemore}
-}
-class DoubleDistantShotgun:DistantShotgun{ //USED FOR BRONTORNIS, DO NOT DELETE
-	default{+missilemore}
-}
+
 
 
 //Quake effect affecting each player differently depending on distance
@@ -654,7 +653,7 @@ class DistantQuaker:IdleDummy{
 			||caller.ceilingz-caller.floorz>HDCONST_MINDISTANTSOUND
 		){
 			intensity=clamp(intensity-1,1,9);
-			duration*=0.9;
+			duration=int(0.9*duration);
 		}
 		double dist;
 		for(int i=0;i<MAXPLAYERS;i++){
@@ -664,11 +663,11 @@ class DistantQuaker:IdleDummy{
 					let it=DistantQuaker(caller.spawn("DistantQuaker",players[i].mo.pos,ALLOW_REPLACE));
 					if(it){
 						if(dist<=dropoffrate)it.intensity=intensity;
-							else it.intensity=clamp(intensity-floor(dist/dropoffrate),1,9);
+							else it.intensity=int(clamp(intensity-floor(dist/dropoffrate),1,9));
 						if(dist>minwaveradius)it.wave=true;else it.wave=false;  
 						if(it.intensity<3)it.deathsound="null";
 							else it.deathsound="world/quake";
-						it.stamina=floor(dist/speed);
+						it.stamina=int(dist/speed);
 						it.mass=duration;
 						it.frequency=frequency;
 						it.target=players[i].mo;
@@ -683,13 +682,17 @@ class DistantQuaker:IdleDummy{
 		TNT1 A 0{
 			if(max(abs(pos.x),abs(pos.y),abs(pos.z))>32000)return;
 			if(wave){
-				A_PlaySound("weapons/subfwoosh",CHAN_AUTO,0.1*intensity);
+				A_StartSound("weapons/subfwoosh",CHAN_AUTO,volume:0.1*intensity);
 				if(target && target.pos.z<target.floorz+8)
-					A_QuakeEx(0,0,intensity,mass,0,16,deathsound,
-					QF_SCALEDOWN|QF_WAVE,0,0,frequency,0,mass*0.62);
+					A_QuakeEx(
+						0,0,intensity,mass,0,16,deathsound,
+						QF_SCALEDOWN|QF_WAVE,0,0,frequency,0,int(mass*0.62)
+					);
 			}else{
-				A_QuakeEx(intensity*2,intensity*2,intensity*2,mass,0,16,deathsound,
-				QF_SCALEDOWN,highpoint:mass*0.62);
+				A_QuakeEx(
+					intensity*2,intensity*2,intensity*2,mass,0,16,deathsound,
+					QF_SCALEDOWN,highpoint:int(mass*0.62)
+				);
 			}
 		}
 		TNT1 A 1{
@@ -734,14 +737,14 @@ class BloodSplat:BloodSplatSilent replaces Blood{
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
-		if(!bambush)A_PlaySound(seesound,CHAN_BODY,0.2);
+		if(!bambush)A_StartSound(seesound,CHAN_BODY,CHANF_OVERLAP,0.2);
 	}
 }
 class BloodSplattest:BloodSplat replaces BloodSplatter{}
 class NotQuiteBloodSplat:BloodSplat{
 	override void postbeginplay(){
 		super.postbeginplay();
-		A_PlaySound("misc/bulletflesh",0,0.02);
+		A_StartSound("misc/bulletflesh",CHAN_BODY,CHANF_OVERLAP,0.02);
 		actor p=spawn("PenePuff",pos,ALLOW_REPLACE);
 		p.target=target;p.master=master;p.vel=vel*0.3;
 		scale*=frandom(0.2,0.5);
@@ -762,7 +765,7 @@ class ShieldNotBlood:NotQuiteBloodSplat{
 			bnointeraction=true;
 			return;
 		}
-		A_PlaySound("misc/bulletflesh",0,0.02);
+		A_StartSound("misc/bulletflesh",CHAN_AUTO,volume:0.02);
 		actor p=spawn("PenePuff",pos,ALLOW_REPLACE);
 		p.target=target;p.master=master;p.vel=vel*0.3;
 		scale*=frandom(0.2,0.5);
@@ -877,7 +880,7 @@ class TeleFog:IdleDummy replaces TeleportFog{
 	override void postbeginplay(){
 		actor.postbeginplay();
 		scale.x*=randompick(-1,1);
-		A_PlaySound("misc/teleport");
+		A_StartSound("misc/teleport");
 	}
 	states{
 	spawn:
@@ -896,3 +899,85 @@ class TeleFog:IdleDummy replaces TeleportFog{
 }
 
 
+
+
+
+
+
+//deprecated, delete later
+
+//distant noise generator designed to imitate speed of sound
+//generates a noisemaker for each player with its own delay based on distance
+//special usages: deathsound=sound to make; mass=length of the sound
+class DistantDummy:IdleDummy{
+	default{
+		deathsound "world/riflefar";mass 20;
+	}
+	double dist;
+	states{
+	spawn:
+		TNT1 A 0 nodelay{
+			console.printf("DistantDummy is deprecated. Please use DistantNoise.Make() instead.");
+			if(target)A_AlertMonsters();
+			for(int i=0;i<MAXPLAYERS;i++){
+				if((playeringame[i])&&(players[i].mo)){
+					dist=distance3d(players[i].mo);
+					if(dist>HDCONST_MINDISTANTSOUND){ //don't bother if too close
+						actor id=spawn("DistantNoisemaker",pos,ALLOW_REPLACE);
+						if(id){
+							id.target=players[i].mo;
+							id.deathsound=self.deathsound;
+							id.stamina=int(dist/HDCONST_SPEEDOFSOUND);
+							id.mass=self.mass;
+							id.bmissilemore=self.bmissilemore;
+						}
+					}
+				}
+			}
+		}stop;
+	}
+}
+class DistantNoisemaker:IdleDummy{
+	default{
+		mass 20;
+		deathsound "world/riflefar";
+	}
+	states{
+	spawn:
+		TNT1 A 1 nodelay A_SetTics(stamina);
+		TNT1 A 0{
+			if(
+				abs(pos.x)>30000
+				||abs(pos.y)>30000
+				||abs(pos.z)>30000
+			){
+				destroy();return;
+			}
+			A_StartSound(deathsound,CHAN_VOICE,attenuation:24);
+			if(bmissilemore)A_StartSound(deathsound,CHAN_WEAPON,attenuation:24);
+		}
+		TNT1 A 1{
+			if(target && mass>0){
+				self.mass--;
+				setxyz(target.pos);
+			}else{destroy();return;}
+		}wait;
+	}
+}
+class DistantRifle:DistantDummy{
+	default{deathsound "world/riflefar";mass 18;}
+}
+class DistantHERP:DistantRifle{default{deathsound "world/herpfar";}}
+class DistantVulc:DistantRifle{default{deathsound "world/vulcfar";}}
+class DistantShotgun:DistantDummy{
+	default{deathsound "world/shotgunfar";mass 34;}
+}
+class DistantRocket:DistantDummy{
+	default{deathsound "world/rocketfar";mass 21;}
+}
+class DistantBFG:DistantDummy{
+	default{deathsound "world/bfgfar";mass 44;}
+}
+class DoubleDistantRifle:DistantRifle{
+	default{+missilemore}
+}

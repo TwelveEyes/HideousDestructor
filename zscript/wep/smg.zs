@@ -19,7 +19,8 @@ class HDSMG:HDWeapon{
 		inventory.pickupmessage "You got the SMG!";
 		hdweapon.barrelsize 26,0.5,1;
 		hdweapon.refid HDLD_SMG;
-		hdweapon.nicename "SMG";
+		tag "SMG";
+		inventory.icon "SMGNA0";
 	}
 	override bool AddSpareWeapon(actor newowner){return AddSpareWeaponRegular(newowner);}
 	override hdweapon GetSpareWeapon(actor newowner,bool reverse,bool doselect){return GetSpareWeaponRegular(newowner,reverse,doselect);}
@@ -40,6 +41,23 @@ class HDSMG:HDWeapon{
 			if(owner.countinv("HDPistolAmmo"))owner.A_DropInventory("HDPistolAmmo",amt*30);
 			else owner.A_DropInventory("HD9mMag30",amt);
 		}
+	}
+	override void postbeginplay(){
+		super.postbeginplay();
+		if(weaponstatus[SMGS_AUTO]>0){
+		switch(weaponstatus[SMGS_SWITCHTYPE]){
+		case 1:
+			weaponstatus[SMGS_AUTO]=0;
+			break;
+		case 2:
+			weaponstatus[SMGS_AUTO]=1;
+			break;
+		case 3:
+			weaponstatus[SMGS_AUTO]=2;
+			break;
+		default:
+			break;
+		}}
 	}
 	override void ForceBasicAmmo(){
 		owner.A_TakeInventory("HDPistolAmmo");
@@ -64,7 +82,7 @@ class HDSMG:HDWeapon{
 			);
 			sb.drawnum(hpl.countinv("HD9mMag30"),-43,-8,sb.DI_SCREEN_CENTER_BOTTOM,font.CR_BLACK);
 		}
-		sb.drawwepcounter(hdw.weaponstatus[SMGS_AUTO],
+		if(weaponstatus[SMGS_SWITCHTYPE]!=1)sb.drawwepcounter(hdw.weaponstatus[SMGS_AUTO],
 			-22,-10,"RBRSA3A7","STBURAUT","STFULAUT"
 		);
 		sb.drawwepnum(hdw.weaponstatus[SMGS_MAG],30);
@@ -83,33 +101,56 @@ class HDSMG:HDWeapon{
 		HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl,
 		bool sightbob,vector2 bob,double fov,bool scopeview,actor hpc,string whichdot
 	){
-		int cx,cy,cw,ch;
-		[cx,cy,cw,ch]=screen.GetClipRect();
-		sb.SetClipRect(
-			-16+bob.x,-4+bob.y,32,16,
-			sb.DI_SCREEN_CENTER
-		);
-		vector2 bobb=bob*3;
-		bobb.y=clamp(bobb.y,-8,8);
-		sb.drawimage(
-			"frntsite",(0,0)+bobb,sb.DI_SCREEN_CENTER|sb.DI_ITEM_TOP,
-			alpha:0.9
-		);
-		sb.SetClipRect(cx,cy,cw,ch);
-		sb.drawimage(
-			"backsite",(0,0)+bob,sb.DI_SCREEN_CENTER|sb.DI_ITEM_TOP
-		);
+		if(weaponstatus[0]&SMGF_REFLEXSIGHT){
+			double dotoff=max(abs(bob.x),abs(bob.y));
+			if(dotoff<10){
+				sb.drawimage(
+					whichdot,(0,0)+bob*1.6,sb.DI_SCREEN_CENTER|sb.DI_ITEM_CENTER,
+					alpha:0.8-dotoff*0.04,scale:(1.6,1.6)
+				);
+			}
+			sb.drawimage(
+				"xh25",(0,0)+bob,sb.DI_SCREEN_CENTER|sb.DI_ITEM_CENTER,
+				scale:(2.,2.)
+			);
+		}else{
+			int cx,cy,cw,ch;
+			[cx,cy,cw,ch]=screen.GetClipRect();
+			sb.SetClipRect(
+				-16+bob.x,-4+bob.y,32,16,
+				sb.DI_SCREEN_CENTER
+			);
+			vector2 bobb=bob*3;
+			bobb.y=clamp(bobb.y,-8,8);
+			sb.drawimage(
+				"frntsite",(0,0)+bobb,sb.DI_SCREEN_CENTER|sb.DI_ITEM_TOP,
+				alpha:0.9
+			);
+			sb.SetClipRect(cx,cy,cw,ch);
+			sb.drawimage(
+				"backsite",(0,0)+bob,sb.DI_SCREEN_CENTER|sb.DI_ITEM_TOP
+			);
+		}
+	}
+	action void A_CheckReflexSight(){
+		if(
+			invoker.weaponstatus[0]&SMGF_REFLEXSIGHT
+		)Player.GetPSprite(PSP_WEAPON).sprite=getspriteindex("SMSGA0");
+		else Player.GetPSprite(PSP_WEAPON).sprite=getspriteindex("SMGGA0");
 	}
 	states{
 	select0:
-		SMGG A 0;
+		SMGG A 0 A_CheckReflexSight();
 		goto select0small;
 	deselect0:
-		SMGG A 0;
+		SMGG A 0 A_CheckReflexSight();
 		goto deselect0small;
+		SMGG AB 0;
+		SMSG AB 0;
 
 	ready:
-		SMGG A 1{
+		SMGG A 0 A_CheckReflexSight();
+		#### A 1{
 			A_SetCrosshair(21);
 			invoker.weaponstatus[SMGS_RATCHET]=0;
 			A_WeaponReady(WRF_ALL);
@@ -122,7 +163,7 @@ class HDSMG:HDWeapon{
 	althold:
 		goto nope;
 	hold:
-		SMGG A 0{
+		#### A 0{
 			if(
 				//full auto
 				invoker.weaponstatus[SMGS_AUTO]==2
@@ -136,15 +177,22 @@ class HDSMG:HDWeapon{
 	user2:
 	firemode:
 		---- A 1{
+			int canaut=invoker.weaponstatus[SMGS_SWITCHTYPE];
+			if(canaut==1){
+				invoker.weaponstatus[SMGS_AUTO]=0;
+				return;
+			}
+			int maxmode=(canaut>0)?(canaut-1):2;
 			int aut=invoker.weaponstatus[SMGS_AUTO];
-			if(aut>=2)invoker.weaponstatus[SMGS_AUTO]=0;
+			if(aut>=maxmode)invoker.weaponstatus[SMGS_AUTO]=0;
 			else if(aut<0)invoker.weaponstatus[SMGS_AUTO]=0;
+			else if(canaut>0)invoker.weaponstatus[SMGS_AUTO]=maxmode;
 			else invoker.weaponstatus[SMGS_AUTO]++;
 		}goto nope;
 	fire:
-		SMGG A 1;
+		#### A 0;
 	fire2:
-		SMGG B 1{
+		#### B 1{
 			if(invoker.weaponstatus[SMGS_CHAMBER]==2){
 				A_GunFlash();
 			}else{
@@ -152,8 +200,8 @@ class HDSMG:HDWeapon{
 				else setweaponstate("nope");
 			}
 		}
-		SMGG A 1;
-		SMGG A 0{
+		#### A 1;
+		#### A 0{
 			if(invoker.weaponstatus[SMGS_CHAMBER]==1){
 				A_SpawnItemEx("HDSpent9mm",
 					cos(pitch)*10,0,height-10-sin(pitch)*10,
@@ -169,17 +217,17 @@ class HDSMG:HDWeapon{
 			if(invoker.weaponstatus[SMGS_AUTO]==2)A_SetTics(1);
 			A_WeaponReady(WRF_NOFIRE);
 		}
-		SMGG A 0 A_ReFire();
+		#### A 0 A_ReFire();
 		goto ready;
 	flash:
-		SMGG B 0{
+		#### B 0{
 			let bbb=HDBulletActor.FireBullet(self,"HDB_9",speedfactor:1.1);
 			if(
-				frandom(32,ceilingz-floorz)<bbb.speed*0.2
+				frandom(16,ceilingz-floorz)<bbb.speed*0.1
 			)A_AlertMonsters(200);
 
 			A_ZoomRecoil(0.995);
-			A_PlaySound("weapons/smg",CHAN_WEAPON,0.7);
+			A_StartSound("weapons/smg",CHAN_WEAPON,volume:0.7);
 			invoker.weaponstatus[SMGS_RATCHET]++;
 			invoker.weaponstatus[SMGS_CHAMBER]=1;
 		}
@@ -187,13 +235,13 @@ class HDSMG:HDWeapon{
 			HDFlashAlpha(-200);
 			A_Light1();
 		}
-		TNT1 A 0 A_MuzzleClimb(-frandom(0.4,0.6),-frandom(0.5,0.8),-frandom(0.4,0.6),-frandom(0.5,0.8));
+		TNT1 A 0 A_MuzzleClimb(-frandom(0.2,0.24),-frandom(0.3,0.36),-frandom(0.2,0.24),-frandom(0.3,0.36));
 		goto lightdone;
 
 
 	unloadchamber:
-		SMGG B 4 A_JumpIf(invoker.weaponstatus[SMGS_CHAMBER]<1,"nope");
-		SMGG B 10{
+		#### B 4 A_JumpIf(invoker.weaponstatus[SMGS_CHAMBER]<1,"nope");
+		#### B 10{
 			class<actor>which=invoker.weaponstatus[SMGS_CHAMBER]>1?"HDPistolAmmo":"HDSpent9mm";
 			invoker.weaponstatus[SMGS_CHAMBER]=0;
 			A_SpawnItemEx(which,
@@ -205,23 +253,23 @@ class HDSMG:HDWeapon{
 	loadchamber:
 		---- A 0 A_JumpIf(invoker.weaponstatus[SMGS_CHAMBER]>0,"nope");
 		---- A 0 A_JumpIf(!countinv("HDPistolAmmo"),"nope");
-		---- A 1 offset(0,34) A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		---- A 1 offset(0,34) A_StartSound("weapons/pocket",9);
 		---- A 1 offset(2,36);
-		SMGG B 1 offset(5,40);
-		SMGG B 4 offset(4,39){
+		#### B 1 offset(5,40);
+		#### B 4 offset(4,39){
 			if(countinv("HDPistolAmmo")){
 				A_TakeInventory("HDPistolAmmo",1,TIF_NOTAKEINFINITE);
 				invoker.weaponstatus[SMGS_CHAMBER]=2;
-				A_PlaySound("weapons/smgchamber",CHAN_WEAPON);
+				A_StartSound("weapons/smgchamber",8);
 			}
 		}
-		SMGG B 7 offset(5,37);
-		SMGG B 1 offset(2,36);
-		SMGG A 1 offset(0,34);
+		#### B 7 offset(5,37);
+		#### B 1 offset(2,36);
+		#### A 1 offset(0,34);
 		goto readyend;
 	user4:
 	unload:
-		SMGG A 0{
+		#### A 0{
 			invoker.weaponstatus[0]|=SMGF_JUSTUNLOAD;
 			if(
 				invoker.weaponstatus[SMGS_MAG]>=0
@@ -229,7 +277,7 @@ class HDSMG:HDWeapon{
 			else if(invoker.weaponstatus[SMGS_CHAMBER]>0)setweaponstate("unloadchamber");
 		}goto nope;
 	reload:
-		SMGG A 0{
+		#### A 0{
 			invoker.weaponstatus[0]&=~SMGF_JUSTUNLOAD;
 			if(invoker.weaponstatus[SMGS_MAG]>=30)setweaponstate("nope");
 			else if(HDMagAmmo.NothingLoaded(self,"HD9mMag30")){
@@ -241,15 +289,15 @@ class HDSMG:HDWeapon{
 			}
 		}goto unmag;
 	unmag:
-		SMGG A 1 offset(0,34) A_SetCrosshair(21);
-		SMGG A 1 offset(5,38);
-		SMGG A 1 offset(10,42);
-		SMGG B 2 offset(20,46) A_PlaySound("weapons/smgmagclick",CHAN_WEAPON);
-		SMGG B 4 offset(30,52){
+		#### A 1 offset(0,34) A_SetCrosshair(21);
+		#### A 1 offset(5,38);
+		#### A 1 offset(10,42);
+		#### B 2 offset(20,46) A_StartSound("weapons/smgmagclick",8);
+		#### B 4 offset(30,52){
 			A_MuzzleClimb(0.3,0.4);
-			A_PlaySound("weapons/smgmagmove",CHAN_WEAPON);
+			A_StartSound("weapons/smgmagmove",8,CHANF_OVERLAP);
 		}
-		SMGG B 0{
+		#### B 0{
 			int magamt=invoker.weaponstatus[SMGS_MAG];
 			if(magamt<0){
 				setweaponstate("magout");
@@ -264,28 +312,28 @@ class HDSMG:HDWeapon{
 				setweaponstate("magout");
 			}else{
 				HDMagAmmo.GiveMag(self,"HD9mMag30",magamt);
-				A_PlaySound("weapons/pocket",CHAN_WEAPON);
+				A_StartSound("weapons/pocket",9);
 				setweaponstate("pocketmag");
 			}
 		}
 	pocketmag:
-		SMGG BB 7 offset(34,54) A_MuzzleClimb(frandom(0.2,-0.8),frandom(-0.2,0.4));
+		#### BB 7 offset(34,54) A_MuzzleClimb(frandom(0.2,-0.8),frandom(-0.2,0.4));
 	magout:
-		SMGG B 0{
+		#### B 0{
 			if(invoker.weaponstatus[0]&SMGF_JUSTUNLOAD)setweaponstate("reloadend");
 			else setweaponstate("loadmag");
 		}
 
 	loadmag:
-		SMGG B 0 A_PlaySound("weapons/pocket",CHAN_WEAPON);
-		SMGG B 6 offset(34,54) A_MuzzleClimb(frandom(0.2,-0.8),frandom(-0.2,0.4));
-		SMGG B 7 offset(34,52) A_MuzzleClimb(frandom(0.2,-0.8),frandom(-0.2,0.4));
-		SMGG B 10 offset(32,50);
-		SMGG B 3 offset(32,49){
+		#### B 0 A_StartSound("weapons/pocket",9);
+		#### B 6 offset(34,54) A_MuzzleClimb(frandom(0.2,-0.8),frandom(-0.2,0.4));
+		#### B 7 offset(34,52) A_MuzzleClimb(frandom(0.2,-0.8),frandom(-0.2,0.4));
+		#### B 10 offset(32,50);
+		#### B 3 offset(32,49){
 			let mmm=hdmagammo(findinventory("HD9mMag30"));
 			if(mmm){
 				invoker.weaponstatus[SMGS_MAG]=mmm.TakeMag(true);
-				A_PlaySound("weapons/smgmagclick",CHAN_BODY);
+				A_StartSound("weapons/smgmagclick",8,CHANF_OVERLAP);
 			}
 			if(
 				invoker.weaponstatus[SMGS_MAG]<1
@@ -293,43 +341,74 @@ class HDSMG:HDWeapon{
 			)setweaponstate("reloadend");
 		}
 	chamber:
-		SMGG B 2 offset(33,50){
+		#### B 2 offset(33,50){
 			invoker.weaponstatus[SMGS_MAG]--;
 			invoker.weaponstatus[SMGS_CHAMBER]=2;
 		}
-		SMGG B 4 offset(32,49) A_PlaySound("weapons/smgchamber",CHAN_WEAPON);
+		#### B 4 offset(32,49) A_StartSound("weapons/smgchamber",8,CHANF_OVERLAP);
 
 	reloadend:
-		SMGG B 3 offset(30,52);
-		SMGG B 2 offset(20,46);
-		SMGG A 1 offset(10,42);
-		SMGG A 1 offset(5,38);
-		SMGG A 1 offset(0,34);
+		#### B 3 offset(30,52);
+		#### B 2 offset(20,46);
+		#### A 1 offset(10,42);
+		#### A 1 offset(5,38);
+		#### A 1 offset(0,34);
 		goto nope;
 
 
 	spawn:
-		SMGN A -1 nodelay{
+		TNT1 A 1;
+		SMGN A -1{
 			if(invoker.weaponstatus[SMGS_MAG]<0)frame=1;
+			if(
+				invoker.weaponstatus[0]&SMGF_REFLEXSIGHT
+			)invoker.sprite=getspriteindex("SMSNA0");
 		}
+		SMSN # -1;
+		stop;
 	}
 	override void initializewepstats(bool idfa){
-		weaponstatus[0]=0;
 		weaponstatus[SMGS_MAG]=30;
 		weaponstatus[SMGS_CHAMBER]=2;
-		if(!idfa)weaponstatus[SMGS_AUTO]=0;
 	}
 	override void loadoutconfigure(string input){
 		int firemode=getloadoutvar(input,"firemode",1);
-		if(firemode>0)weaponstatus[SMGS_AUTO]=clamp(firemode,0,2);
+		if(firemode>=0)weaponstatus[SMGS_AUTO]=clamp(firemode,0,2);
+
+		firemode=getloadoutvar(input,"reflexsight",1);
+		if(firemode>0)weaponstatus[0]|=SMGF_REFLEXSIGHT;
+
+		int fireswitch=getloadoutvar(input,"fireswitch",1);
+		if(fireswitch>0)weaponstatus[SMGS_SWITCHTYPE]=clamp(fireswitch,0,3);
 	}
 }
 enum smgstatus{
 	SMGF_JUSTUNLOAD=1,
+	SMGF_REFLEXSIGHT=2,
+
+	SMGN_SEMIONLY=1,
+	SMGN_BURSTONLY=2,
+	SMGN_FULLONLY=3,
 
 	SMGS_FLAGS=0,
 	SMGS_MAG=1,
 	SMGS_CHAMBER=2, //0 empty, 1 spent, 2 loaded
 	SMGS_AUTO=3, //0 semi, 1 burst, 2 auto
 	SMGS_RATCHET=4,
+	SMGS_SWITCHTYPE=5,
 };
+
+class HDSMGRandom:IdleDummy{
+	states{
+	spawn:
+		TNT1 A 0 nodelay{
+			let lll=HDSMG(spawn("HDSMG",pos,ALLOW_REPLACE));
+			if(!lll)return;
+			lll.special=special;
+			lll.vel=vel;
+			if(!random(0,2))lll.weaponstatus[0]|=SMGF_REFLEXSIGHT;
+			if(!random(0,2))lll.weaponstatus[SMGS_SWITCHTYPE]=random(0,3);
+		}stop;
+	}
+}
+

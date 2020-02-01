@@ -40,18 +40,17 @@ class HDShotgun:HDWeapon{
 			}
 		}
 	}
-	action void A_UnloadSideSaddle(int slot){
-		int uamt=clamp(invoker.weaponstatus[slot],0,4);
+	action void A_UnloadSideSaddle(){
+		int uamt=clamp(invoker.weaponstatus[SHOTS_SIDESADDLE],0,4);
 		if(!uamt)return;
-		invoker.weaponstatus[slot]-=uamt;
-		int maxpocket=min(uamt,ammocap("HDShellAmmo")-countinv("HDShellAmmo"));
+		invoker.weaponstatus[SHOTS_SIDESADDLE]-=uamt;
+		int maxpocket=min(uamt,HDPickup.MaxGive(self,"HDShellAmmo",ENC_SHELL));
 		if(maxpocket>0&&pressingunload()){
 			A_SetTics(16);
-//			A_WeaponReady(WRF_NONE);
 			uamt-=maxpocket;
 			A_GiveInventory("HDShellAmmo",maxpocket);
 		}
-		A_PlaySound("weapons/pocket");
+		A_StartSound("weapons/pocket",9);
 		EmptyHand(uamt);
 	}
 	action void A_CannibalizeOtherShotgun(){
@@ -59,7 +58,7 @@ class HDShotgun:HDWeapon{
 		if(hhh){
 			int totake=min(
 				hhh.weaponstatus[SHOTS_SIDESADDLE],
-				AmmoCap("HDShellAmmo")-countinv("HDShellAmmo"),
+				HDPickup.MaxGive(self,"HDShellAmmo",ENC_SHELL),
 				4
 			);
 			if(totake>0){
@@ -70,7 +69,7 @@ class HDShotgun:HDWeapon{
 	}
 	//not all loads are equal
 	double shotpower;
-	static clearscope double getshotpower(){return frandom(0.9,1.05);}
+	static double getshotpower(){return frandom(0.9,1.05);}
 	override void DetachFromOwner(){
 		if(handshells>0){
 			if(owner)owner.A_DropItem("HDShellAmmo",handshells);
@@ -82,7 +81,7 @@ class HDShotgun:HDWeapon{
 	override void failedpickupunload(){
 		int sss=weaponstatus[SHOTS_SIDESADDLE];
 		if(sss<1)return;
-		A_PlaySound("weapons/pocket",5);
+		A_StartSound("weapons/pocket",9);
 		int dropamt=min(sss,4);
 		A_DropItem("HDShellAmmo",dropamt);
 		weaponstatus[SHOTS_SIDESADDLE]-=dropamt;

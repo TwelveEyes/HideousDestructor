@@ -7,10 +7,10 @@ class FourMilAmmo:HDAmmo{
 		+hdpickup.cheatnogive
 		+hdpickup.multipickup
 		xscale 0.5; yscale 0.6;
-		hdpickup.nicename "4.26mm UAC Standard Round";
+		tag "4.26mm UAC Standard round";
 		hdpickup.refid HDLD_FOURMIL;
 		hdpickup.bulk ENC_426;
-		inventory.maxamount 300;
+//		inventory.maxamount 300;
 		inventory.icon "RCLSA3A7";
 	}
 	override string pickupmessage(){
@@ -64,7 +64,8 @@ class HD4mMag:HDMagAmmo{
 		hdmagammo.roundtype "FourMilAmmo";
 		hdmagammo.roundbulk ENC_426_LOADED;
 		hdmagammo.magbulk ENC_426MAG_EMPTY;
-		hdpickup.nicename "4.26mm UAC Standard Magazine";
+
+		tag "4.26mm UAC Standard magazine";
 		hdpickup.refid HDLD_FOURMAG;
 		inventory.pickupmessage "Picked up a 4.26 UAC Standard magazine.";
 	}
@@ -98,6 +99,10 @@ class HD4mMag:HDMagAmmo{
 		else magsprite="ZMAGC0";
 		return magsprite,"RBRSBRN","FourMilAmmo",2.;
 	}
+	override int GetMagHudCount(int input){
+		if(input==51)return 50;
+		return input;
+	}
 	bool DirtyMagsOnly(){
 		if(mags.size()!=amount)return false;
 		for(int i=0;i<amount;i++){
@@ -117,20 +122,21 @@ class HD4mMag:HDMagAmmo{
 			if(sealtimer<1){
 				owner.A_Log(string.format("%s\nDo you really want to do that?",HDCONST_426MAGMSG),true);
 				sealtimer=10;
+				extracttime=9;
 				return false;
 			}else{
 				mags[mindex]=50;
-				owner.A_PlaySound("weapons/rifleclick",CHAN_WEAPON);
+				extracttime=12;
+				owner.A_StartSound("weapons/rifleclick",CHAN_WEAPON,CHANF_OVERLAP);
 				return false;
 			}
 		}
-		int totake=random(1,min(
-			mags[mindex],
-			HDMath.MaxInv(owner,"FourMilAmmo")-owner.countinv("FourMilAmmo"))
+		int totake=min(random(1,24),mags[mindex],
+			HDPickup.MaxGive(owner,"FourMilAmmo",roundbulk)
 		);
 		HDF.Give(owner,roundtype,totake);
-		owner.A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
-		owner.A_PlaySound("weapons/rockreload",CHAN_BODY,0.4);
+		owner.A_StartSound("weapons/rifleclick2",CHAN_WEAPON);
+		owner.A_StartSound("weapons/rockreload",CHAN_WEAPON,CHANF_OVERLAP,0.4);
 		mags[mindex]-=totake;
 		return true;
 	}
@@ -141,16 +147,16 @@ class HD4mMag:HDMagAmmo{
 			||!owner.countinv(roundtype)
 		)return false;
 		owner.A_TakeInventory(roundtype,1,TIF_NOTAKEINFINITE);
-		owner.A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+		owner.A_StartSound("weapons/rifleclick2",8);
 		if(random(0,80)<=breakchance){
-			owner.A_PlaySound("weapons/bigcrack",CHAN_BODY);
+			owner.A_StartSound("weapons/bigcrack",8,CHANF_OVERLAP);
 			owner.A_SpawnItemEx("HDSmokeChunk",12,0,owner.height-12,4,frandom(-2,2),frandom(2,4));
 			owner.damagemobj(self,owner,1,"Thermal",DMG_NO_ARMOR);
 			breakchance=min(breakchance+25,80);
 			return false;
 		}
 		breakchance=max(breakchance,24);
-		owner.A_PlaySound("weapons/pocket",CHAN_BODY,frandom(0.1,0.6));
+		owner.A_StartSound("weapons/pocket",9,volume:frandom(0.1,0.6));
 		mags[mags.size()-1]++;
 		return true;
 	}
@@ -165,7 +171,7 @@ class HD4mMag:HDMagAmmo{
 		}
 		for(int i=0;i<amount;i++){
 			if(mags[i]>=50)continue;
-			int toinsert=min(50,totalrounds)*frandom(0.9,1.);
+			int toinsert=int(min(50,totalrounds)*frandom(0.9,1.));
 			mags[i]=toinsert;
 			totalrounds-=toinsert;
 			if(totalrounds<1)break;

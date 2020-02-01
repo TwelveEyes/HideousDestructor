@@ -2,27 +2,45 @@
 // Nice movement your objects have there.
 // Shame if they got........ damaged.
 // ------------------------------------------------------------
-
 extend class HDMobBase{
 	int stunned;
 	int bodydamage;
 	int damagerecoil;
 	int bloodloss;
 	int pain;
+	int downedframe;
+	property downedframe:downedframe;
+	int shields;
+	int maxshields;
+	property shields:maxshields;
 	void resetdamagecounters(){
 		stunned=0;
 		damagerecoil=0;
 		bloodloss=0;
 		pain=0;
+		shields=maxshields;
 	}
 
-	void forcepain(){
+	static bool inpainablesequence(actor caller){
+		state curstate=caller.curstate;
+		return (
+			!caller.instatesequence(curstate,caller.resolvestate("falldown"))
+			&&!caller.instatesequence(curstate,caller.resolvestate("raise"))
+			&&!caller.instatesequence(curstate,caller.resolvestate("ungib"))
+		);
+	}
+	static bool forcepain(actor caller){
 		if(
-			!bnopain
-			&&health>0
-			&&findstate("pain",true)
-			&&!instatesequence(curstate,resolvestate("falldown"))
-		)setstatelabel("pain");
+			!caller
+			||caller.bnopain
+			||!caller.bshootable
+			||!caller.findstate("pain",true)
+			||caller.health<1
+			||!hdmobbase.inpainablesequence(caller)
+			||(hdplayerpawn(caller)&&hdplayerpawn(caller).incapacitated>0)
+		)return false;
+		caller.setstatelabel("pain");
+		return true;
 	}
 
 	//determine threshold and overall resistance to gunshots
@@ -39,18 +57,86 @@ extend class HDMobBase{
 	}
 
 
+	//standard doom knockback is way too much
+	override void ApplyKickback(Actor inflictor, Actor source, int damage, double angle, Name mod, int flags){
+		if(
+			mod=="thermal"
+			||mod=="burning"
+			||mod=="balefire"
+		)return;
+		else if(mod=="piercing")damage>>=4;
+		else if(
+			mod=="bashing"
+			||mod=="electro"
+		)damage>>=1;
+		else damage>>2;
+		if(damage>0)super.ApplyKickback(inflictor,source,damage,angle,mod,flags);
+	}
+
 
 	override int damagemobj(
 		actor inflictor,actor source,int damage,
 		name mod,int flags,double angle
 	){
+		//bypass mdk
+		if(damage==TELEFRAG_DAMAGE)return super.damagemobj(
+			inflictor,source,damage,
+			"Telefrag",DMG_THRUSTLESS|DMG_NO_PAIN
+		);
+
 		int sphlth=spawnhealth();
 		bdontdrop=(inflictor==self&&mod!="bleedout");
 
 		//rapid damage stacking
 		if(pain>0)damage+=(pain>>2);
-
 		if(mod!="bleedout")pain+=max(1,(damage>>5));
+
+		if(!inpainablesequence(self))flags|=DMG_NO_PAIN;
+
+		//shields
+		if(
+			shields>0
+			&&!(flags&(DMG_NO_FACTOR|DMG_FORCED))
+			&&!(inflictor is "HDBulletActor")
+			&&mod!="bleedout"
+			&&mod!="thermal"
+			&&mod!="maxhpdrain"
+			&&mod!="internal"
+			&&mod!="falling"
+			&&mod!="holy"
+			//&&mod!="jointlock" //not used... for now
+		){
+			int blocked=min(shields>>2,damage,512);
+			damage-=blocked;
+			bool supereffective=(
+				mod=="BFGBallAttack"
+				||mod=="electro"
+				||mod=="balefire"
+			);
+
+			//deplete shields
+			if(supereffective)shields-=max((blocked<<2),1);
+			else shields-=max(blocked,1);
+
+			//spawn shield debris
+			if(!!inflictor&&!inflictor.bismonster&&!inflictor.player){
+				int shrd=max(random(0,1),damage/50);
+				for(int i=0;i<shrd;i++){
+					actor aaa=inflictor.spawn("ShieldSpark",inflictor.pos,ALLOW_REPLACE);
+					aaa.vel=(frandom(-3,3),frandom(-3,3),frandom(-3,3));
+				}
+			}
+
+			//abort remainder of checks, chance to flinch
+			if(damage<1){
+				if(
+					!(flags&DMG_NO_PAIN)
+					&&blocked>(sphlth>>2)
+					&&random(0,255)<painchance
+				)forcepain(self);
+				return -1;
+			}
+		}
 
 
 		//bashing
@@ -64,17 +150,16 @@ extend class HDMobBase{
 				&&random(0,7)
 			){
 				damage=max(1,bashthreshold);
-				forcepain();
+				if(!(flags&DMG_NO_PAIN))forcepain(self);
 			}
 		}
 
 
 		//additional knockdown stun
-		bincapacitated=instatesequence(curstate,resolvestate("falldown"));
 		if(
 			//check to make sure we're not already doing it
-			//if already doing so, make sure the damage never goes into painstate(
-			bincapacitated
+			//if already doing so, make sure the damage never goes into painstate
+			instatesequence(curstate,resolvestate("falldown"))
 		){
 			if(
 				!bnopain
@@ -85,18 +170,19 @@ extend class HDMobBase{
 			flags|=DMG_NO_PAIN;
 		}else if(
 			!bnopain
+			&&!bnoincap
 			&&health>0
+			&&health<(spawnhealth()>>2)
 			&&findstate("falldown")
-			&&max(stunned,damage)>random(health,(sphlth<<2))
+			&&max(stunned,damage)>random(health,(sphlth<<4))
 		){
-			bincapacitated=true;
-			liveheight=height;
 			setstatelabel("falldown");
+			flags|=DMG_NO_PAIN;
 		}
 
 		//bleeding
 		if(mod=="bleedout"){
-			bloodloss+=damage;
+			bloodloss+=max(0,damage);
 			if(!(bloodloss&(1|2|4|8))){
 				bodydamage++;
 			}
@@ -135,7 +221,7 @@ extend class HDMobBase{
 		}
 
 		//force death even if not quite gibbing
-		if(health>0&&(bodydamage<<1)>sphlth){
+		if(health>0&&bodydamage>sphlth){
 			return super.damagemobj(inflictor,source,health,mod,flags,angle);
 		}
 
@@ -158,8 +244,8 @@ extend class HDMobBase{
 			//fall down if dead
 			if(
 				!bnoshootablecorpse
-				&&height>deathheight
-			)A_SetSize(-1,max(deathheight-0.1,height-liveheight*0.06));
+				&&height>deadheight
+			)A_SetSize(-1,max(deadheight-0.1,height-liveheight*0.06));
 
 			if(deathticks<8){
 				deathticks++;
@@ -175,10 +261,10 @@ extend class HDMobBase{
 			return;
 		}
 
-		//reset height after incap
-		if(bincapacitated){
-			if(deathheight<height)A_SetSize(-1,max(deathheight,height-10));
-		}else if(health>0&&liveheight>height)A_SetSize(-1,min(liveheight,height*1.1));
+		//set height according to incap
+		if(instatesequence(curstate,resolvestate("falldown"))){
+			if(deadheight<height)A_SetSize(-1,max(deadheight,height*0.99));
+		}else if(liveheight!=height)A_SetSize(-1,min(liveheight,height+liveheight*0.05));
 
 
 		//this must be done here and not AttemptRaise because reasons
@@ -205,24 +291,21 @@ extend class HDMobBase{
 			}
 		}
 
+		//replenish shields
+		if(shields<maxshields)shields++;
+
 		//regeneration
 		if(!(level.time&(1|2|4|8|16|32|64|128|256|512)))GiveBody(1);
 	}
 
 
-	double liveheight;
-	virtual void deathdrop(){
-		if(hd_debug)A_Log("DROPED GNU");
-	}
+	virtual void deathdrop(){}
 	override void die(actor source,actor inflictor,int dmgflags){
-		//retrieve actor's current height
-		liveheight=height;
-
 		deathticks=0;
 
-		bincapacitated=(
+		bool incapacitated=(
 			findstate("falldown",true)
-			&&frame>=11 //"M" for serpentipede, "L" for humanoids
+			&&frame>=downedframe //"M" for serpentipede, "L" for humanoids
 		);
 
 
@@ -242,9 +325,8 @@ extend class HDMobBase{
 		);
 
 		//temp incap: reset +nopain, skip death sequence
-		bnopain=getdefaultbytype(getclass()).bnopain;
 		if(
-			bincapacitated
+			incapacitated
 			&&!bgibbed
 			&&findstate("dead",true)
 		){
@@ -257,13 +339,17 @@ extend class HDMobBase{
 		bnotautoaimed=true;
 		balwaystelefrag=true;
 		bpushable=false;
-		maxstepheight=deathheight*0.1;
+		maxstepheight=deadheight*0.1;
 
 		if(!bgibbed)bshootable=!bnoshootablecorpse;
 		else bshootable=false;
 
 		//set height
-		if(bshootable)A_SetSize(-1,liveheight);
+		if(
+			!incapacitated
+			&&!bnoshootablecorpse
+			&&bshootable
+		)A_SetSize(-1,liveheight);
 	}
 
 
@@ -306,7 +392,6 @@ extend class HDMobBase{
 		if(stunned>0||random(0,(bodydamage>>4)))return;
 		//reset stuff and get up
 		bnopain=getdefaultbytype(getclass()).bnopain;
-		bincapacitated=false;
 		if(findstate("standup"))setstatelabel("standup");
 		else if(findstate("raise"))setstatelabel("raise");
 		else setstatelabel("see");
@@ -348,6 +433,7 @@ class HDBleedingWound:Thinker{
 	override void tick(){
 		if(
 			!bleedpoints
+			||bleedrate<1
 			||!bleeder
 			||bleeder.health<1
 		){
@@ -369,7 +455,10 @@ class HDBleedingWound:Thinker{
 				frandom(-12,12),frandom(-12,12),
 				flags:SXF_USEBLOODCOLOR|SXF_NOCHECKPOSITION
 			);
-			if(blood)blood.bambush=true;
+			if(blood){
+				blood.bambush=true;
+				blood.bmissilemore=true; //used to avoid converting to shield
+			}
 		}while(bleeds>0);
 		int bled=bleeder.damagemobj(bleeder,null,bleedrate,"bleedout",DMG_NO_PAIN|DMG_THRUSTLESS);
 		if(bleeder&&bleeder.health<1&&bleedrate<random(10,60))bleeder.deathsound="";
@@ -380,19 +469,8 @@ class HDBleedingWound:Thinker{
 		int bleedrate=17,
 		bool hitvital=false
 	){
-		//TODO: proper array of wounds for the player
-		if(hdplayerpawn(bleeder)){
-			let hpl=hdplayerpawn(bleeder);
-			if(hpl.countinv("SpiritualArmour")){
-				if(!random(0,7))hpl.A_TakeInventory("SpiritualArmour",1);
-				return;
-			}
-			hpl.woundcount+=bleedpoints;
-			return;
-		}
-
 		if(
-			!skill||hd_nobleed
+			hd_nobleed
 			||!bleeder.bshootable
 			||bleeder.bnoblood
 			||bleeder.bnoblooddecals
@@ -404,7 +482,15 @@ class HDBleedingWound:Thinker{
 				hdmobbase(bleeder)
 				&&hdmobbase(bleeder).bdoesntbleed
 			)
+			||bleeder.findinventory("SpiritualArmour")
 		)return;
+
+		//TODO: proper array of wounds for the player
+		if(hdplayerpawn(bleeder)){
+			let hpl=hdplayerpawn(bleeder);
+			hpl.woundcount+=(bleedpoints>>1);
+			return;
+		}
 
 		let wwnd=new("HDBleedingWound");
 		wwnd.bleeder=bleeder;
@@ -412,5 +498,85 @@ class HDBleedingWound:Thinker{
 		wwnd.bleedrate=bleedrate;
 		if(hitvital)wwnd.bleedpoints=-1;
 		else wwnd.bleedpoints=bleedpoints;
+	}
+}
+
+//inventory hack to allow Decorate-only mods to cause HD bleeding
+//multiples of 1000 are counted as bleedrate
+//e.g. 24010 = 10 bleedpoints at a rate of 24
+//you can't give over 999 bleedpoints in one go
+class HDWoundInventory:Inventory{
+	default{inventory.maxamount int.MAX;}
+	override void AttachToOwner(actor other){
+		if(amount<1000)HDBleedingWound.Inflict(other,amount);
+		else{
+			HDBleedingWound.Inflict(other,amount%1000,amount/1000);
+		}
+		destroy();
+	}
+}
+
+
+
+// common blood type that changes depending on shields.
+// overwrite spawn state if something other than a splat is needed.
+class HDMasterBlood:HDPuff{
+	default{
+		alpha 0.8;gravity 0.3;
+
+		hdpuff.startvelz 1.6;
+		hdpuff.fadeafter 0;
+		hdpuff.decel 0.86;
+		hdpuff.fade 0.88;
+		hdpuff.grow 0.03;
+		hdpuff.minalpha 0.03;
+	}
+	override void postbeginplay(){
+		super.postbeginplay();
+		let hdmb=hdmobbase(target);
+		if(
+			hdmb
+			&&!bmissilemore
+			&&hdmb.shields>0
+		){
+			A_SetTranslucent(1,1);
+			grav=-0.6;
+			scale*=0.4;
+			setstatelabel("spawnshield");
+			bnointeraction=true;
+			return;
+		}
+		if(!bambush)A_StartSound("misc/bulletflesh",CHAN_BODY,volume:0.2);
+	}
+	states{
+	spawn:
+		BLUD ABC 4{
+			if(floorz>=pos.z){
+				bflatsprite=true;bmovewithsector=true;bnointeraction=true;
+				setz(floorz);vel=(0,0,0);
+				fade=0.97;
+			}
+		}wait;
+	spawnshield:
+		TFOG A 0 A_SetScale(frandom(0.2,0.5));
+		TFOG ABCDEFGHIJ 3 bright A_FadeOut(0.05);
+		stop;
+	}
+}
+//standalone puff for hitting a shield
+class ShieldSpark:IdleDummy{
+	default{
+		+forcexybillboard +rollsprite +rollcenter
+		renderstyle "add";
+	}
+	override void postbeginplay(){
+		super.postbeginplay();
+		scale*=frandom(0.2,0.5);
+		roll=frandom(0,360);
+	}
+	states{
+	spawn:
+		TFOG ABCDEFGHIJ 3 bright A_FadeOut(0.08);
+		stop;
 	}
 }

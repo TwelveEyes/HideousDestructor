@@ -12,6 +12,7 @@ class HDBlurSphere:HDPickup{
 		//$Title "Blur Sphere"
 		//$Sprite "PINSA0"
 
+		+inventory.alwayspickup
 		inventory.maxamount 9;
 		inventory.interhubamount 1;
 		inventory.pickupmessage "So precious in your sight.";
@@ -21,17 +22,6 @@ class HDBlurSphere:HDPickup{
 	}
 	int intensity;int xp;int level;bool worn;
 	int randticker[4];double randtickerfloat;
-	override void tick(){
-		super.tick();
-		double frnd=frandom[blur](0.93,1.04);
-		scale=(0.3,0.3)*frnd;
-		alpha=0.9*frnd;
-		randticker[0]=random(0,3);
-		randticker[1]=random(8,25);
-		randticker[2]=random(0,40+level);
-		randticker[3]=random(0,BLUR_LEVELUP);
-		randtickerfloat=frandom(0.,1.);
-	}
 	override void ownerdied(){
 		buntossable=false;
 		owner.DropInventory(self);
@@ -46,7 +36,7 @@ class HDBlurSphere:HDPickup{
 			if(!invoker.worn){
 				invoker.worn=true;
 				HDF.Give(self,"BlurTaint",1);
-				A_PlaySound("imp/sight2",CHAN_BODY,frandom(0.3,0.5),false,8);
+				A_StartSound("imp/sight2",CHAN_BODY,CHANF_OVERLAP,frandom(0.3,0.5),attenuation:8.);
 				invoker.level=min(13,invoker.level+invoker.xp/BLUR_LEVELUP);
 				invoker.xp%=BLUR_LEVELUP;
 				invoker.stamina=clamp(invoker.level+random(-2,2),0,10);
@@ -59,13 +49,24 @@ class HDBlurSphere:HDPickup{
 				}
 			}else{
 				invoker.worn=false;
-				A_PlaySound("imp/sight1",CHAN_BODY,frandom(0.3,0.5),false,8);
+				A_StartSound("imp/sight1",CHAN_BODY,CHANF_OVERLAP,frandom(0.3,0.5),attenuation:8.);
 			}
 		}fail;
 	}
 	enum blurstats{
 		BLUR_LEVELUP=3500,
 		BLUR_LEVELCAP=13,
+	}
+	override void tick(){
+		super.tick();
+		double frnd=frandom[blur](0.93,1.04);
+		scale=(0.3,0.3)*frnd;
+		alpha=0.9*frnd;
+		randticker[0]=random(0,3);
+		randticker[1]=random(8,25);
+		randticker[2]=random(0,40+level);
+		randticker[3]=random(0,BLUR_LEVELUP);
+		randtickerfloat=frandom(0.,1.);
 	}
 	override void DoEffect(){
 		if(
@@ -140,16 +141,18 @@ class HDBlurSphere:HDPickup{
 			}
 			if(hdp.woundcount>random(0,level)){
 				hdp.woundcount--;
-				hdp.oldwoundcount++;
+				hdp.unstablewoundcount++;
 			}
 		}
+
+		if(xp<1)return;
 
 		//power.
 		if(!(xp%666)){
 			bool nub=!level&&xp<1066;
 			if(nub||!random(0,15))owner.A_Log("You feel power growing in you.",true);
 			blockthingsiterator it=blockthingsiterator.create(owner,512);
-			array<actor>monsters;
+			array<actor>monsters;monsters.clear();
 			while(it.next()){
 				actor itt=it.thing;
 				if(
@@ -168,7 +171,7 @@ class HDBlurSphere:HDPickup{
 					fff.stamina=nub?166:13*level;
 					fff.master=self;
 				}else if(random(0,6-level)<1){
-					HDWound.Inflict(itt,13*level);
+					HDBleedingWound.Inflict(itt,13*level);
 				}
 			}
 			if(monsters.size()){
@@ -187,16 +190,8 @@ class HDBlurSphere:HDPickup{
 		//precious.
 		if(randticker[3]<level){
 			if(!(xp%3)){
-				sound snd[7];
-				snd[0]="imp/sight";
-				snd[1]="grunt/sight";
-				snd[2]="grunt/active";
-				snd[3]="demon/active";
-				snd[4]="world/riflefar";
-				snd[5]="world/rocketfar";
-				snd[6]="misc/gibbed";
-				owner.A_PlaySound(snd[clamp(randtickerfloat*snd.size(),0,snd.size()-1)],
-					CHAN_VOICE,randtickerfloat*0.3+0.3,false,8
+				owner.A_StartSound("blursphere/hallu"..int(clamp(randtickerfloat*7,0,6)),
+					CHAN_VOICE,CHANF_OVERLAP|CHANF_LOCAL,randtickerfloat*0.3+0.3
 				);
 			}
 			if(!(xp%5)){
@@ -216,7 +211,7 @@ class HDBlurSphere:HDPickup{
 				msg[12]="Precious.";
 				msg[13]="Precious.";
 				msg[14]="Precious.";
-				owner.A_Log(msg[clamp(randtickerfloat*msg.size(),0,msg.size()-1)],true);
+				owner.A_Log(msg[int(clamp(randtickerfloat*msg.size(),0,msg.size()-1))],true);
 			}
 			if(!(xp%7)){
 				hdplayerpawn(owner).aggravateddamage++;
@@ -233,7 +228,7 @@ class HDBlurSphere:HDPickup{
 			owner.damagemobj(self,owner,random(1,level),"balefire");
 		}
 		intensity=0;
-		owner.A_PlaySound("imp/sight1",CHAN_BODY,frandom(0.3,0.5),false,8);
+		owner.A_StartSound("imp/sight1",CHAN_BODY,volume:frandom(0.3,0.5),attenuation:8.);
 		super.detachfromowner();
 	}
 }
@@ -273,10 +268,13 @@ class ShellShade:ZombieStormtrooper{
 		//$Title "Shellshade"
 		//$Sprite "POSSA1"
 
-		+shadow -solid
+		+shadow -solid +noblood
+		+hdmobbase.noincap
+		hdmobbase.shields 666;
 		renderstyle "Fuzzy";
 		health 900;
 		stencilcolor "04 00 06";
+		tag "shell-shade";
 	}
 	override void postbeginplay(){
 		user_weapon=1;
@@ -289,26 +287,52 @@ class ShellShade:ZombieStormtrooper{
 		scale=bshootable?(1.,1.):(0.98,0.98);
 		binvisible=bshootable?false:true;
 	}
+	override int damagemobj(
+		actor inflictor,actor source,int damage,
+		name mod,int flags,double angle
+	){
+		if(
+			mod=="holy"
+			||(
+				mod!="bleedout"
+				&&source
+				&&source.countinv("SpiritualArmour")
+				&&!source.countinv("HDBlurSphere")
+			)
+		){
+			bnoblood=false;
+			forcepain(self);
+			A_StartSound("marine/death",CHAN_VOICE);
+			shields>>=1;
+		}
+		int dmg=super.damagemobj(
+			inflictor,source,damage,mod,flags,angle
+		);
+		if(bnoblood)stunned=0;
+		return dmg;
+	}
+	override void deathdrop(){
+		A_NoBlocking();
+		A_DropItem("ZM66Regular");
+		bnointeraction=true;
+		for(int i=0;i<10;i++){A_SpawnItemEx("HDSmoke",
+			frandom(-12,12),frandom(-12,12),frandom(4,36),
+			flags:SXF_NOCHECKPOSITION
+		);}
+		DistantQuaker.Quake(self,
+			6,100,16384,10,256,512,128
+		);
+		vel=(0,0,0);
+	}
 	states{
 	death:
 	xdeath:
-		POSS G 5{
-			A_NoBlocking();
-			A_DropItem("ZM66Regular");
-			bnointeraction=true;
-			for(int i=0;i<10;i++){A_SpawnItemEx("HDSmoke",
-				frandom(-12,12),frandom(-12,12),frandom(4,36),
-				flags:SXF_NOCHECKPOSITION
-			);}
-			DistantQuaker.Quake(self,
-				6,100,16384,10,256,512,128
-			);
-			vel=(0,0,0);
-		}
+		POSS G 5;
 		TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAA
-			random(1,3) A_PlaySound("marine/death",random(1,6),frandom(0.3,1.),false,0.1);
+			random(1,3) A_StartSound("marine/death",random(8,24),volume:frandom(0.3,1.),attenuation:0.1,pitch:frandom(0.98,1.01));
 		TNT1 A 35;
 		TNT1 A 0 A_DropItem("HDBlurSphere");
+	xxxdeath:
 		stop;
 	}
 }

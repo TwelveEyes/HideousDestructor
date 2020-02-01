@@ -6,6 +6,7 @@ class HDStatusBar:DoomStatusBar{
 	int hudusetimer;
 	int healthbars[STB_BEATERSIZE];
 	hudfont psmallfont;
+	hudfont pnewsmallfont;
 	hdplayerpawn hpl;
 	bool blurred;
 	string mug;
@@ -17,6 +18,7 @@ class HDStatusBar:DoomStatusBar{
 		//Create the font used for the fullscreen HUD
 		Font fnt = "HUDFONT_DOOM";
 		pSmallFont=HUDFont.Create("SmallFont");
+		pNewSmallFont=HUDFont.Create("NewSmallFont");
 		mHUDFont = HUDFont.Create(fnt,fnt.GetCharWidth("0"),true,1,1);
 		fnt = "INDEXFONT_DOOM";
 		mIndexFont = HUDFont.Create(fnt,fnt.GetCharWidth("0"),true);
@@ -60,6 +62,7 @@ class HDStatusBar:DoomStatusBar{
 
 	//cache some cvars
 	transient cvar hd_mugshot;
+	transient cvar hd_hudstyle;
 	transient cvar hd_hudusedelay;
 	transient cvar hd_noscope;
 	transient cvar hd_sightbob;
@@ -71,6 +74,7 @@ class HDStatusBar:DoomStatusBar{
 	override void Tick(){
 		if(!hd_mugshot){
 			hd_mugshot=cvar.getcvar("hd_mugshot",cplayer);
+			hd_hudstyle=cvar.getcvar("hd_hudstyle",cplayer);
 			hd_hudusedelay=cvar.getcvar("hd_hudusedelay",cplayer);
 			hd_noscope=cvar.getcvar("hd_noscope",cplayer);
 			hd_sightbob=cvar.getcvar("hd_sightbob",cplayer);
@@ -120,16 +124,6 @@ class HDStatusBar:DoomStatusBar{
 
 		blurred=hpl.bshadow&&hpl.countinv("HDBlurSphere");
 
-		int mugnum=hd_mugshot.getint();
-		if(mugnum<0)mugnum=cplayer.getgender();
-		switch(mugnum){
-			case 0:mug="STF";break;
-			case 1:mug="SFF";break;
-			case 2:mug="STC";break;
-			case 3:mug="STC";break;
-			default:mug="STC";break;
-		}
-
 		//all the hud use timer determinations go here
 		if(cplayer.buttons&BT_USE)hudusetimer++;
 		else hudusetimer=0;
@@ -156,14 +150,20 @@ class HDStatusBar:DoomStatusBar{
 				drawtip();
 				return;
 			}
-			BeginHUD(forcescaled:true);
-			if(state==HUD_StatusBar){
-				if(hudlevel>0)DrawCommonStuff(state);
-			}
-			else if(state==HUD_Fullscreen){
+			BeginHUD(forcescaled:false);
+
+			bool usemughud=(
+				hd_hudstyle.getint()==1
+				||(
+					state==HUD_Fullscreen
+					&&!hd_hudstyle.getint()
+				)
+			);
+
+			if(state<=HUD_Fullscreen){
 				if(hudlevel>0){
-					DrawCommonStuff(state);
-					DrawFullScreenStuff();
+					DrawCommonStuff(usemughud);
+					if(usemughud)DrawFullScreenStuff();
 				}
 			}
 			else{
@@ -171,6 +171,12 @@ class HDStatusBar:DoomStatusBar{
 				if(www&&www.balwaysshowstatus)drawweaponstatus(www);
 			}
 		}
+
+		if(hpl.countinv("WornRadsuit"))drawimage(
+			"DRKGRNPX",(0,0),DI_SCREEN_CENTER|DI_ITEM_CENTER,
+			alpha:0.6,scale:(1000,600)
+		);
+
 		if(idmypos)drawmypos();
 	}
 	void DrawAutomapStuff(){
@@ -193,7 +199,7 @@ class HDStatusBar:DoomStatusBar{
 		);
 
 		//mugshot
-		DrawTexture(GetMugShot(5,Mugshot.CUSTOM,mug),(6,-14),DI_BOTTOMLEFT,alpha:blurred?0.2:1.,scale:(0.8333,1.1));
+		DrawTexture(GetMugShot(5,Mugshot.CUSTOM,getmug(hpl.mugshot)),(6,-14),DI_BOTTOMLEFT,alpha:blurred?0.2:1.);
 
 		//heartbeat/playercolour tracker
 		if(hpl && hpl.beatmax){
@@ -253,7 +259,18 @@ class HDStatusBar:DoomStatusBar{
 		);
 	}
 	void DrawFullScreenStuff(){
-		DrawTexture(GetMugShot(5,Mugshot.CUSTOM,mug),(0,-14),DI_ITEM_CENTER_BOTTOM|DI_SCREEN_CENTER_BOTTOM,alpha:blurred?0.2:1.,scale:(0.8333,1.));
+		DrawTexture(
+			GetMugShot(5,Mugshot.CUSTOM,getmug(hpl.mugshot)),(0,-14),
+			DI_ITEM_CENTER_BOTTOM|DI_SCREEN_CENTER_BOTTOM,
+			alpha:blurred?0.2:1.
+		);
+	}
+	string getmug(string mugshot){
+		if(mugshot==HDMUGSHOT_DEFAULT)switch(cplayer.getgender()){
+			case 0:return "STF";
+			case 1:return "SFF";
+			default:return "STC";
+		}else return mugshot;
 	}
 	void DrawAlwaysStuff(){
 		if(
@@ -264,35 +281,6 @@ class HDStatusBar:DoomStatusBar{
 		)return;
 
 
-
-//TEMPORARY - TO DELETE LATER
-if(hd_weapondefaults.getstring()~=="convert"){
-	int rlmode=cvar.getcvar("hd_rlmode",cplayer).getint();
-	string cdef=""
-	.."pisfiremode"..cvar.getcvar("hd_pistauto",cplayer).getint()
-	..",smgfiremode"..cvar.getcvar("hd_smgfiremode",cplayer).getint()
-	..",huntype"..cvar.getcvar("hd_huntauto",cplayer).getint()
-	..",firemode"..cvar.getcvar("hd_huntfullauto",cplayer).getint()+1
-	..",z66firemode"..cvar.getcvar("hd_zmfiremode",cplayer).getint()
-	.."zoom"..cvar.getcvar("hd_zmzoom",cplayer).getint()
-	..",vulfast"..cvar.getcvar("hd_vulcsuper",cplayer).getint()
-	..",lauzoom"..cvar.getcvar("hd_rlzoom",cplayer).getint()
-	..((rlmode==2)?"heatgrenade0":(!rlmode)?"heat0grenade":"heat0grenade0")
-	..",libauto"..cvar.getcvar("hd_libauto",cplayer).getint()
-	.."bulletdrop"..cvar.getcvar("hd_libmoa",cplayer).getint()
-	.."zoom"..cvar.getcvar("hd_libzoom",cplayer).getint()
-	.."frontreticle"..cvar.getcvar("hd_libfrontreticle",cplayer).getint()
-	.."altreticle"..cvar.getcvar("hd_libaltreticle",cplayer).getint()
-	..",thualt"..cvar.getcvar("hd_tbmode",cplayer).getint()
-	..",brozoom"..cvar.getcvar("hd_brontozoom",cplayer).getint()
-	..",bosbulletdrop"..cvar.getcvar("hd_bossmoa",cplayer).getint()
-	.."zoom"..cvar.getcvar("hd_bosszoom",cplayer).getint()
-	.."frontreticle"..cvar.getcvar("hd_bossfrontreticle",cplayer).getint()
-	.."customchamber"..cvar.getcvar("hd_bosscustomchamber",cplayer).getint()
-	;
-	console.printf("hd_weapondefaults set from old cvars:  "..cdef);
-	cvar.findcvar("hd_weapondefaults").setstring(cdef);
-}
 		//reads hd_setweapondefault and updates accordingly
 		if(hd_setweapondefault.getstring()!=""){
 			string wpdefs=cvar.getcvar("hd_weapondefaults",cplayer).getstring().makelower();
@@ -389,17 +377,13 @@ if(hd_weapondefaults.getstring()~=="convert"){
 
 		SetSize(0,320,200);
 		BeginHUD(forcescaled:true);
-		if(hpl.countinv("WornRadsuit"))drawimage(
-			"DRKGRNPX",(0,0),DI_SCREEN_CENTER|DI_ITEM_CENTER,
-			alpha:0.6,scale:(1000,600)
-		);
 
 
 		//draw the goggles when they do something.
 		let hdla=portableliteamp(hpl.findinventory("PortableLiteAmp"));
 		if(hdla && hdla.worn){
 			//can we do these calculations once somewhere else?
-			int gogheight=screen.getheight()*(1.9*90.)/cplayer.fov;
+			int gogheight=int(screen.getheight()*(1.9*90.)/cplayer.fov);
 			int gogwidth=screen.getwidth()*gogheight/screen.getheight();
 			int gogoffsx=-((gogwidth-screen.getwidth())>>1);
 			int gogoffsy=-((gogheight-screen.getheight())>>1);
@@ -422,7 +406,7 @@ if(hd_weapondefaults.getstring()~=="convert"){
 			wrapwidth:300
 		);
 	}
-	void DrawCommonStuff(int state){
+	void DrawCommonStuff(bool usemughud){
 		let cp=HDPlayerPawn(CPlayer.mo);
 		if(!cp)return;
 
@@ -515,7 +499,7 @@ if(hd_weapondefaults.getstring()~=="convert"){
 
 		//armour
 		DrawArmour(
-			state==HUD_Fullscreen?((hudlevel==1?-85:-55),-4):(0,-mIndexFont.mFont.GetHeight()*2),
+			usemughud?((hudlevel==1?-85:-55),-4):(0,-mIndexFont.mFont.GetHeight()*2),
 			DI_ITEM_CENTER_BOTTOM|DI_SCREEN_CENTER_BOTTOM
 		);
 
@@ -537,8 +521,9 @@ if(hd_weapondefaults.getstring()~=="convert"){
 
 			//encumbrance
 			if(hpl.enc){
+				double pocketenc=hpl.pocketenc*hd_encumbrance;
 				drawstring(
-					mAmountFont,formatnumber(hpl.enc),
+					mAmountFont,formatnumber(int(hpl.enc)),
 					(8,mxht),DI_TEXT_ALIGN_LEFT|DI_SCREEN_LEFT_BOTTOM,
 					hpl.overloaded<1.2?Font.CR_OLIVE:hpl.overloaded>2.?Font.CR_RED:Font.CR_GOLD
 				);
@@ -546,7 +531,7 @@ if(hd_weapondefaults.getstring()~=="convert"){
 					"GREENPXL",
 					(4,mxht+5),
 					DI_SCREEN_LEFT_BOTTOM|DI_TRANSLATABLE|DI_ITEM_LEFT,
-					1,scale:(1.,min(hpl.maxpocketspace,hpl.itemenc)*20./hpl.maxpocketspace)
+					1,scale:(1.,min(hpl.maxpocketspace,pocketenc)*20/hpl.maxpocketspace)
 				);
 				drawimage(
 					"BLETA0",
@@ -560,12 +545,12 @@ if(hd_weapondefaults.getstring()~=="convert"){
 					DI_SCREEN_LEFT_BOTTOM|DI_TRANSLATABLE|DI_ITEM_LEFT,
 					0.4,scale:(1.,20.)
 				);
-				bool blargh=hpl.flip&&hpl.itemenc>hpl.maxpocketspace;
+				bool blargh=hpl.flip&&pocketenc>hpl.maxpocketspace;
 				drawimage(
 					blargh?"YELOPXL":"BLETA0",
 					(4,mxht-(20-5)),
 					DI_SCREEN_LEFT_BOTTOM|DI_TRANSLATABLE|DI_ITEM_LEFT|DI_ITEM_TOP,
-					0.4,scale:(1.,blargh?3.:1.)
+					1.,scale:(1.,blargh?3.:1.)
 				);
 			}
 
@@ -613,8 +598,8 @@ if(hd_weapondefaults.getstring()~=="convert"){
 				8,
 				wephelpheight,
 				s,
-				DTA_VirtualWidth,800,
-				DTA_VirtualHeight,600,
+				DTA_VirtualWidth,640,
+				DTA_VirtualHeight,480,
 				DTA_Alpha,0.8
 			);
 
@@ -877,7 +862,7 @@ if(hd_weapondefaults.getstring()~=="convert"){
 			int count=wepspritecounts[i];
 			if(count>1)drawstring(
 				psmallfont,count.."x",
-				(xofs-2,yofsfinal-3),
+				(xofs-(rt?10:2),yofsfinal-3),
 				(rt?DI_SCREEN_RIGHT_BOTTOM:DI_SCREEN_LEFT_BOTTOM)|
 				(rt?DI_ITEM_RIGHT:DI_ITEM_LEFT)|DI_ITEM_BOTTOM|DI_TEXT_ALIGN_LEFT,
 				Font.CR_DARKGRAY

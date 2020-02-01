@@ -65,9 +65,13 @@ const ENC_HERP=125;
 const ENC_DOORBUSTER=ENC_HEATROCKET;
 
 
+const HDCONST_MAXPOCKETSPACE=600.;
+
+
 extend class HDPlayerPawn{
 	double enc;
 	double itemenc;
+	double pocketenc;
 	double maxpocketspace;property maxpocketspace:maxpocketspace;
 	double CheckEncumbrance(){
 		if(!player)return 0;
@@ -131,6 +135,7 @@ extend class HDPlayerPawn{
 		}
 
 
+
 		double carrymax=
 			400+
 			(zerk>0?100:0)+
@@ -138,6 +143,35 @@ extend class HDPlayerPawn{
 			stimcount*2
 		;
 		enc=weaponenc+weaponencsel+itemenc+bpenc;
+
+
+		//if you're somehow carrying more than pocket space allows
+		pocketenc=HDPickup.PocketSpaceTaken(self);
+		double overpocket=pocketenc/maxpocketspace;
+		if(overpocket>1.){
+			carrymax/=overpocket;
+			//just randomly shake off stuff until you can move again
+			if(
+				player
+				&&(
+					player.cmd.buttons&BT_SPEED
+					||player.cmd.buttons&BT_JUMP
+				)
+			){
+				muzzleclimb3=(frandom(-5,5),frandom(-5,5));
+				muzzleclimb4=(frandom(-5,5),frandom(-5,5));
+				for(inventory hdww=inv;hdww!=null;hdww=hdww.inv){
+					let hdp=hdpickup(hdww);
+					if(
+						hdp
+						&&!WornRadsuit(hdp) //just in case
+						&&!HDArmourWorn(hdp)
+						&&(!PortableLiteAmp(hdp)||!PortableLiteAmp(hdp).worn)
+					)DropInventory(hdp,random(0,max(1,hdp.amount>>3)));
+				}
+			}
+		}
+
 
 		//include encumbrance multiplier before outputting final
 		return enc*hdmath.getencumbrancemult()/carrymax;

@@ -10,6 +10,8 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 		monster;
 		translation "64:79=24:44";
 		damagefactor "Balefire",0.3;
+		hdmobbase.shields 120;
+		tag "ninja pirate";
 		seesound "";
 		painsound "demon/pain";
 		deathsound "demon/death";
@@ -76,7 +78,7 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 		TNT1 A 0 A_Jump(48,"spawnstill");
 		TNT1 A 0 A_Jump(48,1);
 		loop;
-		TNT1 A 0 A_PlaySound("demon/active");
+		TNT1 A 0 A_StartSound("demon/active",CHAN_VOICE);
 		TNT1 A 0 A_SpawnItemEx("HDSmoke",random(-1,1),random(-1,1),random(4,24),vel.x,vel.y,vel.z+random(1,3),0,SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION,0);
 		TNT1 A 0 Cloak();
 	spawnwandercloaked:
@@ -87,7 +89,7 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 		loop;
 		TNT1 A 0 A_SpawnItemEx("HDSmoke",random(-1,1),random(-1,1),random(4,24),vel.x,vel.y,vel.z+random(1,3),0,SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION,0);
 		TNT1 A 0 A_UnCloak();
-		TNT1 A 0 A_PlaySound("demon/active");
+		TNT1 A 0 A_StartSound("demon/active",CHAN_VOICE);
 	spawnstill:
 		SARG E 10 A_Jump(48,"spawnwander");
 		TNT1 A 0 A_Look();
@@ -110,7 +112,7 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 	seerunnin:
 		SARG ABCD 4 A_BlurChase();
 		TNT1 A 0 Cloak(randompick(0,0,0,1));
-		goto see;
+		---- A 0 setstatelabel("see");
 	seecloaked:
 		TNT1 A 0 A_JumpIfHealthLower(90,"seecloakedflee");
 		goto seecloakedchase;
@@ -144,14 +146,14 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 		SARG G 1 A_SetTranslucent(0.6);
 		SARG G 1 A_SetTranslucent(0.8);
 		SARG G 0 A_SetTranslucent(1);
-		goto see;
+		---- A 0 setstatelabel("see");
 	melee:
 		SARG G 0 A_JumpIf(cloaked,"Uncloak");
-		SARG E 0 A_PlaySound("demon/melee");
+		SARG E 0 A_StartSound("demon/melee",CHAN_VOICE);
 		SARG E 4 A_FaceTarget();
 		SARG F 5 A_FaceTarget();
 		SARG F 0{
-			A_CustomMeleeAttack(random(1,3)*2,"misc/bulletflesh","","SmallArms2",true);
+			A_CustomMeleeAttack(random(1,3)*2,"misc/bulletflesh","","piercing",true);
 			if(
 				(target&&distance3d(target)<50)
 				&&(random(0,3))
@@ -159,15 +161,15 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 				setstatelabel("latch");
 			}
 		}
-		SARG GGGG 0 A_CustomMeleeAttack(random(1,3)*6,"misc/bulletflesh","","SmallArms2",true);
+		SARG GGGG 0 A_CustomMeleeAttack(random(1,18),"misc/bulletflesh","","teeth",true);
 	meleeend:
 		SARG G 10;
-		goto see;
+		---- A 0 setstatelabel("see");
 	latch:
 		SARG EEF 1{
 			A_FaceTarget();
 			A_ChangeVelocity(1,0,0,CVF_RELATIVE);
-			if(!random(0,19))A_Pain();else if(!random(0,9))A_PlaySound("babuin/bite");
+			if(!random(0,19))A_Pain();else if(!random(0,9))A_StartSound("babuin/bite",CHAN_WEAPON);
 			if(!random(0,200)){
 				A_ChangeVelocity(-1,0,0,CVF_RELATIVE);
 				A_ChangeVelocity(-2,0,2,CVF_RELATIVE,AAPTR_TARGET);
@@ -184,7 +186,7 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 			}
 			A_ScaleVelocity(0.2,AAPTR_TARGET);
 			A_ChangeVelocity(random(-1,1),random(-1,1),random(-1,1),0,AAPTR_TARGET);
-			A_DamageTarget(random(0,2),"smallarms0",0,"none","none",AAPTR_DEFAULT,AAPTR_DEFAULT);
+			A_DamageTarget(random(0,5),random(0,3)?"teeth":"falling",0,"none","none",AAPTR_DEFAULT,AAPTR_DEFAULT);
 		}loop;
 	pain:
 		SARG G 1 {bnopain=true;}
@@ -208,9 +210,9 @@ class NinjaPirate:HDMobBase{ //replaces Spectre{
 		SARG G 1 A_SetTranslucent(0.4);
 		SARG G 1 A_SetTranslucent(0.2,2);
 		TNT1 AAAAA 0 A_Chase(null);
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
-		---- A 0 A_SpawnItemEx("BFGVileShard",0,0,0,0,0,5,0,SXF_TRANSFERPOINTERS|SXF_SETMASTER,196);
+		---- A 0 A_SpawnItemEx("BFGNecroShard",0,0,0,0,0,5,0,SXF_TRANSFERPOINTERS|SXF_SETMASTER,196);
 		TNT1 A 0 A_Jump(128,2);
 		TNT1 A 0 A_JumpIf(cloaked,"DeathCloaked");
 		SARG GGG 0 A_SpawnItemEx("HDSmoke",random(-1,1),random(-1,1),random(4,24),vel.x,vel.y,vel.z+random(1,3),0,SXF_ABSOLUTEMOMENTUM|SXF_NOCHECKPOSITION,0);

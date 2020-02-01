@@ -1,18 +1,23 @@
 // ------------------------------------------------------------
 // 9mm Ammo
 // ------------------------------------------------------------
-class HDPistolAmmo:HDAmmo{
+class HDPistolAmmo:HDRoundAmmo{
 	default{
 		+inventory.ignoreskill
 		+cannotpush
 		+forcexybillboard
 		+rollsprite +rollcenter
 		+hdpickup.multipickup
-		scale 0.7;
+		xscale 0.7;
+		yscale 0.6;
 		inventory.pickupmessage "Picked up a 9mm round.";
 		hdpickup.refid HDLD_NINEMIL;
-		hdpickup.nicename "9mm Round";
+		tag "9mm round";
 		hdpickup.bulk ENC_9;
+		inventory.icon "TEN9A0";
+	}
+	override void SplitPickup(){
+		SplitPickupBoxableRound(10,100,"HD9mBoxPickup","TEN9A0","PRNDA0");
 	}
 	override void GetItemsThatUseThis(){
 		itemsthatusethis.push("DERPUsable");
@@ -23,7 +28,8 @@ class HDPistolAmmo:HDAmmo{
 	}
 	states{
 	spawn:
-		PBRS A -1;
+		PRND A -1;
+		TEN9 A -1;
 	}
 }
 
@@ -37,7 +43,7 @@ class HD9mMag15:HDMagAmmo{
 		hdmagammo.roundtype "HDPistolAmmo";
 		hdmagammo.roundbulk ENC_9_LOADED;
 		hdmagammo.magbulk ENC_9MAG_EMPTY;
-		hdpickup.nicename "9mm Pistol Magazine";
+		tag "9mm pistol magazine";
 		inventory.pickupmessage "Picked up a pistol magazine.";
 		hdpickup.refid HDLD_NIMAG15;
 	}
@@ -69,7 +75,7 @@ class HD9mMag30:HD9mMag15{
 
 		hdmagammo.maxperunit 30;
 		hdmagammo.magbulk ENC_9MAG30_EMPTY;
-		hdpickup.nicename "9mm SMG Magazine";
+		tag "9mm SMG magazine";
 		inventory.pickupmessage "Picked up an SMG magazine.";
 		hdpickup.refid HDLD_NIMAG30;
 	}

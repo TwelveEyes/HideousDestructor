@@ -1,3 +1,6 @@
+// ------------------------------------------------------------
+// Menu
+// ------------------------------------------------------------
 enum HDLoadoutMenuNums{
 	HD_MAXLOADOUTS=20,
 }
@@ -47,19 +50,32 @@ class HDLoadoutMenu:GenericMenu{
 					if(ref.refid!=""){
 						string lrefid=ref.refid.makelower();
 						refids.push(lrefid);
-						nicenames.push(ref.nicename);
+						nicenames.push(ref.gettag());
 						if(!(jp%5))reflist=reflist.."\n";jp++;
-						reflist=reflist.."\n\cy"..ref.refid.."\cj   "..ref.nicename;
+						reflist=reflist.."\n\cy"..ref.refid.."\cj   "..ref.gettag();
 					}
 				}else{
 					let ref=getdefaultbytype((class<hdweapon>)(reff));
-					if(ref.refid!=""){
+					if(
+						ref.refid!=""
+						&&(
+							!ref.bdebugonly
+							||hd_debug>0
+						)
+					){
 						string lrefid=ref.refid.makelower();
 						refids.push(lrefid);
-						nicenames.push(ref.nicename);
+						nicenames.push(ref.gettag());
 						if(!(jw%5))reflist="\n"..reflist;jw++;
-						if(ref.bwimpy_weapon)reflist=reflist.."\n\cy"..ref.refid.."\cj   "..ref.nicename;
-						else reflist="\n\cx"..ref.refid.."\cj   "..ref.nicename..reflist;
+
+						//determine colour
+						string refidcol="\n\c"..(ref.bdebugonly?"u":(ref.bwimpy_weapon?"y":"x"));
+
+						//treat wimpy weapons as inventory items
+						if(ref.bwimpy_weapon)
+							reflist=reflist..refidcol..ref.refid.."\cj   "..ref.gettag();
+						else
+							reflist=refidcol..ref.refid.."\cj   "..ref.gettag()..reflist;
 					}
 				}
 			}
@@ -269,7 +285,23 @@ class HDLoadoutMenu:GenericMenu{
 					string refid=items[i].left(3);
 					if(refid=="")continue;
 					if(refid~=="bak"){
-						inbp=true;
+						ttl=ttl..(i?"\n":"").."1 x    backpack";
+						array<string> bakitems;
+						string baklist=items[i].mid(3);
+						baklist.split(bakitems,".");
+
+						for(int bi=0;bi<bakitems.size();bi++){
+							string brefid=bakitems[bi].left(3);
+							if(brefid!=""){
+								int whichindex=refids.find(brefid);
+								string thisname;
+								if(whichindex>=refids.size())thisname="\ca ? ? ?\cj";
+								else thisname=nicenames[whichindex];
+								int howmany=max((bakitems[bi].mid(3,bakitems[bi].length())).toint(10),1);
+								ttl=ttl..(i?"\n  ":"  ")..howmany.." x    "..thisname;
+							}
+						}
+
 						continue;
 					}
 					int whichindex=refids.find(refid);
@@ -342,9 +374,9 @@ class HDLoadoutMenu:GenericMenu{
 			vcurs,
 			hs,DTA_CleanNoMove_1,true
 		);
-		vcurs+=BigFont.GetHeight()+NewSmallFont.GetHeight()*0.5;
+		vcurs+=BigFont.GetHeight()+(NewSmallFont.GetHeight()>>1);
 
-		hs="\cgSyntax:   \cazzzz#aaaa:xxx n, yyy n - yyy n\n\cazzzz\cu name (optional)   \caaaaa\cu preview picture (optional)\n\caxxx\cu starting weapon   \cayyy\cu anything else\n\can\cu number given\cu (optional, default 1)\n\ca-\cu begin backpack settings (use \cabak\cu for empty)\n\camap\cu for map   \cakey\cu for keys (bitflag BYR)\n\n\cdENTER\cu save   \cdESC\cu clear changes   \cdCtrl+R\cu reset";
+		hs="\cgSyntax:   \cazzzz#aaaa:xxx n, yyy n, bak yyy n. yyy n\n\cazzzz\cu preview picture (optional)   \caaaaa\cu name (optional)\n\caxxx\cu starting weapon   \cayyy\cu anything else\n\can\cu number given\cu (optional, default 1)\n\cabak\cu begin backpack settings\n\camap\cu for map   \cakey\cu for keys (bitflag BYR)\n\n\cdENTER\cu save   \cdESC\cu clear changes   \cdCtrl+R\cu reset";
 		screen.DrawText(NewSmallFont,
 			OptionMenuSettings.mFontColor,
 			(screen.GetWidth() - NewSmallFont.StringWidth(hs) * CleanXfac_1) / 2,
@@ -355,7 +387,7 @@ class HDLoadoutMenu:GenericMenu{
 
 		string ws=workingstring;
 		int tempcursx=cursx;
-		int maxwidth=screen.GetWidth()*0.6/(SmallFont.StringWidth("_")*CleanXfac_1);
+		int maxwidth=(screen.GetWidth()*3/5)/(SmallFont.StringWidth("_")*CleanXfac_1);
 		int halfmaxwidth=maxwidth/2;
 		int addarrows=0;
 		int textstart=0;
@@ -619,8 +651,8 @@ class HDNewGameLoadoutMenu:HDLoadoutMenu{
 		if(ws=="")ws="<nothing>";
 
 		int tempcursx=cursx;
-		int maxwidth=screen.GetWidth()*0.6/(SmallFont.StringWidth("_")*CleanXfac_1);
-		int halfmaxwidth=maxwidth/2;
+		int maxwidth=(screen.GetWidth()*3/5)/(SmallFont.StringWidth("_")*CleanXfac_1);
+		int halfmaxwidth=(maxwidth>>1);
 		int addarrows=0;
 		int textstart=0;
 		int textend=ws.length();

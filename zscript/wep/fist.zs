@@ -16,6 +16,9 @@ class HDFist:HDWeapon replaces Fist{
 	default{
 		+WEAPON.MELEEWEAPON +WEAPON.NOALERT +WEAPON.NO_AUTO_SWITCH
 		+forcepain
+		+hdweapon.dontdisarm
+		+hdweapon.dontnull
+		+nointeraction
 		obituary "%o made %k take the kid gloves off.";
 		attacksound "*fist";
 		weapon.selectionorder 100;
@@ -25,7 +28,7 @@ class HDFist:HDWeapon replaces Fist{
 		weapon.bobrangex 0.1;
 		weapon.bobrangey 0.5;
 		weapon.slotnumber 1;
-		hdweapon.nicename "Fists";
+		tag "fists";
 		hdweapon.refid HDLD_FIST;
 	}
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
@@ -81,17 +84,32 @@ class HDFist:HDWeapon replaces Fist{
 			targethealth=0;
 		}
 	}
-	action void A_CheckGender(statelabel st,int layer=PSP_WEAPON){
-		if(player){
-			int gnd=player.getgender();
-			if(!gnd)gnd=getspriteindex("PUNGA0");
-			else if(gnd==1)gnd=getspriteindex("PUNFA0");
-			else if(gnd==2)gnd=getspriteindex("PUNFA0");
-			else gnd=getspriteindex("PUNCA0");
-			player.findPSprite(layer).sprite=gnd;
+	action void A_CheckFistSprite(statelabel st,int layer=PSP_WEAPON){
+		if(!player)return;
+		bool usegender=false;
+		int fspr;
+		let hpl=hdplayerpawn(self);
+		if(!hpl)usegender=true;else{
+			fspr=hpl.fistsprite;  //set the fist sprite
+			if(fspr<0){
+				//if no valid fist sprite indicated, use mugshot
+				string mugshot=hpl.mugshot;
+				if(mugshot~=="STF")fspr=getspriteindex("PUNGA0");
+				else if(mugshot~=="SFF")fspr=getspriteindex("PUNFA0");
+				else if(mugshot~=="STC")fspr=getspriteindex("PUNCA0");
+				else usegender=true;  //if mugshot is not determinative, use gender
+			}
 		}
+		if(usegender)switch(player.getgender()){
+			case 0:fspr=getspriteindex("PUNGA0");break;
+			case 1:fspr=getspriteindex("PUNFA0");break;
+			case 2:fspr=getspriteindex("PUNFA0");break;
+			case 3:fspr=getspriteindex("PUNCA0");break;
+			default:fspr=getspriteindex("PUNCA0");break;
+		}
+		player.findPSprite(layer).sprite=fspr;
 	}
-	action void HDPunch(int dmg){
+	action void HDPunch(double dmg){
 		flinetracedata punchline;
 		bool punchy=linetrace(
 			angle,48,pitch,
@@ -221,24 +239,21 @@ class HDFist:HDWeapon replaces Fist{
 		//headshot lol
 		if(
 			!punchee.bnopain
-			&& punchee.health>0
-			&& !(punchee is "HDBarrel")
-			&& punchee.findstate("pain")
-			&& punchline.hitlocation.z>punchee.pos.z+punchee.height*0.75
+			&&punchee.health>0
+			&&!(punchee is "HDBarrel")
+			&&punchline.hitlocation.z>punchee.pos.z+punchee.height*0.75
 		){
 			if(hd_debug)A_Log("HEAD SHOT");
-			punchee.setstatelabel("pain");
+			hdmobbase.forcepain(punchee);
 			dmg*=frandom(1.1,1.8);
 		}
 
 		if(hd_debug){
-			string pch="";
-			if(punchee.player)pch=punchee.player.getusername();
-				else pch=punchee.getclassname();
+			string pch=punchee.getclassname();
 			A_Log(string.format("Punched %s for %i damage!",pch,dmg));
 		}
-		if(dmg*2>punchee.health)punchee.A_PlaySound("misc/bulletflesh",CHAN_BODY);  
-		punchee.damagemobj(self,self,dmg,"SmallArms0");
+		if(dmg*2>punchee.health)punchee.A_StartSound("misc/bulletflesh",CHAN_AUTO);
+		punchee.damagemobj(self,self,int(dmg),"SmallArms0");
 
 		if(!punchee)invoker.targethealth=0;else{
 			invoker.targethealth=punchee.health;
@@ -257,16 +272,11 @@ class HDFist:HDWeapon replaces Fist{
 		hdp.overloaded=overloaded;
 	}
 	static void kick(actor kicker,actor kickee,actor kicking){
-		kickee.A_PlaySound("weapons/smack",CHAN_BODY);
+		kickee.A_StartSound("weapons/smack",CHAN_AUTO);
 		bool kzk=kicker.countinv("PowerStrength");
 		kickee.damagemobj(kicking,kicker,kzk?random(20,40):random(10,20),"bashing");
 		if(!kickee)return;
-		if(
-			kickee.findstate("pain")
-			&&!kickee.bnopain
-			&&kickee.health>0
-			&&random(0,4)
-		)kickee.setstatelabel("pain");
+		if(random(0,4))hdmobbase.forcepain(kickee);
 		vector3 kickdir=(kickee.pos-kicker.pos).unit();
 		kickee.vel=kickdir*(kzk?10:2)*kicker.mass/max(kicker.mass*0.3,kickee.mass);
 		kicker.vel-=kickdir;
@@ -325,7 +335,7 @@ class HDFist:HDWeapon replaces Fist{
 		if(resisting){
 			vel+=(frandom(-1,1),frandom(-1,1),frandom(-1,1));
 			let grabbedmass=grabbed.mass;
-			if(random(grabbedmass*0.1,grabbedmass)>random(mass*0.6,mass*(zerk?5:1))){
+			if(frandom(grabbedmass*0.1,grabbedmass)>frandom(mass*0.6,mass*(zerk?5:1))){
 				vector2 thrustforce=(cos(angle),sin(angle))*frandom(0.,2.);
 				grabbed.vel.xy+=thrustforce*min(mass/grabbed.mass,1.);
 				vel.xy-=thrustforce;
@@ -377,7 +387,7 @@ class HDFist:HDWeapon replaces Fist{
 		if(grabbed.bcorpse)grbng=grbng.."corpse";
 		else if(inventory(grabbed)||hdupk(grabbed))grbng=grbng.."item";
 		else grbng=grbng.."object";
-		if(hd_debug)grbng=grbng.."\n"..grabbed.getclassname();
+		if(hd_debug>0)grbng=grbng.."\n"..HDMath.GetName(grabbed);
 		A_WeaponMessage(grbng.."...",3);
 
 		if(
@@ -411,7 +421,7 @@ class HDFist:HDWeapon replaces Fist{
 			invoker.washolding=false;
 		}goto readyend;
 	reload:
-		TNT1 A 0 A_CheckGender("flick");
+		TNT1 A 0 A_CheckFistSprite("flick");
 	flick:
 		#### A 1 offset(0,50) A_Lunge();
 		#### A 1 offset(0,36);
@@ -428,7 +438,7 @@ class HDFist:HDWeapon replaces Fist{
 	fire:
 	hold:
 	althold:
-		TNT1 A 0 A_CheckGender("startfire");
+		TNT1 A 0 A_CheckFistSprite("startfire");
 	startfire:
 		#### A 0 A_JumpIfInventory("PowerStrength",1,"zerkpunch");
 		goto punch;
@@ -457,8 +467,8 @@ class HDFist:HDWeapon replaces Fist{
 		goto kick;
 	lunge:
 		TNT1 A 0 A_Lunge();
-		TNT1 AA 1{
-			if(countinv("PowerStrength"))A_Recoil(-random(12,24));
+		TNT1 AAAA 1{
+			if(countinv("PowerStrength"))A_Recoil(-random(6,12));
 		}
 		TNT1 A 1 A_Recoil(-4);
 	kick:
@@ -478,7 +488,8 @@ class HDFist:HDWeapon replaces Fist{
 		goto nope;
 	firemode:
 	grab:
-		TNT1 A 0 A_CheckGender("grab2");
+		TNT1 A 0 A_ClearGrabbing();
+		TNT1 A 0 A_CheckFistSprite("grab2");
 	grab2:
 		#### A 1 offset(0,52);
 		#### A 1 offset(0,32);

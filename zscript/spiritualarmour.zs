@@ -16,6 +16,10 @@ class SpiritualArmour:HDPickup{
 		inventory.pickupsound "misc/p_pkup";
 		scale 0.8;
 	}
+	override void postbeginplay(){
+		super.postbeginplay();
+		if(Wads.CheckNumForName("id",0)==-1)scale=(0.6,0.5);
+	}
 	action void A_PsalterReading(){
 		string ps=SpiritualArmour.FromPsalter();
 		double pstime=ps.length()*0.05;
@@ -46,7 +50,7 @@ class SpiritualArmour:HDPickup{
 	}
 
 	static string FromPsalter(){
-		string psss=Wads.ReadLump(Wads.FindLump("psalms"));
+		string psss=Wads.ReadLump(Wads.CheckNumForName("psalms",0));
 		array<string> pss;pss.clear();
 		psss.split(pss,"Psalm ");
 		pss.delete(0); //don't get anything before "Psalm 1:1"

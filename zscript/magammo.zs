@@ -4,6 +4,8 @@
 class HDMagAmmo:HDAmmo{
 	array<int> mags; //or clips or batteries, whatever
 	int maxperunit;property maxperunit:maxperunit;
+	int inserttime;property inserttime:inserttime;
+	int extracttime;property extracttime:extracttime;
 	class<inventory> roundtype;property roundtype:roundtype;
 	double roundbulk;property roundbulk:roundbulk;
 	double magbulk;property magbulk:magbulk;
@@ -14,6 +16,11 @@ class HDMagAmmo:HDAmmo{
 		hdmagammo.roundbulk 0;
 		hdmagammo.magbulk 0;
 		hdmagammo.mustshowinmagmanager false;
+
+		hdmagammo.inserttime 8;
+		hdmagammo.extracttime 4;
+
+		inventory.maxamount 100;
 	}
 	override double getbulk(){
 		double result=magbulk+roundbulk;
@@ -24,14 +31,6 @@ class HDMagAmmo:HDAmmo{
 			result+=magbulk+roundbulk*mags[i];
 		}
 		return result;
-	}
-	override int effectivemaxamount(){
-		double unitbulk=max(bulk,(roundbulk*maxperunit*0.6)+magbulk);
-		if(!unitbulk)return maxamount;
-		double gdpsp;
-		if(hdplayerpawn(owner))gdpsp=hdplayerpawn(owner).maxpocketspace;
-		else gdpsp=getdefaultbytype("hdplayerpawn").maxpocketspace;
-		return max(1,gdpsp/unitbulk);
 	}
 
 	//add mag amount or size as appropriate
@@ -167,8 +166,8 @@ class HDMagAmmo:HDAmmo{
 	//mostly for unloads
 	static actor SpawnMag(actor giver,class<inventory> type,int giveamt){
 		if(giveamt<0)return null;
-		let mmm=HDMagAmmo(giver.spawn(type,giver.pos,ALLOW_REPLACE));
-		mmm.addz(giver.height-12);mmm.angle=giver.angle;
+		let mmm=HDMagAmmo(giver.spawn(type,(giver.pos.xy,giver.pos.z+giver.height-12),ALLOW_REPLACE));
+		mmm.angle=giver.angle;
 		mmm.A_ChangeVelocity(2,0,-1,CVF_RELATIVE);
 		mmm.vel+=giver.vel;
 		mmm.amount=0;
@@ -198,7 +197,7 @@ class HDMagAmmo:HDAmmo{
 			||owner.A_JumpIfInventory(roundtype,0,"null")
 		)return false;
 		HDF.Give(owner,roundtype,1);
-		owner.A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+		owner.A_StartSound("weapons/rifleclick2",8,CHANF_OVERLAP);
 		mags[mags.size()-1]--;
 		return true;
 	}
@@ -210,7 +209,7 @@ class HDMagAmmo:HDAmmo{
 			||!owner.countinv(roundtype)
 		)return false;
 		owner.A_TakeInventory(roundtype,1,TIF_NOTAKEINFINITE);
-		owner.A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+		owner.A_StartSound("weapons/rifleclick2",8,CHANF_OVERLAP);
 		mags[mags.size()-1]++;
 		return true;
 	}
@@ -266,33 +265,10 @@ class HDMagAmmo:HDAmmo{
 		if(!other)other=picktarget;
 		if(!other)return;
 		name gcn=getclassname();
-
-		//you're only ever picking up one at a time
-		let alreadygot=HDMagAmmo(other.findinventory(gcn));
-		if(alreadygot){
-			alreadygot.syncamount();
-			while(
-				alreadygot.amount>=alreadygot.maxamount
-				||(
-					hdplayerpawn(picktarget)
-					&&hdplayerpawn(picktarget).maxpocketspace-hdplayerpawn(picktarget).itemenc
-						<(magbulk+roundbulk*mags[0])
-				)
-			){
-				int thismag=mags[0];
-				bool thisisbetter=false;
-				for(int i=0;!thisisbetter&&i<alreadygot.amount;i++){
-					if(thismag>alreadygot.mags[i])thisisbetter=true;
-				}
-				if(!thisisbetter)return;
-				alreadygot.LowestToLast();
-				if(hd_debug)alreadygot.logamounts();
-				other.A_DropInventory(gcn,1);
-			}
-		}
+		if(HDPickup.MaxGive(other,gcn,getbulk())<1)return;
 
 		//misc. effects
-		other.A_PlaySound(pickupsound,CHAN_AUTO);
+		other.A_StartSound(pickupsound,CHAN_AUTO);
 		other.A_Log(string.format("\cg%s",pickupmessage()),true);
 
 		//if no information, give max, otherwise use own array info
@@ -340,6 +316,84 @@ class HDMagAmmo:HDAmmo{
 		super.postbeginplay();
 		syncamount();
 	}
+
+
+	//mag manager display
+	virtual ui void DrawHUDStuff(HDStatusBar sb,MagManager wp,HDPlayerPawn hpl){
+		if(!sb||!wp||!hpl)return;
+		DrawMagList(sb,hpl);
+	}
+	//draw the rows of mags with their counts
+	virtual ui void DrawMagList(HDStatusBar sb,HDPlayerPawn hpl,double scl=2.){
+		int countermaxx=mags.size();
+		int countermax=countermaxx-1;
+
+		int howmanylines=countermax/5;
+		int linecounter=countermax%5;
+		if(linecounter<0)linecounter=4;
+
+		string magsprite="";
+		string roundsprite="";
+		name roundtype="";
+
+		int offx=-64-18*howmanylines;
+		int offy=80;
+		for(int i=0;i<countermaxx;i++){
+
+			bool imax=i==countermax;
+			if(imax){
+				offx=-6;
+				offy=50;
+			}else if(
+				linecounter<1
+			){
+				howmanylines--;
+				offx=-64-18*howmanylines;
+				offy=80;
+				linecounter=4;
+			}else{
+				if(i>0){
+					offx+=2;
+					offy-=9;
+				}
+				linecounter--;
+			}
+
+			int thismagamt=mags[i];
+			string magsprite="";
+			[magsprite,roundsprite,roundtype,scl]=getmagsprite(thismagamt);
+
+			sb.drawimage(magsprite,(offx,offy),
+				sb.DI_SCREEN_CENTER|sb.DI_ITEM_RIGHT_TOP,
+				scale:(scl,scl)*(imax?1.6:1.)
+			);
+			sb.drawstring(
+				imax?sb.pSmallFont:sb.mamountfont,sb.FormatNumber(GetMagHudCount(thismagamt)),
+				(offx+2,offy),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_LEFT,
+				imax?font.CR_SAPPHIRE:font.CR_BROWN
+			);
+		}
+
+		if(roundsprite!="")DrawRoundCount(sb,hpl,roundsprite,scl,offx,offy);
+	}
+	virtual ui void DrawRoundCount(HDStatusBar sb,HDPlayerPawn hpl,name roundsprite,double scl,int offx,int offy){
+		bool helptext=cvar.getcvar("hd_helptext",hpl.player).getbool();
+		offx+=40;
+		scl=1.6;
+		sb.drawstring(
+			sb.pSmallFont,sb.FormatNumber(hpl.countinv(roundtype)),
+			(offx+2,offy),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_LEFT,
+			font.CR_BROWN
+		);
+		sb.drawimage(roundsprite,(offx,offy),
+			sb.DI_SCREEN_CENTER|sb.DI_ITEM_RIGHT_TOP,
+			scale:(scl,scl)
+		);
+	}
+	//this allows a display other than the true internal number
+	//useful for, e.g., ZM's 51=50+seal, or bitflags combined with count
+	virtual clearscope int GetMagHudCount(int input){return input;}
+
 
 	states{
 	use:

@@ -14,11 +14,11 @@ class PainBringer:PainMonster replaces HellKnight{
 		deathsound "knight/death";
 		obituary "$ob_knight";
 		hitobituary "$ob_knighthit";
-		tag "$fn_hell";
+		tag "$cc_hell";
 
 		damagefactor "Balefire",0.3;
 		damagefactor "Thermal",0.8;
-		damagefactor "SmallArms0",0.9;
+		hdmobbase.shields 500;
 		scale 0.9;
 		speed 12;
 		meleedamage 10;
@@ -54,14 +54,14 @@ class PainBringer:PainMonster replaces HellKnight{
 			if(bambush)setstatelabel("spawn");
 			else{
 				A_SetTics(random(1,3));
-				if(!random(0,5))A_PlaySound("knight/active",CHAN_VOICE);
+				if(!random(0,5))A_StartSound("knight/active",CHAN_VOICE);
 				if(!random(0,5))setstatelabel("spwander");
 			}
 		}loop;
 	see:
 		BOS2 A 0{
 			if(!random(0,127)){
-				A_PlaySound(seesound,CHAN_VOICE);
+				A_StartSound(seesound,CHAN_VOICE);
 				A_AlertMonsters();
 			}
 		}
@@ -70,7 +70,7 @@ class PainBringer:PainMonster replaces HellKnight{
 	pain:
 		BOS2 H 2;
 		BOS2 H 2 A_Pain;
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain.balefire:
 		BOS2 H 3{
 			A_Recoil(0.4);
@@ -85,7 +85,7 @@ class PainBringer:PainMonster replaces HellKnight{
 		}
 		BOS2 E 0 A_JumpIfTargetInLOS("shoot",10);
 		BOS2 E 0 A_JumpIfTargetInLOS("missile");
-		goto see;
+		---- A 0 setstatelabel("see");
 	shoot:
 		BOS2 E 0{
 			if(target)targetdistance=distance3d(target);else targetdistance=0;
@@ -98,7 +98,7 @@ class PainBringer:PainMonster replaces HellKnight{
 			}
 		}goto fireball;
 	putto:
-		BOS2 E 6 A_PlaySound("knight/sight",CHAN_VOICE);
+		BOS2 E 6 A_StartSound("knight/sight",CHAN_VOICE);
 		BOS2 E 4 A_FaceTarget(10,10);
 		BOS2 E 2;
 		BOS2 F 5;
@@ -110,7 +110,7 @@ class PainBringer:PainMonster replaces HellKnight{
 			p.bfriendly=bfriendly;p.target=target;
 			stamina++;
 		}
-		goto see;
+		---- A 0 setstatelabel("see");
 	fireball:
 		BOS2 FE 3 A_FaceTarget(60,60);
 		BOS2 E 2{
@@ -141,7 +141,7 @@ class PainBringer:PainMonster replaces HellKnight{
 		}
 		BOS2 GF 5;
 		BOS2 A 0 A_Jump(128,"missile");
-		goto see;
+		---- A 0 setstatelabel("see");
 	melee:
 		BOS2 E 6 A_FaceTarget();
 		BOS2 F 2;
@@ -156,7 +156,7 @@ class PainBringer:PainMonster replaces HellKnight{
 			aaa.vel+=vel;
 		}
 		BOS2 F 5;
-		goto see;
+		---- A 0 setstatelabel("see");
 	death:
 		BOS2 I 8;
 		BOS2 J 8 A_Scream();
@@ -167,7 +167,7 @@ class PainBringer:PainMonster replaces HellKnight{
 		BOS2 O -1 A_BossDeath();
 		stop;
 	death.maxhpdrain:
-		BOS2 H 5 A_PlaySound("misc/gibbed",CHAN_BODY);
+		BOS2 H 5 A_StartSound("misc/gibbed",CHAN_BODY);
 		BOS2 HIJK 5;
 		BOS2 L 5 A_NoBlocking();
 		BOS2 MN 5;
@@ -175,7 +175,7 @@ class PainBringer:PainMonster replaces HellKnight{
 		stop;
 	raise:
 		BOS2 ONMLKJI 5;
-		BOS2 H 8 A_PlaySound("knight/sight",CHAN_VOICE);
+		BOS2 H 8 A_StartSound("knight/sight",CHAN_VOICE);
 		BOS2 AAABB 3 A_Chase();
 		goto checkraise;
 	}

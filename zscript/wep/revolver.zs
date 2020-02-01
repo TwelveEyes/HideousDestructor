@@ -16,7 +16,7 @@ class HDRevolver:HDHandgun{
 		weapon.bobstyle "normal";
 		obituary "%o got capped by %k's six-pea shooter.";
 		inventory.pickupmessage "You got the revolver!";
-		hdweapon.nicename "Revolver";
+		tag "revolver";
 		hdweapon.refid HDLD_REVOLVER;
 		hdweapon.barrelsize 6,0.3,0.5; //physically longer than auto but can shoot at contact
 	}
@@ -38,11 +38,11 @@ class HDRevolver:HDHandgun{
 
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
 		if(sb.hudlevel==1){
-			sb.drawimage("PBRSA0",(-47,-10),sb.DI_SCREEN_CENTER_BOTTOM,scale:(2.1,2.55));
+			sb.drawimage("PRNDA0",(-47,-10),sb.DI_SCREEN_CENTER_BOTTOM,scale:(2.1,2.55));
 			sb.drawnum(hpl.countinv("HDRevolverAmmo"),-44,-8,sb.DI_SCREEN_CENTER_BOTTOM,font.CR_BLACK);
 			int ninemil=hpl.countinv("HDPistolAmmo");
 			if(ninemil>0){
-				sb.drawimage("PBRSA0",(-64,-10),sb.DI_SCREEN_CENTER_BOTTOM,scale:(2.1,2.1));
+				sb.drawimage("PRNDA0",(-64,-10),sb.DI_SCREEN_CENTER_BOTTOM,scale:(2.1,2.1));
 				sb.drawnum(ninemil,-60,-8,sb.DI_SCREEN_CENTER_BOTTOM,font.CR_BLACK);
 			}
 		}
@@ -142,7 +142,7 @@ class HDRevolver:HDHandgun{
 	}
 	action void A_RotateCylinder(bool clockwise=true){
 		invoker.RotateCylinder(clockwise);
-		A_PlaySound("weapons/deinocyl",5);
+		A_StartSound("weapons/deinocyl",8);
 	}
 	void RotateCylinder(bool clockwise=true){
 		if(clockwise){
@@ -173,16 +173,16 @@ class HDRevolver:HDHandgun{
 		class<inventory>ammotype=useninemil?"HDPistolAmmo":"HDRevolverAmmo";
 		A_TakeInventory(ammotype,1,TIF_NOTAKEINFINITE);
 		invoker.weaponstatus[BUGS_CYL1]=useninemil?BUGS_NINEMIL:BUGS_MASTERBALL;
-		A_PlaySound("weapons/deinoload",CHAN_WEAPON);
+		A_StartSound("weapons/deinoload",8,CHANF_OVERLAP);
 	}
 	action void A_OpenCylinder(){
-		A_PlaySound("weapons/deinoopen",CHAN_WEAPON);
+		A_StartSound("weapons/deinoopen",8);
 		invoker.weaponstatus[0]&=~BUGF_COCKED;
 		invoker.cylinderopen=true;
 		A_SetHelpText();
 	}
 	action void A_CloseCylinder(){
-		A_PlaySound("weapons/deinoclose",CHAN_WEAPON);
+		A_StartSound("weapons/deinoclose",8);
 		invoker.cylinderopen=false;
 		A_SetHelpText();
 	}
@@ -208,7 +208,7 @@ class HDRevolver:HDHandgun{
 				invoker.weaponstatus[i]=0;
 			}
 		}
-		A_PlaySound("weapons/deinoeject",CHAN_WEAPON);
+		A_StartSound("weapons/deinoeject",8,CHANF_OVERLAP);
 	}
 	action void A_ExtractAll(){
 		double cosp=cos(pitch);
@@ -247,7 +247,7 @@ class HDRevolver:HDHandgun{
 				invoker.weaponstatus[i]=0;
 			}
 		}
-		if(gotany)A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		if(gotany)A_StartSound("weapons/pocket",9);
 	}
 	action void A_FireRevolver(){
 		invoker.weaponstatus[0]&=~BUGF_COCKED;
@@ -256,7 +256,7 @@ class HDRevolver:HDHandgun{
 			cyl!=BUGS_MASTERBALL
 			&&cyl!=BUGS_NINEMIL
 		){
-			A_PlaySound("weapons/deinoclick",CHAN_WEAPON);
+			A_StartSound("weapons/deinoclick",8,CHANF_OVERLAP);
 			return;
 		}
 		invoker.weaponstatus[BUGS_CYL1]--;
@@ -271,14 +271,14 @@ class HDRevolver:HDHandgun{
 		A_Light1();
 		A_ZoomRecoil(0.995);
 		HDFlashAlpha(masterball?72:64);
-		A_PlaySound("weapons/deinoblast1",CHAN_WEAPON);
+		A_StartSound("weapons/deinoblast1",CHAN_WEAPON,CHANF_OVERLAP);
 		if(masterball){
 			A_MuzzleClimb(-frandom(0.8,1.6),-frandom(1.6,2.));
-			A_PlaySound("weapons/deinoblast1",5,0.5);
-			A_PlaySound("weapons/deinoblast2",6,0.4);
+			A_StartSound("weapons/deinoblast1",CHAN_WEAPON,CHANF_OVERLAP,0.5);
+			A_StartSound("weapons/deinoblast2",CHAN_WEAPON,CHANF_OVERLAP,0.4);
 		}else{
 			A_MuzzleClimb(-frandom(0.6,1.2),-frandom(0.8,1.8));
-			A_PlaySound("weapons/deinoblast2",5,0.3);
+			A_StartSound("weapons/deinoblast2",CHAN_WEAPON,CHANF_OVERLAP,0.3);
 		}
 	}
 	int cooldown;
@@ -369,7 +369,12 @@ class HDRevolver:HDHandgun{
 				let spw=SpareWeapons(findinventory("SpareWeapons"));
 				for(int i=0;i<spw.weapontype.size();i++){
 					if(spw.weapontype[i]==invoker.getclassname()){
-						spw.weaponstatus0[i]&=~BUGF_COCKED;
+						string spw2=spw.weaponstatus[i];
+						string spw1=spw2.left(spw2.indexof(","));
+						spw2=spw2.mid(spw2.indexof(","));
+						int stat0=spw1.toint();
+						stat0&=~BUGF_COCKED;
+						spw.weaponstatus[i]=stat0..spw2;
 					}
 				}
 			}
@@ -438,7 +443,7 @@ class HDRevolver:HDHandgun{
 	uncock:
 		#### C 1 offset(0,38);
 		#### B 1 offset(0,34);
-		#### A 2 offset(0,36) A_PlaySound("weapons/deinocyl",CHAN_WEAPON);
+		#### A 2 offset(0,36) A_StartSound("weapons/deinocyl",8,CHANF_OVERLAP);
 		#### A 0 A_CockHammer(false);
 		goto nope;
 	reload:
@@ -598,15 +603,6 @@ enum DeinovolverStats{
 	BUGF_RIGHTHANDED=1,
 	BUGF_COCKED=2,
 }
-class HDBullet355:HDBullet{
-	default{
-		pushfactor 0.4;
-		mass 1570;
-		speed 440;
-		accuracy 4;
-		woundhealth 4;
-	}
-}
 class HDSpent355:HDSpent9mm{default{yscale 0.85;}}
 class HDRevolverAmmo:HDPistolAmmo{
 	default{
@@ -614,11 +610,14 @@ class HDRevolverAmmo:HDPistolAmmo{
 		yscale 0.85;
 		inventory.pickupmessage "Picked up a .355 round.";
 		hdpickup.refid HDLD_355;
-		hdpickup.nicename ".355 Round";
+		tag ".355 round";
 		hdpickup.bulk ENC_355;
 	}
 	override void GetItemsThatUseThis(){
 		itemsthatusethis.push("HDRevolver");
+	}
+	override void SplitPickup(){
+		SplitPickupBoxableRound(10,72,"HD355BoxPickup","TEN9A0","PRNDA0");
 	}
 }
 class HD355BoxPickup:HDUPK{

@@ -1,7 +1,7 @@
 // ------------------------------------------------------------
 // Necromancer
 // ------------------------------------------------------------
-class BloodyHellFire:HDActor{
+class BloodyHellFire:HDMobBase{
 	default{
 		+ismonster
 		+lookallaround
@@ -26,6 +26,7 @@ class BloodyHellFire:HDActor{
 		seesound "misc/firecrkl";
 		deathsound "weapons/plasmas";
 		obituary "%o met the firepower of the necromancer.";
+		tag "$CC_FLAME";
 	}
 	int firetimer;
 	override void postbeginplay(){
@@ -50,9 +51,9 @@ class BloodyHellFire:HDActor{
 		TNT1 A 0 A_Jump(256,"spawn2");
 		TNT1 AAAAAAA random(4,6) A_SpawnItemEx("HDSmoke",frandom(-1,1),frandom(-1,1),frandom(1,6),frandom(-1,1),frandom(-1,1),frandom(1,3),0,SXF_ABSOLUTE);
 		TNT1 AAAAAAA random(1,4) A_SpawnItemEx("HDSmoke",frandom(-1,1),frandom(-1,1),frandom(1,6),frandom(-1,1),frandom(-1,1),frandom(1,3),0,SXF_ABSOLUTE);
-		TNT1 A 0 A_Playsound("vile/firestrt",6);
+		TNT1 A 0 A_StartSound("vile/firestrt",0);
 		TNT1 A 0 A_SetShootable();
-		TNT1 A 0 A_SpawnItemEx("VileFireLight",flags:SXF_SETTARGET);
+		TNT1 A 0 A_SpawnItemEx("NecroFireLight",flags:SXF_SETTARGET);
 		TNT1 AAAAA 0 A_SpawnItemEx("HDSmoke",frandom(-1,1),frandom(-1,1),frandom(1,6),frandom(-1,1),frandom(-1,1),frandom(1,3),0,SXF_ABSOLUTE);
 	spawn2:
 		FIRE A 0 A_Look();
@@ -61,7 +62,7 @@ class BloodyHellFire:HDActor{
 	see:
 		TNT1 A 0{
 			A_SetScale(randompick(-1,1)*frandom(0.8,1.2),frandom(0.8,1.2));
-			A_Playsound("misc/firecrkl");
+			A_StartSound("misc/firecrkl");
 			if(firetimer<1)setstatelabel("detonate");
 			else firetimer--;
 		}
@@ -114,9 +115,9 @@ class BloodyHellFire:HDActor{
 		TNT1 A 0 A_SpawnProjectile("HeckFire",0,0,0);
 		FIRE D 0 A_SpawnProjectile("BloodyHellFireTail",0,0,0,2,0);
 		FIRE D random(1,2) A_Wander();
-		goto see;
+		---- A 0 setstatelabel("see");
 	putto:
-		TNT1 A 0 A_Playsound("vile/firestrt");
+		TNT1 A 0 A_StartSound("vile/firestrt");
 		TNT1 AAAAA 0 A_SpawnItemEx("HDSmoke",frandom(-1,1),frandom(-1,1),frandom(1,6),frandom(-1,1),frandom(-1,1),frandom(1,3),0,SXF_ABSOLUTE);
 		TNT1 AA 0 A_SpawnItemEx("Putto",flags:SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
 		stop;
@@ -149,7 +150,7 @@ class BloodyHellFireTail:HDActor{
 		stop;
 	}
 }
-class VileFireLight:PointLight{
+class NecroFireLight:PointLight{
 	bool triggered;
 	override void postbeginplay(){
 		super.postbeginplay();
@@ -167,7 +168,7 @@ class VileFireLight:PointLight{
 			if(!triggered){
 				args[3]=128;
 				triggered=true;
-			}else args[3]*=frandom(0.8,1.);
+			}else args[3]=int(frandom(0.8,1.)*args[3]);
 		}
 		else args[3]=random(50,72);
 	}
@@ -201,7 +202,7 @@ class HeckFire:HDActor{
 		FIRE ABAB random(1,2) A_SeekerMissile(2,4);
 	see:
 		FIRE A 0 A_Setscale(randompick(-1,1)*frandom(0.8,1.2),frandom(0.8,1.2));
-		FIRE A random(1,2) A_Playsound("misc/firecrkl");
+		FIRE A random(1,2) A_StartSound("misc/firecrkl");
 		FIRE B random(1,2) A_NoGravity();
 		FIRE A 0 A_Setscale(randompick(-1,1)*frandom(0.8,1.2),frandom(0.8,1.2));
 		FIRE ABAB random(1,2) A_SeekerMissile(4,8);
@@ -226,7 +227,7 @@ class Necromancer:HDMobBase replaces ArchVile{
 		activesound "vile/active";
 		meleesound "vile/stop";
 		obituary "$OB_VILE";
-		tag "$FN_ARCH";
+		tag "$CC_ARCH";
 		
 		+shadow
 		+nofear
@@ -236,6 +237,7 @@ class Necromancer:HDMobBase replaces ArchVile{
 		+floorclip
 		+hdmobbase.doesntbleed
 		+hdmobbase.biped;
+		+nopain
 		radius 16;
 		height 56;
 		scale 0.8;
@@ -244,38 +246,7 @@ class Necromancer:HDMobBase replaces ArchVile{
 		damagetype "Thermal";
 		speed 14;
 		painchance 0;
-		health TELEFRAG_DAMAGE;
-	}
-	int hitsleft;
-	void A_VilePain(){
-		Spawn("DistantRocket",pos,ALLOW_REPLACE);
-		A_SpawnItemEx("SpawnFire",0,0,28,flags:SXF_NOCHECKPOSITION);
-		A_Explode(46,196);
-		A_Quake(3,36,0,360);
-		A_AlertMonsters();
-		A_Pain();
-		for(int i=0;i<3;i++)A_SpawnItemEx("BFGVileShard",
-			0,0,42,flags:SXF_SETMASTER|SXF_TRANSFERPOINTERS
-		);
-	}
-	void A_ChangeVileFlags(bool attacking){
-		if(!attacking){
-			A_UnSetShootable();
-			A_UnSetSolid();
-			bnofear=false;
-			bfrightened=true;
-			maxstepheight=1024;
-			maxdropoffheight=1024;
-			A_SetRenderStyle(1.,STYLE_Add);
-		}else{
-			A_SetShootable();
-			A_SetSolid();
-			bnofear=true;
-			bfrightened=false;
-			maxstepheight=getdefaultbytype(getclass()).maxstepheight;
-			maxdropoffheight=getdefaultbytype(getclass()).maxdropoffheight;
-			A_SetRenderStyle(1.,STYLE_Normal);
-		}
+		health 1000;
 	}
 	static void A_MassHeal(actor caller){
 		actor aaa;
@@ -287,11 +258,11 @@ class Necromancer:HDMobBase replaces ArchVile{
 				&&aaa.findstate("raise")
 				&&aaa.checksight(caller)
 			){
-				int dist=max(
+				int dist=int(max(
 					abs(aaa.pos.x-caller.pos.x),
 					abs(aaa.pos.y-caller.pos.y),
 					abs(aaa.pos.z-caller.pos.z)
-				);
+				));
 				actor hhh=spawn("HDRaiser",aaa.pos,ALLOW_REPLACE);
 				hhh.bfriendly=caller.bfriendly;
 				hhh.master=aaa;
@@ -317,7 +288,7 @@ class Necromancer:HDMobBase replaces ArchVile{
 		if(Wads.CheckNumForName("VILER0",wads.ns_sprites,-1,false)<0){
 			for(int i=0;i<99;i++){
 				actor vvv;
-				[bmissilemore,vvv]=A_SpawnItemEx("BFGVileShard",
+				[bmissilemore,vvv]=A_SpawnItemEx("BFGNecroShard",
 					frandom(-3,3),frandom(-3,3),frandom(1,6),
 					frandom(0,30),0,frandom(1,12),frandom(0,360),
 					SXF_SETMASTER|SXF_TRANSFERPOINTERS|SXF_ABSOLUTEPOSITION
@@ -336,6 +307,26 @@ class Necromancer:HDMobBase replaces ArchVile{
 		A_GiveInventory("ImmunityToFire");
 		hitsleft=bfriendly?7:6;
 	}
+	int hitsleft;
+	void A_ChangeNecroFlags(bool attacking){
+		if(!attacking){
+			A_UnSetShootable();
+			A_UnSetSolid();
+			bnofear=false;
+			bfrightened=true;
+			maxstepheight=1024;
+			maxdropoffheight=1024;
+			A_SetRenderStyle(1.,STYLE_Add);
+		}else{
+			A_SetShootable();
+			A_SetSolid();
+			bnofear=true;
+			bfrightened=false;
+			maxstepheight=getdefaultbytype(getclass()).maxstepheight;
+			maxdropoffheight=getdefaultbytype(getclass()).maxdropoffheight;
+			A_SetRenderStyle(1.,STYLE_Normal);
+		}
+	}
 	override int damagemobj(
 		actor inflictor,actor source,int damage,
 		name mod,int flags,double angle
@@ -343,28 +334,42 @@ class Necromancer:HDMobBase replaces ArchVile{
 		if(
 			damage==TELEFRAG_DAMAGE
 			||mod=="mapmorph"
-		)return super.damagemobj(inflictor,source,damage,mod,flags,angle);
+		)return actor.damagemobj(inflictor,source,damage,mod,flags,angle);
 		if(
 			mod!="thermal"
 			&&mod!="balefire"
 			&&damage>random(0,bfriendly?333:166)
 		){
 			if(hitsleft>0){
-				bshootable=false;
 				hitsleft--;
-				if(!bfriendly)A_ChangeVileFlags(false);
-				setstatelabel("pain");
-				return 0;
-			}
-			return super.damagemobj(
+				bshootable=false;
+				if(!bfriendly)A_ChangeNecroFlags(false);
+
+				if(bfriendly||target)setstatelabel("pain");
+				else{
+					setstatelabel("painedandgone");
+					DistantNoise.Make(self,painsound);
+				}
+
+				DistantNoise.Make(self,"world/rocketfar");
+				A_SpawnItemEx("SpawnFire",0,0,28,flags:SXF_NOCHECKPOSITION);
+				A_Explode(46,196);
+				A_Quake(3,36,0,360);
+				A_AlertMonsters();
+				A_Pain();
+				for(int i=0;i<3;i++)A_SpawnItemEx("BFGNecroShard",
+					0,0,42,flags:SXF_SETMASTER|SXF_TRANSFERPOINTERS
+				);
+			}else return actor.damagemobj(
 				inflictor,source,health,
-				bfriendly?"SmallArms0":"Falling",DMG_FORCED|DMG_THRUSTLESS
+				mod,DMG_FORCED|DMG_THRUSTLESS
 			);
 		}
-		return 0;
+		return -1;
 	}
 	states{
 	spawn:
+		VILE A 0 A_JumpIf(!bshootable,"painedandgone");
 		VILE AB 10 A_Look;
 		loop;
 	see:
@@ -382,7 +387,7 @@ class Necromancer:HDMobBase replaces ArchVile{
 			bnopain=false;
 			A_FaceTarget();
 		}
-		VILE H 2 bright light("CANF") A_ChangeVileFlags(true);
+		VILE H 2 bright light("CANF") A_ChangeNecroFlags(true);
 		VILE HHH 3 bright light("CANF") A_SpawnProjectile("HeckFire",16,0,frandom(-4,4));
 		TNT1 A 0 A_FaceTarget();
 		VILE IJ 4 bright light("CANF");
@@ -400,9 +405,9 @@ class Necromancer:HDMobBase replaces ArchVile{
 		VILE P 0 A_CustomBulletAttack(0,0,1,1,"BloodyHellFire");
 		VILE PO 4 bright light("HELL");
 		VILE N 8 bright light("HELL");
-		goto see;
+		---- A 0 setstatelabel("see");
 	heal:
-		VILE A 0 A_ChangeVileFlags(true);
+		VILE A 0 A_ChangeNecroFlags(true);
 		VILE \\ 8 bright light("HEAL");
 		VILE # 8 bright light("HEAL"){
 			if(bfriendly){
@@ -424,9 +429,9 @@ class Necromancer:HDMobBase replaces ArchVile{
 				A_SetTics(16);
 			}
 		}
-		goto see;
+		---- A 0 setstatelabel("see");
 	pain:
-		VILE Q 20 light("HELL")A_VilePain();
+		VILE Q 20 light("HELL");
 		VILE H 0 A_JumpIf(bfriendly,"see");
 	pained:
 		VILE A 1 A_Chase(null,null);
@@ -443,14 +448,16 @@ class Necromancer:HDMobBase replaces ArchVile{
 		VILE F 1 A_Chase(null,null,CHF_RESURRECT);
 		VILE AA 0 A_Chase(null,null,CHF_RESURRECT);
 		VILE F 0 A_SetTranslucent(alpha-0.2,1);
-		VILE F 0 A_JumpIf(alpha<0.1,1);
+		VILE F 0 A_JumpIf(alpha<0.1,"painedandgone");
 		loop;
+	painedandgone:
 		TNT1 AAAAAAAAA 0 A_Wander();
 		TNT1 A 0 A_SetTics(random(350,3500));
-		VILE F 0 A_ChangeVileFlags(true);
-		goto see;
+		VILE F 0 A_ChangeNecroFlags(true);
+		---- A 0 setstatelabel("see");
 	death:
-		VILE Q 42 bright A_VilePain();
+		VILE Q 0 A_ChangeNecroFlags(false);
+		VILE Q 42 bright A_Pain();
 		VILE Q 0 A_FaceTarget();
 		VILE Q 0 A_Quake(2,40,0,768,0);
 		VILE G 6 bright light("HELL") A_SetTranslucent(0.8,1);
@@ -472,29 +479,31 @@ class Necromancer:HDMobBase replaces ArchVile{
 		VILE Q 0 A_Quake(6,8,0,768,0);
 		VILE GGG 2 bright light("HELL")A_Pain();
 	xdeath:
-		VILE Q 0 A_SpawnItemEx("VileDeathLight",flags:SXF_SETTARGET);
-		VILE Q 0 A_SpawnItem("spawnFire",0.1,28,0,0);
-		TNT1 AA 0 Spawn("DistantRocket",pos,ALLOW_REPLACE);
-		VILE Q 0 A_PlaySound("weapons/rocklx",CHAN_WEAPON);
-		VILE Q 0 A_Explode(72,196);
-		VILE Q 6 bright light("HELL") A_Scream();
+		VILE Q 6 bright light("HELL"){
+			A_Explode(72,196);
+			A_StartSound("weapons/rocklx",CHAN_WEAPON);
+			A_SpawnItemEx("NecroDeathLight",flags:SXF_SETTARGET);
+			A_SpawnItem("spawnFire",0.1,28,0,0);
+			A_Scream();
+			DistantNoise.Make(self,"world/rocketfar",2.);
+		}
 		VILE Q 14 bright light("HELL") A_Quake(8,14,0,768,0);
 		VILE Q 0 A_SpawnItemEx("SpawnFire",0,0,30,flags:SXF_ABSOLUTE);
 		VILE Q 0 A_SpawnItemEx("SpawnFire",0,0,28,flags:SXF_ABSOLUTE);
 		VILE QQQQQQQQ 0 A_SpawnProjectile("HeckFire",frandom(12,32),0,frandom(0,360),2,frandom(-2,12));
 		VILE Q 0 A_Quake(3,26,0,1024,0);
-		VILE QQQQQ 8 A_SpawnItemEx("VileShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
+		VILE QQQQQ 8 A_SpawnItemEx("NecroShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS);
 	fade:
-		VILE QQ 2 A_SpawnItemEx("VileShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,16);
+		VILE QQ 2 A_SpawnItemEx("NecroShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,16);
 		VILE Q 8 A_fadeOut(0.05);
 		VILE Q 0 A_JumpIf(alpha < 0.10,1);
 		loop;
 		VILE Q 8 A_fadeOut(0.04);
-		TNT1 A 8 A_SpawnItemEx("VileShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,16);
+		TNT1 A 8 A_SpawnItemEx("NecroShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,16);
 		TNT1 A 0 A_NoBlocking();
-		TNT1 AAAAA 12 A_SpawnItemEx("VileShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,16);
+		TNT1 AAAAA 12 A_SpawnItemEx("NecroShard",frandom(-8,8),frandom(-8,8),frandom(26,50),frandom(-1,1),0,0,frandom(0,360),SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS,16);
 		TNT1 A -1{
-			A_SpawnItemEx("VileGhost",flags:SXF_ABSOLUTE|SXF_TRANSFERPOINTERS|SXF_SETMASTER);
+			A_SpawnItemEx("NecroGhost",flags:SXF_ABSOLUTE|SXF_TRANSFERPOINTERS|SXF_SETMASTER);
 			bnointeraction=true;
 		}stop;
 	death.mapmorph:
@@ -511,7 +520,7 @@ class Necromancer:HDMobBase replaces ArchVile{
 		stop;
 	}
 }
-class VileDeathLight:PointLight{
+class NecroDeathLight:PointLight{
 	override void postbeginplay(){
 		super.postbeginplay();
 		args[0]=255;
@@ -523,7 +532,7 @@ class VileDeathLight:PointLight{
 	override void tick(){
 		if(isfrozen())return;
 		if(!target||target.bnointeraction){destroy();return;}
-		args[3]=target.alpha*randompick(1,3,7)*random(12,16);
+		args[3]=int(target.alpha*randompick(1,3,7)*frandom(12,16));
 		setorigin(target.pos,true);
 	}
 }
@@ -574,7 +583,7 @@ class HDRaiser:Actor{
 	}
 }
 
-class VileGhost:HDActor{
+class NecroGhost:HDActor{
 	default{
 		+ismonster
 		-countkill
@@ -598,13 +607,13 @@ class VileGhost:HDActor{
 	birth:
 		TNT1 A 20 A_Warp(AAPTR_TARGET,0,0,32,0,WARPF_NOCHECKPOSITION);
 		TNT1 A 80 A_Quake(1,40,0,512,"vile/active");
-		TNT1 AAAAAA 0 A_SpawnItemEx("VileGhostShard",flags:SXF_TRANSFERPOINTERS|SXF_NOCHECKPOSITION);
+		TNT1 AAAAAA 0 A_SpawnItemEx("NecroGhostShard",flags:SXF_TRANSFERPOINTERS|SXF_NOCHECKPOSITION);
 		TNT1 A 40;
 		TNT1 A 1{Necromancer.A_MassHeal(self);}
 		stop;
 	}
 }
-class VileGhostShard:VileGhost{
+class NecroGhostShard:NecroGhost{
 	default{
 		height 56;
 		radius 20;
@@ -618,7 +627,7 @@ class VileGhostShard:VileGhost{
 		stop;
 	}
 }
-class VileShard:HDActor{
+class NecroShard:HDActor{
 	default{
 		+ismonster
 		+float
@@ -643,7 +652,7 @@ class VileShard:HDActor{
 		APLS A 0 {vel.z+=frandom(-4,8);}
 		APLS A 2 bright A_JumpIf(alpha<0.1,"null");
 		APLS B 2 A_Wander();
-		APLS A 0 A_SpawnProjectile("VileShardTail",0,random(-24,24),random(-24,24),2,random(-14,14));
+		APLS A 0 A_SpawnProjectile("NecroShardTail",0,random(-24,24),random(-24,24),2,random(-14,14));
 		APLS A 2 bright;
 		APLS A 0 A_Wander();
 		APLS B 2 bright A_fadeOut(0.05);
@@ -654,7 +663,7 @@ class VileShard:HDActor{
 		stop;
 	}
 }
-class VileShardTail:HDActor{
+class NecroShardTail:HDActor{
 	default{
 		projectile;
 		+noclip

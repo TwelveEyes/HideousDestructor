@@ -15,7 +15,7 @@ class ThunderBuster:HDCellWeapon{
 		obituary "%o was roasted by %k's particle splatter.";
 		hdweapon.barrelsize 28,1.6,3;
 		hdweapon.refid HDLD_THUNDER;
-		hdweapon.nicename "Thunder Buster";
+		tag "Thunder Buster";
 	}
 	override bool AddSpareWeapon(actor newowner){return AddSpareWeaponRegular(newowner);}
 	override hdweapon GetSpareWeapon(actor newowner,bool reverse,bool doselect){return GetSpareWeaponRegular(newowner,reverse,doselect);}
@@ -173,7 +173,7 @@ class ThunderBuster:HDCellWeapon{
 			return;
 		}
 
-		int basedmg=max(0,20-tlt.distance*(1./50.));
+		int basedmg=int(max(0,20-tlt.distance*(1./50.)));
 		int dmgflags=caller&&caller.player?DMG_PLAYERATTACK:0; //don't know why the player damagemobj doesn't work
 
 		//wet actor
@@ -191,13 +191,13 @@ class ThunderBuster:HDCellWeapon{
 			){
 				//dry actor - ping damage and continue
 				if(!random(0,5))(lingeringthunder.zap(hitactor,hitactor,caller,40,true));
-				hitactor.damagemobj(null,caller,1,"Electro",dmgflags);
 				hdf.give(hitactor,"Heat",(basedmg>>1));
+				hitactor.damagemobj(null,caller,1,"Electro",dmgflags);
 			}else{
 				//wet actor
 				if(!random(0,7))(lingeringthunder.zap(hitactor,hitactor,caller,(basedmg<<1),true));
-				hitactor.damagemobj(null,caller,basedmg,"Electro",dmgflags);
 				hdf.give(hitactor,"Heat",(basedmg<<1));
+				hitactor.damagemobj(null,caller,basedmg,"Electro",dmgflags);
 				actor sss=spawn("HDGunsmoke",tlt.hitlocation,ALLOW_REPLACE);
 				sss.vel=(0,0,1)-tlt.hitdir;
 				return;
@@ -220,13 +220,13 @@ class ThunderBuster:HDCellWeapon{
 
 		//preliminary effects
 		A_ZoomRecoil(0.99);
-		A_PlaySound("weapons/plasidle");
+		A_StartSound("weapons/plasidle");
 		if(countinv("IsMoving")>9)A_MuzzleClimb(frandom(-0.8,0.8),frandom(-0.8,0.8));
 
 		//the actual call
 		ThunderBuster.ThunderZap(
 			self,
-			height-6,
+			HDWeapon.GetShootOffset(self,invoker.barrellength,invoker.barrellength-HDCONST_SHOULDERTORADIUS),
 			invoker.weaponstatus[0]&TBF_ALT,
 			battery
 		);
@@ -271,7 +271,7 @@ class ThunderBuster:HDCellWeapon{
 		#### A 1 offset(-1,33) A_WeaponReady(WRF_NONE);
 		#### A 0{
 			if(invoker.weaponstatus[TBS_BATTERY]<1){
-				A_PlaySound("weapons/plasmas",CHAN_WEAPON);
+				A_StartSound("weapons/plasmas",CHAN_WEAPON);
 				A_GunFlash();
 				setweaponstate("nope");
 			}else{
@@ -298,7 +298,7 @@ class ThunderBuster:HDCellWeapon{
 	firemode:
 		#### B 1 offset(1,32) A_WeaponBusy();
 		#### B 2 offset(2,32);
-		#### B 1 offset(1,33) A_PlaySound("weapons/plasswitch",CHAN_WEAPON);
+		#### B 1 offset(1,33) A_StartSound("weapons/plasswitch",8);
 		#### B 2 offset(0,34);
 		#### B 3 offset(-1,35);
 		#### B 4 offset(-1,36);
@@ -335,7 +335,7 @@ class ThunderBuster:HDCellWeapon{
 			A_MuzzleClimb(frandom(-1.2,-2.4),frandom(1.2,2.4));
 		}
 		#### A 3 offset(0,35);
-		#### A 2 offset(0,40) A_PlaySound("weapons/plasopen");
+		#### A 2 offset(0,40) A_StartSound("weapons/plasopen",8);
 		#### A 0{
 			int bat=invoker.weaponstatus[TBS_BATTERY];
 			A_MuzzleClimb(frandom(-1.2,-2.4),frandom(1.2,2.4));
@@ -366,8 +366,8 @@ class ThunderBuster:HDCellWeapon{
 				HDMagAmmo.GiveMag(self,"HDBattery",bat);
 			}
 		}
-		#### A 8 offset(0,43) A_PlaySound("weapons/pocket",CHAN_WEAPON);
-		#### A 8 offset(0,42) A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		#### A 8 offset(0,43) A_StartSound("weapons/pocket",9);
+		#### A 8 offset(0,42) A_StartSound("weapons/pocket",9);
 		goto magout;
 
 	magout:
@@ -387,12 +387,12 @@ class ThunderBuster:HDCellWeapon{
 		#### A 12 offset(0,42);
 		#### A 2 offset(0,43){if(health>39)A_SetTics(0);}
 		#### AA 2 offset(0,42);
-		#### A 2 offset(0,44) A_PlaySound("weapons/pocket",CHAN_WEAPON);
-		#### A 4 offset(0,43) A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		#### A 2 offset(0,44) A_StartSound("weapons/pocket",9);
+		#### A 4 offset(0,43) A_StartSound("weapons/pocket",9);
 		#### A 6 offset(0,42);
-		#### A 8 offset(0,38)A_PlaySound("weapons/plasload",CHAN_WEAPON);
+		#### A 8 offset(0,38)A_StartSound("weapons/plasload",8);
 		#### A 4 offset(0,37){if(health>39)A_SetTics(0);}
-		#### A 4 offset(0,36)A_PlaySound("weapons/plasclose",CHAN_WEAPON);
+		#### A 4 offset(0,36)A_StartSound("weapons/plasclose",8);
 
 		#### A 0{
 			let mmm=HDMagAmmo(findinventory("HDBattery"));
@@ -402,7 +402,7 @@ class ThunderBuster:HDCellWeapon{
 	reload3:
 		#### A 6 offset(0,40){
 			invoker.weaponstatus[TBS_MAXRANGEDISPLAY]=(8000+200*invoker.weaponstatus[TBS_BATTERY])/HDCONST_ONEMETRE;
-			A_PlaySound("weapons/plasclose2",CHAN_WEAPON);
+			A_StartSound("weapons/plasclose2",8);
 		}
 		#### A 2 offset(0,36);
 		#### A 4 offset(0,33);
@@ -481,11 +481,11 @@ class BeamSpot:HDActor{
 		}
 
 		//crackity crack
-		target.A_PlaySound("weapons/plascrack",CHAN_WEAPON);
-		target.A_PlaySound("weapons/plascrack",CHAN_BODY);
-		target.A_PlaySound("weapons/plascrack",5);
-		target.A_PlaySound("world/tbfar",6);
-		target.A_PlaySound("world/explode",7,0.5);
+		target.A_StartSound("weapons/plascrack",11);
+		target.A_StartSound("weapons/plascrack",12);
+		target.A_StartSound("weapons/plascrack",13);
+		target.A_StartSound("world/tbfar",14);
+		target.A_StartSound("world/explode",15,volume:0.5);
 
 		//flash player's muzzle
 		let hdp=hdplayerpawn(target);
@@ -523,14 +523,14 @@ class BeamSpot:HDActor{
 		ltt.target=target;
 
 		A_SprayDecal("BusterScorch",14);
-		spawn("DistantRocket",pos,ALLOW_REPLACE);
-		spawn("DoubleDistantShotgun",pos,ALLOW_REPLACE);
+		DistantNoise.Make(self,"world/rocketfar");
+		DistantNoise.Make(self,"world/shotgunfar",2.);
 		DistantQuaker.Quake(self,
 			5,50,2048,8,128,256,256
 		);
 
 		//check floor and ceiling and spawn more debris
-		spawn("DistantRocket",pos,ALLOW_REPLACE);
+		DistantNoise.Make(self,"world/rocketfar");
 		for(int i=0;i<3;i++)A_SpawnItemEx("WallChunker",
 			frandom(-4,4),frandom(-4,4),-4,
 			flags:SXF_NOCHECKPOSITION|SXF_TRANSFERPOINTERS
@@ -546,7 +546,7 @@ class BeamSpot:HDActor{
 		while(master=it.Next()){
 			double dist=master.distance3d(self)*0.01;
 			if(master && dist<8){
-				stamina+=21-dist;
+				stamina+=int(21-dist);
 				if(master!=self)beamspots.push(master);
 				if(master.stamina>21)master.setstatelabel("glow");
 				else master.setstatelabel("spawn2");
@@ -564,12 +564,12 @@ class BeamSpot:HDActor{
 	spawn:
 		TNT1 A 0 nodelay A_CheckNeighbourSpots();
 	spawn2:
-		TNT1 A 3 A_PlaySound("weapons/plasidle",CHAN_WEAPON,0.4);
+		TNT1 A 3 A_StartSound("weapons/plasidle",CHAN_WEAPON,volume:0.4);
 		stop;
 	glow:
 		PLSE A 0 A_SpawnItemEx("BeamSpotLight",flags:SXF_NOCHECKPOSITION|SXF_SETTARGET);
 		PLSE A 0 A_SprayDecal("PlasmaShock",14);
-		PLSE A 1 A_PlaySound("weapons/plasidle",CHAN_WEAPON,0.8);
+		PLSE A 1 A_StartSound("weapons/plasidle",CHAN_WEAPON,volume:0.8);
 		PLSE AAAA 1 A_Flicker();
 		stop;
 	explode:
@@ -604,7 +604,7 @@ class ThunderCracker:IdleDummy{
 	states{
 	spawn:
 		TNT1 A 1;
-		TNT1 A 10 A_PlaySound("weapons/plascrack");
+		TNT1 A 10 A_StartSound("weapons/plascrack");
 		TNT1 A 20 A_AlertMonsters();
 		stop;
 	}
@@ -634,9 +634,9 @@ class BeamSpotFlash:IdleDummy{
 		alpha=scale.y+0.3;
 		vel=(frandom(-1,1),frandom(-1,1),frandom(1,3));
 
-		double n=max(impactcloseness*0.03,2);
-		double n1=n*0.6;
-		double n2=n*0.4;
+		int n=int(max(impactcloseness*0.03,2));
+		int n1=n*3/5;
+		int n2=n*2/5;
 		if(tracer){
 			HDF.Give(tracer,"Heat",n);
 			int dmgflags=target&&target.player?DMG_PLAYERATTACK:0;
@@ -645,14 +645,14 @@ class BeamSpotFlash:IdleDummy{
 		A_HDBlast(
 			n*2,random(1,n),n,"Electro",
 			n,-n,
-			immolateradius:n1,immolateamount:random(4,8)*(n2*-0.1),immolatechance:n
+			immolateradius:n1,immolateamount:random(4,8)*n2/-10,immolatechance:n
 		);
 
 		pitch=frandom(80,90);
 		angle=frandom(0,360);
 		A_SpawnItemEx("BeamSpotFlashLight",flags:SXF_NOCHECKPOSITION|SXF_SETTARGET);
-		A_SpawnChunks("HDGunSmoke",clamp(n2*0.6,4,7),3,6);
-		A_PlaySound("weapons/plasmaf");
+		A_SpawnChunks("HDGunSmoke",clamp(n2*3/5,4,7),3,6);
+		A_StartSound("weapons/plasmaf");
 		A_AlertMonsters();
 	}
 	states{
@@ -716,7 +716,7 @@ class LingeringThunder:IdleDummy{
 			Zap(self,self,target,stamina,true);
 			a_setsize(oldrad,height);
 		}
-		A_SetTics(max(1,min(random(4,24),sqrt(startingstamina-stamina))));
+		A_SetTics(max(1,min(random(4,24),int(sqrt(startingstamina-stamina)))));
 	}
 	static int Zap(actor victim,actor inflictor,actor source,int baseamount,bool nodmg=false){
 		//create arc
@@ -730,7 +730,7 @@ class LingeringThunder:IdleDummy{
 		for(int i=1;i<4;i++){
 			vector3 pastnode=nodes[i-1];
 			vector3 particlepos=nodes[i]-pastnode;
-			int iterations=particlepos.length();
+			int iterations=int(particlepos.length());
 			vector3 particlemove=particlepos/iterations;
 			particlepos=pastnode-victim.pos;
 			for(int i=0;i<iterations;i++){
@@ -745,9 +745,9 @@ class LingeringThunder:IdleDummy{
 		}
 
 		int zappower=random(baseamount>>2,baseamount);
-		victim.A_PlaySound("weapons/plasidle",CHAN_BODY,frandom(0.2,0.6));
-		victim.A_PlaySound("misc/arccrackle",5);
-		victim.A_PlaySound("weapons/plascrack",6,frandom(0.2,0.6));
+		victim.A_StartSound("weapons/plasidle",CHAN_AUTO,volume:frandom(0.2,0.6));
+		victim.A_StartSound("misc/arccrackle",CHAN_AUTO);
+		victim.A_StartSound("weapons/plascrack",CHAN_AUTO,volume:frandom(0.2,0.6));
 		actor bsfl=spawn("BeamSpotFlashLight",victim.pos,ALLOW_REPLACE);
 		bsfl.target=victim;
 

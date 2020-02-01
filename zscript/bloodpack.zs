@@ -12,7 +12,7 @@ class SecondBlood:HDInjectorMaker{
 		inventory.pickupmessage "Picked up a synthblood pack.";
 		inventory.icon "PBLDA0";
 		hdpickup.bulk ENC_STIMPACK*2;
-		hdpickup.nicename "Synthetic Blood";
+		tag "synthetic blood";
 		hdpickup.refid HDLD_BLODPAK;
 		species "HealingItem";
 		hdinjectormaker.injectortype "SecondBloodSticker";
@@ -49,7 +49,7 @@ class SecondBloodSticker:HDWoundFixer{
 		goto super::select;
 	altreload:
 	unload:
-		TNT1 A 0 A_PlaySound("weapons/pocket",CHAN_BODY);
+		TNT1 A 0 A_StartSound("weapons/pocket",CHAN_BODY);
 		TNT1 A 15 A_JumpIf(!countinv("BloodBagWorn")||countinv("WornRadsuit"),"nope");
 		TNT1 A 10{
 			A_DropInventory("BloodBagWorn");
@@ -72,8 +72,8 @@ class SecondBloodSticker:HDWoundFixer{
 	fire:
 	altfire:
 		TNT1 A 0 A_JumpIf(!countinv("SecondBlood"),"nope");
-		TNT1 A 10 A_PlaySound("bloodpack/open");
-		TNT1 AAA 8 A_PlaySound("bloodpack/shake",CHAN_WEAPON);
+		TNT1 A 10 A_StartSound("bloodpack/open",CHAN_WEAPON);
+		TNT1 AAA 8 A_StartSound("bloodpack/shake",CHAN_WEAPON,CHANF_OVERLAP);
 		TNT1 A 4;
 		TNT1 A 0 A_Refire();
 		goto ready;
@@ -145,7 +145,7 @@ class SecondBloodSticker:HDWoundFixer{
 			if(invoker.weaponstatus[SBS_INJECTCOUNTER]>30){
 				A_TakeInventory("SecondBlood",1);
 				patient.A_GiveInventory("BloodBagWorn");
-				A_PlaySound("bloodbag/inject",CHAN_WEAPON);
+				A_StartSound("bloodbag/inject",CHAN_WEAPON,CHANF_OVERLAP);
 				A_SetBlend("7a 3a 18",0.1,4);
 				A_SetPitch(pitch+2,SPF_INTERPOLATE);
 				hdweaponselector.select(self,"HDFist");
@@ -160,6 +160,7 @@ class SecondBloodSticker:HDWoundFixer{
 		SBS_INJECTCOUNTER=1,
 	}
 }
+const HDCONST_BLOODBAGAMOUNT=256;
 class BloodBagWorn:Inventory{
 	int bloodleft;
 	default{
@@ -171,7 +172,7 @@ class BloodBagWorn:Inventory{
 	}
 	override void postbeginplay(){
 		super.postbeginplay();
-		bloodleft=256;
+		bloodleft=HDCONST_BLOODBAGAMOUNT;
 	}
 	override void touch(actor toucher){}
 	override inventory createtossable(int amount){
@@ -200,7 +201,7 @@ class BloodBagWorn:Inventory{
 			if(hp.fatigue<HDCONST_SPRINTFATIGUE)hp.fatigue++;
 		}
 		//fall off
-		if(hp.inpain>0&&!random(0,31))hp.dropinventory(self);
+		if(hp.inpain>0&&bloodleft<random(-20,5))hp.dropinventory(self);
 	}
 	states{
 	spawn:

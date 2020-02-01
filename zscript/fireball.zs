@@ -55,7 +55,7 @@ class HDFireballTail:IdleDummy{
 class HDFireball:HDActor{
 	vector3 oldvel;
 	vector3 frac;
-	int fracc;
+	double fracc;
 	double seekspeed;
 	double zat;
 	double grav;
@@ -77,8 +77,8 @@ class HDFireball:HDActor{
 		grav=getgravity();
 		fracc=speed/radius;
 		frac=vel/fracc;
-		A_PlaySound(seesound,CHAN_VOICE);
-		A_PlaySound(activesound,CHAN_BODY,0.4,true,4);
+		A_StartSound(seesound,CHAN_VOICE);
+		A_StartSound(activesound,CHAN_BODY,volume:0.4,attenuation:4.);
 		corkscrew=0;
 	}
 	bool A_FBSeek(

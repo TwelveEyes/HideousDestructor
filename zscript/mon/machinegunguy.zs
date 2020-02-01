@@ -19,7 +19,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		painsound "chainguy/pain";
 		deathsound "chainguy/death";
 		activesound "chainguy/active";
-		tag "$fn_heavy";
+		tag "$cc_heavy";
 
 		health 120;
 		speed 9;
@@ -27,6 +27,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		maxtargetrange 6000;
 		obituary "%o met the budda-budda-budda on the street, and it killed %h.";
 		hitobituary "%o took the wrong pill.";
+		hdmobbase.downedframe 11;
 	}
 	bool turnleft;
 	bool superauto;
@@ -38,13 +39,16 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 	override void postbeginplay(){
 		super.postbeginplay();
 		hdmobster.spawnmobster(self);
-		givearmour(0.12,0.12);
 		chambers=5;
 		burstcount=random(4,20);
 		superauto=randompick(0,0,0,1);
 		mags=4;
 		thismag=50;
 		bhashelmet=!bplayingid;
+		bnoincap=bplayingid;
+
+		if(bplayingid)givearmour(1.,0.06,-0.4);
+		else givearmour(1.,0.2,-0.4);
 	}
 	void A_ScanForTargets(){
 		if(noammo()){
@@ -124,8 +128,8 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		if(chambers<1)setstatelabel("chamber");
 
 		//shoot the bullet
-		A_PlaySound("weapons/vulcanette",randompick(CHAN_WEAPON,5,6));
-		HDBulletActor.FireBullet(self,"HDB_426",spread:2);
+		A_StartSound("weapons/vulcanette",CHAN_WEAPON,CHANF_OVERLAP);
+		HDBulletActor.FireBullet(self,"HDB_426",spread:2,distantsound:"world/vulcfar");
 		pitch+=frandom(-0.4,0.3);angle+=frandom(-0.3,0.3);
 		burstcount--;
 		chambers--;
@@ -134,7 +138,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		if(chambers<5 && thismag){
 			thismag--;
 			chambers++;
-			A_PlaySound("weapons/rifleclick2",CHAN_BODY);
+			A_StartSound("weapons/rifleclick2",8);
 		}
 	}
 	void A_TurnTowardsTarget(
@@ -166,11 +170,11 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 					vvv.setmagcount(i,VULC_MAG_FULLSEALED);
 					mags--;
 				}else vvv.setmagcount(i,0);
-				vvv.weaponstatus[0]&=VULCF_CHAMBER1;
-				vvv.weaponstatus[0]&=VULCF_CHAMBER2;
-				vvv.weaponstatus[0]&=VULCF_CHAMBER3;
-				vvv.weaponstatus[0]&=VULCF_CHAMBER4;
-				vvv.weaponstatus[0]&=VULCF_CHAMBER5;
+				vvv.weaponstatus[0]|=VULCF_CHAMBER1;
+				vvv.weaponstatus[0]|=VULCF_CHAMBER2;
+				vvv.weaponstatus[0]|=VULCF_CHAMBER3;
+				vvv.weaponstatus[0]|=VULCF_CHAMBER4;
+				vvv.weaponstatus[0]|=VULCF_CHAMBER5;
 				if(!random(0,3))vvv.weaponstatus[0]&=VULCF_BROKEN1;
 				if(!random(0,3))vvv.weaponstatus[0]&=VULCF_BROKEN2;
 				if(!random(0,3))vvv.weaponstatus[0]&=VULCF_BROKEN3;
@@ -208,7 +212,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 			A_Look();
 			if(!random(0,8))A_Recoil(random(-1,1)*0.4);
 			A_SetTics(random(10,30));
-			if(!random(0,8))A_PlaySound("grunt/active",CHAN_VOICE);
+			if(!random(0,8))A_StartSound(activesound,CHAN_VOICE);
 		}wait;
 	spawnstill:
 		CPOS C 0 A_Jump(128,"scan","scan","spawnwander");
@@ -219,17 +223,17 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		CPOS CD 5{angle+=random(-4,4);}
 		CPOS AB 5{
 			A_Look();
-			if(!random(0,15))A_PlaySound("grunt/active",CHAN_VOICE);
+			if(!random(0,15))A_StartSound(activesound,CHAN_VOICE);
 			angle+=random(-4,4);
 		}
 		CPOS B 1 A_SetTics(random(10,40));
-		goto spawn;
+		---- A 0 setstatelabel("spawn");
 	spawnwander:
 		CPOS A 0 A_Look();
 		CPOS CD 5 A_Wander();
 		CPOS AB 5{
 			A_Look();
-			if(!random(0,15))A_PlaySound("grunt/active",CHAN_VOICE);
+			if(!random(0,15))A_StartSound(activesound,CHAN_VOICE);
 			A_Wander();
 		}
 		CPOS A 0 A_Jump(196,"spawn");
@@ -241,7 +245,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		}
 		CPOS AABBCCDD 3 {hdmobai.chase(self,flags:CHF_NOPOSTATTACKTURN);}
 		CPOS A 0 A_Jump(196,"see2");
-		goto scan;
+		---- A 0 setstatelabel("scan");
 	missile:
 		CPOS ABCD 3 A_TurnTowardsTarget("aim");
 		loop;
@@ -264,14 +268,13 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 	scanturn:
 		CPOS EEEEEE 3 A_ScanForTargets();
 		CPOS E 0 A_Jump(32,"scanturn","scanturn","scan");
-		goto see2;
+		---- A 0 setstatelabel("see2");
 	scanshoot:
 		CPOS E 1{
 			angle+=frandom(-2,2);
 			pitch+=frandom(-2,2);
 		}
-		goto shoot;
-
+		//fallthrough to shoot
 	shoot:
 		CPOS F 1 bright light("SHOT") A_VulcGuyShot();
 		CPOS E 2 A_JumpIf(superauto,"shoot");
@@ -286,7 +289,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		CPOS E 0 A_JumpIf(thismag<1&&mags<1,"reload");
 		CPOS E 0 A_JumpIf(target&&target.health>0&&!checksight(target),"cover");
 		CPOS E 3 A_ScanForTargets();
-		goto scan;
+		---- A 0 setstatelabel("scan");
 	cover:
 		CPOS E 0 A_JumpIf(
 			!target
@@ -309,7 +312,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 	shuntmag:
 		CPOS E 1;
 		CPOS E 3{
-			A_PlaySound("weapons/vulcshunt",CHAN_WEAPON);
+			A_StartSound("weapons/vulcshunt",8);
 			if(thismag>=0){
 				actor mmm=HDMagAmmo.SpawnMag(self,"HD4mMag",0);
 				mmm.A_ChangeVelocity(3,frandom(-3,2),frandom(0,-2),CVF_RELATIVE|CVF_REPLACE);
@@ -320,15 +323,16 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 				thismag=50;
 			}
 		}
-		goto shoot;
+		---- A 0 setstatelabel("shoot");
 	chamber:
 		CPOS E 3{
 			if(chambers<5&&thismag>0){
 				thismag--;
 				chambers++;
-				A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+				A_StartSound("weapons/rifleclick2",8,CHANF_OVERLAP);
 			}
-		}goto shoot;
+		}
+		---- A 0 setstatelabel("shoot");
 
 	reload:
 		CPOS A 0{
@@ -337,15 +341,15 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		}
 		CPOS AABBCCDD 3 A_Chase(null,null);
 	loadamag:
-		CPOS E 9 A_PlaySound("weapons/pocket",CHAN_WEAPON);
-		CPOS E 7 A_PlaySound("weapons/rifleload");
+		CPOS E 9 A_StartSound("weapons/pocket",9);
+		CPOS E 7 A_StartSound("weapons/rifleload",8);
 		CPOS E 10{
 			if(thismag<0)thismag=50;
 			else if(mags<4)mags++;
 			else{
 				setstatelabel("see2");
 				return;
-			}A_PlaySound("weapons/rifleclick2");
+			}A_StartSound("weapons/rifleclick2",8);
 		}loop;
 
 	melee:
@@ -356,16 +360,16 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 			random(9,99),"weapons/smack","","none",randompick(0,0,0,1)
 		);
 		CPOS E 2 A_JumpIfTargetInsideMeleeRange(2);
-		goto considercover;
+		---- A 0 setstatelabel("considercover");
 		CPOS E 0 A_JumpIf(target.health<random(-3,1),"see");
 		CPOS EC 2;
-		goto melee;
+		---- A 0 setstatelabel("melee");
 
 	pain:
 		CPOS G 3;
 		CPOS G 3 A_Pain();
 		CPOS G 0 A_Jump(196,"see","scan");
-		goto missile;
+		---- A 0 setstatelabel("missile");
 
 
 	death:
@@ -390,7 +394,7 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		}
 		CPOS R 2;
 		CPOS QRS 5;
-		goto xdead;
+		---- A 0 setstatelabel("xdead");
 
 	xdeath:
 		CPOS O 5;
@@ -411,12 +415,12 @@ class HDChainReplacer:RandomSpawner replaces ChaingunGuy{
 		CPOS N 2 A_SpawnItemEx("MegaBloodSplatter",0,0,4,0,0,3,0,SXF_NOCHECKPOSITION);
 		CPOS NML 6;
 		CPOS KJIH 4;
-		goto checkraise;
+		---- A 0 setstatelabel("checkraise");
 	ungib:
 		CPOS T 6 A_SpawnItemEx("MegaBloodSplatter",0,0,4,0,0,3,0,SXF_NOCHECKPOSITION);
 		CPOS TS 12 A_SpawnItemEx("MegaBloodSplatter",0,0,4,0,0,3,0,SXF_NOCHECKPOSITION);
 		CPOS RQ 7;
 		CPOS POH 5;
-		goto checkraise;
+		---- A 0 setstatelabel("checkraise");
 	}
 }

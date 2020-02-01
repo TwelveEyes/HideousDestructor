@@ -72,18 +72,16 @@ class HDTree:HDActor{
 	spawn3:
 		---- A 1{
 			A_SetTics(random(1,20)*10);
-			int chn=random(0,7);
-			if(random(0,7))A_PlaySound("grunt/active",chn,frandom(0.1,0.4),0,1);
-			else A_PlaySound("tree/pain",chn,frandom(0.2,1.0),0,1);
-			A_SoundPitch(chn,frandom(0.6,1.3));
+			int chn=random(0,12);
+			if(random(0,7))A_StartSound("grunt/active",chn,volume:frandom(0.1,0.4),attenuation:1.);
+			else A_StartSound("tree/pain",chn,volume:frandom(0.2,1.0),attenuation:1.,pitch:frandom(0.6,1.3));
 		}loop;
 	pain:
 		---- A 1{
 			for(int i=0;i<7;i++){
 				A_StopSound(i);
 			}
-			A_PlaySound("tree/pain",0,1.0,0,1);
-			A_SoundPitch(0,frandom(0.9,1.3));
+			A_StartSound("tree/pain",CHAN_AUTO,attenuation:1.,pitch:frandom(0.9,1.3));
 			A_Immolate(self,self,random(1,10)*8);
 			bnopain=true;
 			A_SetTics(random(1,10)*40);
@@ -92,7 +90,33 @@ class HDTree:HDActor{
 		goto spawn2;
 	}
 }
-
+class HDBigTree:HDTree replaces BigTree{
+	default{
+		+shootable +nodamage +dontthrust
+		+forceybillboard +rollsprite
+		+dontthrust
+		painchance 48;
+		radius 27; height 68;
+	}
+	states{
+	spawn:
+		TRE2 A 0 nodelay{
+			if(Wads.CheckNumForName("id",0)==-1)A_SetSize(14,64);
+			A_Resize(frandom(0.8,1.2),frandom(0.8,1.2));
+		}
+		goto spawn2;
+	}
+}
+class HDTorchTree:HDTree replaces TorchTree{
+	default{
+		radius 10; height 50;
+	}
+	states{
+	spawn:
+		TRE1 A 0 nodelay A_Resize(frandom(0.9,1.6),frandom(0.6,1.6));
+		goto spawn2;
+	}
+}
 
 
 
@@ -103,7 +127,7 @@ class HDElectricLampLight:PointLight{
 		args[0]=140;
 		args[1]=164;
 		args[2]=196;
-		args[3]=32+target.height;
+		args[3]=32+int(target.height);
 		args[4]=0;
 	}
 	override void Tick(){
@@ -148,7 +172,7 @@ class HDTechLamp2:TechLamp2 replaces TechLamp2{
 
 
 class HDTechPillar:TechPillar replaces TechPillar{
-	default{+dontthrust +shootable +nodamage +noblood +forceybillboard mass 2000;}
+	default{+dontthrust +shootable +nodamage +noblood +forceybillboard mass 2000;radius 10;}
 }
 
 

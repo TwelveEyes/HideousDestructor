@@ -22,7 +22,7 @@ class AutoReloadingThingy:HDWeapon{
 		if(!totalbrass||totalpowder<4)return;
 		int canmake=min(totalbrass,totalpowder/4);
 		//matter is being lost in this exchange. if you have a backpack you WILL have space.
-		int onpspace=getdefaultbytype("SevenMilAmmo").maxamount-owner.countinv("SevenMilAmmo");
+		int onpspace=HDPickup.MaxGive(owner,"SevenMilAmmo",ENC_776);
 		if(!bp)canmake=min(canmake,onpspace);
 
 		//evaluate amounts
@@ -65,8 +65,8 @@ class AutoReloadingThingy:HDWeapon{
 		}
 	}
 	void A_Chug(){
-		A_PlaySound("roundmaker/chug1",CHAN_VOICE);
-		A_PlaySound("roundmaker/chug2",CHAN_BODY);
+		A_StartSound("roundmaker/chug1",8);
+		A_StartSound("roundmaker/chug2",9);
 		vel.z+=randompick(-1,1);
 		vel.xy+=(frandom(-0.3,0.3),frandom(-0.3,0.3));
 	}
@@ -77,7 +77,7 @@ class AutoReloadingThingy:HDWeapon{
 			return;
 		}
 		brass--;powders-=4;
-		A_PlaySound("roundmaker/pop",CHAN_VOICE);
+		A_StartSound("roundmaker/pop",10);
 		if(!random(0,63)){
 			A_SpawnItemEx("HDExplosion");
 			A_Explode(32,32);
@@ -117,7 +117,7 @@ class AutoReloader:AutoReloadingThingy{
 		inventory.pickupmessage "You got the 7.76 reloading machine!";
 		scale 0.5;
 		hdweapon.refid HDLD_776RL;
-		hdweapon.nicename "7.76mm Auto-Reloader";
+		tag "7.76mm reloading device";
 	}
 	override double gunmass(){return 0;}
 	override double weaponbulk(){
@@ -212,7 +212,7 @@ class LiberatorRifle:AutoReloadingThingy{
 		scale 0.7;
 		obituary "%o was liberated by %k.";
 		hdweapon.refid HDLD_LIBGL;
-		hdweapon.nicename "Liberator Battle Rifle";
+		tag "Liberator battle rifle";
 		inventory.icon "BRFLB0";
 	}
 	override bool AddSpareWeapon(actor newowner){return AddSpareWeaponRegular(newowner);}
@@ -276,9 +276,9 @@ class LiberatorRifle:AutoReloadingThingy{
 		if(sb.hudlevel==1){
 			int nextmagloaded=sb.GetNextLoadMag(hdmagammo(hpl.findinventory("HD7mMag")));
 			if(nextmagloaded>=30){
-				sb.drawimage("RMAGA0",(-46,-3),sb.DI_SCREEN_CENTER_BOTTOM,scale:(1.6,1.6));
+				sb.drawimage("RMAGNORM",(-46,-3),sb.DI_SCREEN_CENTER_BOTTOM);
 			}else if(nextmagloaded<1){
-				sb.drawimage("RMAGB0",(-46,-3),sb.DI_SCREEN_CENTER_BOTTOM,alpha:nextmagloaded?0.6:1.,scale:(1.6,1.6));
+				sb.drawimage("RMAGEMPTY",(-46,-3),sb.DI_SCREEN_CENTER_BOTTOM,alpha:nextmagloaded?0.6:1.);
 			}else sb.drawbar(
 				"RMAGNORM","RMAGGREY",
 				nextmagloaded,30,
@@ -291,12 +291,14 @@ class LiberatorRifle:AutoReloadingThingy{
 				sb.drawnum(hpl.countinv("HDRocketAmmo"),-56,-8,sb.DI_SCREEN_CENTER_BOTTOM,font.CR_BLACK);
 			}
 		}
-		string llba="RBRSA3A7";
-		if(hdw.weaponstatus[0]&LIBF_FULLAUTO)llba="STFULAUT";
-		sb.drawimage(
-			llba,(-22,-10),
-			sb.DI_SCREEN_CENTER_BOTTOM|sb.DI_TRANSLATABLE|sb.DI_ITEM_RIGHT
-		);
+		if(!(hdw.weaponstatus[0]&LIBF_NOAUTO)){
+			string llba="RBRSA3A7";
+			if(hdw.weaponstatus[0]&LIBF_FULLAUTO)llba="STFULAUT";
+			sb.drawimage(
+				llba,(-22,-10),
+				sb.DI_SCREEN_CENTER_BOTTOM|sb.DI_TRANSLATABLE|sb.DI_ITEM_RIGHT
+			);
+		}
 		if(hdw.weaponstatus[0]&LIBF_GRENADELOADED)sb.drawwepdot(-16,-13,(4,2.6));
 		int lod=max(hdw.weaponstatus[LIBS_MAG],0);
 		sb.drawwepnum(lod,30);
@@ -436,7 +438,7 @@ class LiberatorRifle:AutoReloadingThingy{
 		drainheat(LIBS_HEAT,8);
 	}
 	action void A_Chamber(bool unloadonly=false){
-		A_PlaySound("weapons/libchamber",6);
+		A_StartSound("weapons/libchamber",8,CHANF_OVERLAP);
 		actor brsss=null;
 		if(invoker.weaponstatus[LIBS_CHAMBER]==1){
 			if(invoker.weaponstatus[0]&LIBF_NOBULLPUP){
@@ -447,12 +449,12 @@ class LiberatorRifle:AutoReloadingThingy{
 					0,SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
 				);
 				brsss.vel+=vel;
-				brsss.A_PlaySound(brsss.bouncesound,CHAN_BODY,0.4);
+				brsss.A_StartSound(brsss.bouncesound,volume:0.4);
 			}else{
 				int bss=invoker.weaponstatus[LIBS_BRASS];
 				if(bss<random(1,7)){
 					invoker.weaponstatus[LIBS_BRASS]++;
-					A_PlaySound("misc/casing",CHAN_AUTO);
+					A_StartSound("misc/casing",8,CHANF_OVERLAP);
 				}else{
 					double fc=max(pitch*0.01,5);
 					double cosp=cos(pitch);
@@ -462,7 +464,7 @@ class LiberatorRifle:AutoReloadingThingy{
 						0,SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
 					);
 					brsss.vel+=vel;
-					brsss.A_PlaySound(brsss.bouncesound,CHAN_BODY,0.4);
+					brsss.A_StartSound(brsss.bouncesound,volume:0.4);
 				}
 			}
 		}else if(invoker.weaponstatus[LIBS_CHAMBER]==2){
@@ -474,7 +476,7 @@ class LiberatorRifle:AutoReloadingThingy{
 				0,SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
 			);
 			brsss.vel+=vel;
-			brsss.A_PlaySound(brsss.bouncesound,CHAN_BODY,0.4);
+			brsss.A_StartSound(brsss.bouncesound,volume:0.4);
 		}
 		if(!unloadonly && invoker.weaponstatus[LIBS_MAG]>0){
 			invoker.weaponstatus[LIBS_MAG]--;
@@ -503,7 +505,7 @@ class LiberatorRifle:AutoReloadingThingy{
 					0,SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
 				);
 				brsss.vel+=vel;
-				brsss.A_PlaySound(brsss.bouncesound,CHAN_BODY,0.4);
+				brsss.A_StartSound(brsss.bouncesound,volume:0.4);
 				invoker.weaponstatus[LIBS_BRASS]--;
 			}
 		}wait;
@@ -523,7 +525,7 @@ class LiberatorRifle:AutoReloadingThingy{
 					0,SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
 				);
 				brsss.vel+=vel;
-				brsss.A_PlaySound(brsss.bouncesound,CHAN_BODY,0.4);
+				brsss.A_StartSound(brsss.bouncesound,volume:0.4);
 				invoker.weaponstatus[LIBS_BRASS]--;
 			}
 		}goto deselect0big;
@@ -557,6 +559,7 @@ class LiberatorRifle:AutoReloadingThingy{
 			if(
 				invoker.weaponstatus[0]&LIBF_GRENADEMODE
 				||!(invoker.weaponstatus[0]&LIBF_FULLAUTO)
+				||(invoker.weaponstatus[0]&LIBF_NOAUTO)
 				||invoker.weaponstatus[LIBS_CHAMBER]!=2
 			)setweaponstate("nope");
 		}goto shoot;
@@ -578,7 +581,7 @@ class LiberatorRifle:AutoReloadingThingy{
 	flash:
 		BRFF A 1 bright{
 			A_Light1();
-			A_PlaySound("weapons/bigrifle",1);
+			A_StartSound("weapons/bigrifle",CHAN_WEAPON);
 
 			HDBulletActor.FireBullet(self,"HDB_776",
 				aimoffy:(-1./600.)*invoker.weaponstatus[LIBS_DROPADJUST]
@@ -621,7 +624,7 @@ class LiberatorRifle:AutoReloadingThingy{
 				||invoker.weaponstatus[LIBS_MAG]<1
 			)setweaponstate("nope");
 		}
-		BRFG B 1 offset(-2,36)A_PlaySound("weapons/libchamber");
+		BRFG B 1 offset(-2,36)A_StartSound("weapons/libchamber",8);
 		BRFG B 1 offset(-2,38)A_Chamber();
 		BRFG A 1 offset(-1,34);
 		goto nope;
@@ -630,7 +633,7 @@ class LiberatorRifle:AutoReloadingThingy{
 	firemode:
 		---- A 0{
 			if(invoker.weaponstatus[0]&LIBF_GRENADEMODE)setweaponstate("abadjust");
-			else invoker.weaponstatus[0]^=LIBF_FULLAUTO;
+			else if(!(invoker.weaponstatus[0]&LIBF_NOAUTO))invoker.weaponstatus[0]^=LIBF_FULLAUTO;
 		}goto nope;
 
 
@@ -648,15 +651,15 @@ class LiberatorRifle:AutoReloadingThingy{
 	loadchamber:
 		BRFG A 0 A_JumpIf(invoker.weaponstatus[LIBS_CHAMBER]>0,"nope");
 		BRFG A 0 A_JumpIf(!countinv("SevenMilAmmo"),"nope");
-		BRFG A 1 offset(0,34) A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		BRFG A 1 offset(0,34) A_StartSound("weapons/pocket",9);
 		BRFG A 1 offset(2,36);
 		BRFG B 1 offset(5,40);
 		BRFG B 4 offset(4,39){
 			if(countinv("SevenMilAmmo")){
 				A_TakeInventory("SevenMilAmmo",1,TIF_NOTAKEINFINITE);
 				invoker.weaponstatus[LIBS_CHAMBER]=2;
-				A_PlaySound("weapons/libchamber2",CHAN_WEAPON);
-				A_PlaySound("weapons/libchamber2a",6,0.7);
+				A_StartSound("weapons/libchamber2",8);
+				A_StartSound("weapons/libchamber2a",8,CHANF_OVERLAP,0.7);
 			}
 		}
 		BRFG B 7 offset(5,37);
@@ -727,11 +730,11 @@ class LiberatorRifle:AutoReloadingThingy{
 		BRFG B 1 offset(4,40);
 		BRFG B 2 offset(8,42){
 			A_MuzzleClimb(-frandom(0.4,0.8),frandom(0.4,1.4));
-			A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+			A_StartSound("weapons/rifleclick2",8);
 		}
 		BRFG B 4 offset(14,46){
 			A_MuzzleClimb(-frandom(0.4,0.8),frandom(0.4,1.4));
-			A_PlaySound ("weapons/rifleload");
+			A_StartSound ("weapons/rifleload",8,CHANF_OVERLAP);
 		}
 		BRFG B 0{
 			int magamt=invoker.weaponstatus[LIBS_MAG];
@@ -750,7 +753,7 @@ class LiberatorRifle:AutoReloadingThingy{
 		}
 	pocketmag:
 		BRFG B 7 offset(12,52)A_MuzzleClimb(frandom(-0.2,0.8),frandom(-0.2,0.4));
-		BRFG B 0 A_PlaySound("weapons/pocket");
+		BRFG B 0 A_StartSound("weapons/pocket",9);
 		BRFG BB 7 offset(14,54)A_MuzzleClimb(frandom(-0.2,0.8),frandom(-0.2,0.4));
 		BRFG B 0{
 		}goto magout;
@@ -762,17 +765,17 @@ class LiberatorRifle:AutoReloadingThingy{
 
 
 	loadmag:
-		BRFG B 0 A_PlaySound("weapons/pocket",CHAN_WEAPON);
+		BRFG B 0 A_StartSound("weapons/pocket",9);
 		BRFG BB 7 offset(14,54)A_MuzzleClimb(frandom(-0.2,0.4),frandom(-0.2,0.8));
 		BRFG B 6 offset(12,52){
 			let mmm=hdmagammo(findinventory("HD7mMag"));
 			if(mmm){
 				invoker.weaponstatus[LIBS_MAG]=mmm.TakeMag(true);
-				A_PlaySound("weapons/rifleclick",CHAN_BODY);
-				A_PlaySound("weapons/rifleload",CHAN_WEAPON);
+				A_StartSound("weapons/rifleclick",8);
+				A_StartSound("weapons/rifleload",8,CHANF_OVERLAP);
 			}
 		}
-		BRFG B 2 offset(8,46) A_PlaySound("weapons/rifleclick2",CHAN_WEAPON);
+		BRFG B 2 offset(8,46) A_StartSound("weapons/rifleclick2",8,CHANF_OVERLAP);
 		goto reloaddone;
 
 	reloaddone:
@@ -864,8 +867,8 @@ class LiberatorRifle:AutoReloadingThingy{
 		BRFG A 1 offset(-10,50);
 		BRFG A 1 offset(-15,56);
 		BRFG A 4 offset(-14,54){
-			A_PlaySound("weapons/pocket",6);
-			A_PlaySound("weapons/grenopen",CHAN_WEAPON);
+			A_StartSound("weapons/pocket",9);
+			A_StartSound("weapons/grenopen",8);
 		}
 		BRFG A 3 offset(-16,56){
 			if(invoker.weaponstatus[0]&LIBF_GRENADELOADED){
@@ -874,7 +877,7 @@ class LiberatorRifle:AutoReloadingThingy{
 					&&!A_JumpIfInventory("HDRocketAmmo",0,"null")
 				){
 					A_GiveInventory("HDRocketAmmo");
-					A_PlaySound("weapons/pocket",6);
+					A_StartSound("weapons/pocket",9);
 					A_MuzzleClimb(frandom(-0.2,0.8),frandom(-0.2,0.4));
 					A_SetTics(6);
 				}else A_SpawnItemEx("HDRocketAmmo",
@@ -889,9 +892,9 @@ class LiberatorRifle:AutoReloadingThingy{
 			if(invoker.weaponstatus[0]&LIBF_JUSTUNLOAD)setweaponstate("altreloaddone");
 		}
 		BRFG AA 8 offset(-16,56)A_MuzzleClimb(frandom(-0.2,0.8),frandom(-0.2,0.4));
-		BRFG A 18 offset(-14,54)A_PlaySound("weapons/grenreload",CHAN_WEAPON);
+		BRFG A 18 offset(-14,54)A_StartSound("weapons/grenreload",8);
 		BRFG B 4 offset(-12,50){
-			A_PlaySound("weapons/grenopen",CHAN_WEAPON);
+			A_StartSound("weapons/grenopen",8);
 			A_TakeInventory("HDRocketAmmo",1,TIF_NOTAKEINFINITE);
 			invoker.weaponstatus[0]|=LIBF_GRENADELOADED;
 		}
@@ -903,14 +906,14 @@ class LiberatorRifle:AutoReloadingThingy{
 		goto nope;
 
 	spawn:
-		BRFL ABCD -1 nodelay{
+		BRFL ABCDEFGH -1 nodelay{
 			if(invoker.weaponstatus[0]&LIBF_NOBULLPUP){
 				sprite=getspriteindex("BRLLA0");
 			}
-			// A: -g +m
-			// B: +g +m
-			// C: -g -m
-			// D: +g -m
+			// A: -g +m +a
+			// B: +g +m +a
+			// C: -g -m +a
+			// D: +g -m +a
 			if(invoker.weaponstatus[0]&LIBF_NOLAUNCHER){
 				if(invoker.weaponstatus[LIBS_MAG]<0)frame=2;
 				else frame=0;
@@ -918,22 +921,27 @@ class LiberatorRifle:AutoReloadingThingy{
 				if(invoker.weaponstatus[LIBS_MAG]<0)frame=3;
 				else frame=1;
 			}
+
+			// E: -g +m -a
+			// F: +g +m -a
+			// G: -g -m -a
+			// H: +g -m -a
+			if(invoker.weaponstatus[0]&LIBF_NOAUTO)frame+=4;
+
 			if(
 				invoker.makinground
 				&&invoker.brass>0
 				&&invoker.powders>=3
 			)setstatelabel("chug");
 		}
-		BRLL ABCD -1;
+		BRLL ABCDEFGH -1;
 		stop;
 	}
 	override void InitializeWepStats(bool idfa){
 		weaponstatus[LIBS_FLAGS]|=LIBF_GRENADELOADED;
 		weaponstatus[LIBS_MAG]=30;
 		weaponstatus[LIBS_CHAMBER]=2;
-		if(!idfa && !owner){
-			if(randompick(0,0,1))weaponstatus[0]|=LIBF_FRONTRETICLE;
-			if(randompick(0,0,1))weaponstatus[0]|=LIBF_ALTRETICLE;
+		if(!idfa&&!owner){
 			weaponstatus[LIBS_ZOOM]=30;
 			weaponstatus[LIBS_HEAT]=0;
 			weaponstatus[LIBS_DROPADJUST]=160;
@@ -941,6 +949,9 @@ class LiberatorRifle:AutoReloadingThingy{
 	}
 	override void loadoutconfigure(string input){
 		int nogl=getloadoutvar(input,"nogl",1);
+		//disable launchers if rocket grenades blacklisted
+		string blacklist=hd_blacklist;
+		if(blacklist.IndexOf(HDLD_BLOOPER)>=0)nogl=1;
 		if(!nogl){
 			weaponstatus[0]&=~LIBF_NOLAUNCHER;
 		}else if(nogl>0){
@@ -973,8 +984,14 @@ class LiberatorRifle:AutoReloadingThingy{
 			clamp(zoom,6,70);
 
 		int firemode=getloadoutvar(input,"firemode",1);
-		if(!firemode)weaponstatus[0]&=~LIBF_FULLAUTO;
-		else if(firemode>0)weaponstatus[0]|=LIBF_FULLAUTO;
+		if(firemode>0)weaponstatus[0]|=LIBF_FULLAUTO;
+		else weaponstatus[0]&=~LIBF_FULLAUTO;
+
+		int semi=getloadoutvar(input,"semi",1);
+		if(semi>0){
+			weaponstatus[0]|=LIBF_NOAUTO;
+			weaponstatus[0]&=~LIBF_FULLAUTO;
+		}else weaponstatus[0]&=~LIBF_NOAUTO;
 	}
 }
 enum liberatorstatus{
@@ -987,6 +1004,7 @@ enum liberatorstatus{
 	LIBF_GRENADEMODE=128,
 	LIBF_UNLOADONLY=256,
 	LIBF_NOBULLPUP=512,
+	LIBF_NOAUTO=1024,
 
 	LIBS_FLAGS=0,
 	LIBS_CHAMBER=1,
@@ -1006,7 +1024,7 @@ class LiberatorNoGL:HDWeaponGiver{
 		//$Sprite "BRFLA0"
 		+hdweapon.fitsinbackpack
 		hdweapon.refid HDLD_LIBNOGL;
-		hdweapon.nicename "Liberator Rifle (no GL)";
+		tag "Liberator rifle (no GL)";
 		hdweapongiver.bulk (100.+(ENC_776MAG_LOADED+30.*ENC_776_LOADED));
 		hdweapongiver.weapontogive "LiberatorRifle";
 		hdweapongiver.weprefid HDLD_LIBGL;
@@ -1021,7 +1039,7 @@ class LiberatorNoBullpup:HDWeaponGiver{
 		//$Title "Liberator (Classic)"
 		//$Sprite "BRLLB0"
 		hdweapon.refid HDLD_LIBNOBP;
-		hdweapon.nicename "Liberator Rifle (Classic)";
+		tag "Liberator rifle (classic)";
 		hdweapongiver.bulk (145.+(ENC_776MAG_LOADED+30.*ENC_776_LOADED)+ENC_ROCKETLOADED);
 		hdweapongiver.weapontogive "LiberatorRifle";
 		hdweapongiver.weprefid HDLD_LIBGL;
@@ -1035,7 +1053,7 @@ class LiberatorNoBullpupNoGL:HDWeaponGiver{
 		//$Title "Liberator (Classic no GL)"
 		//$Sprite "BRLLA0"
 		hdweapon.refid HDLD_LIBNOBPNOGL;
-		hdweapon.nicename "Liberator Rifle (Classic no GL)";
+		tag "Liberator rifle (classic no GL)";
 		hdweapongiver.bulk (120.+(ENC_776MAG_LOADED+30.*ENC_776_LOADED));
 		hdweapongiver.weapontogive "LiberatorRifle";
 		hdweapongiver.weprefid HDLD_LIBGL;
@@ -1052,8 +1070,12 @@ class LiberatorRandom:IdleDummy{
 			if(!lll)return;
 			lll.special=special;
 			lll.vel=vel;
-			if(!random(0,2))lll.weaponstatus[0]|=LIBF_NOBULLPUP;
-			if(!random(0,3))lll.weaponstatus[0]|=LIBF_NOLAUNCHER;
+			if(!random(0,2))lll.weaponstatus[0]|=LIBF_FRONTRETICLE;
+			if(!random(0,2))lll.weaponstatus[0]|=LIBF_ALTRETICLE;
+			if(!random(0,2))lll.weaponstatus[0]|=LIBF_NOLAUNCHER;
+			if(!random(0,3))lll.weaponstatus[0]|=LIBF_NOBULLPUP;
+			if(!random(0,5))lll.weaponstatus[0]|=LIBF_NOAUTO;
+
 			if(lll.weaponstatus[0]&LIBF_NOLAUNCHER){
 				spawn("HD7mMag",pos+(7,0,0),ALLOW_REPLACE);
 				spawn("HD7mMag",pos+(5,0,0),ALLOW_REPLACE);
