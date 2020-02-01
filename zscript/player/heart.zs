@@ -272,7 +272,7 @@ extend class HDPlayerPawn{
 					int repairchance=armr.durability/10;
 					if(repairchance<1)repairchance=1;
 					if(random(0,20)+(countinv("IsMoving")/10)<=repairchance)armr.durability+=random(1,2);
-					if(armr.durability>33)armr.durability=33;
+					if(armr.durability>70)armr.durability=70;
 				}
 			}
 
