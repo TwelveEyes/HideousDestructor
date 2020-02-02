@@ -166,18 +166,12 @@ const HDLD_PISTAUT="pia";
 const HDLD_SMG    ="smg";
 const HDLD_HUNTER= "hun";
 const HDLD_SLAYER= "sla";
-const HDLD_ZM66GL= "z66";
-const HDLD_ZM66AUT="z6a";
-const HDLD_ZM66SMI="z6s";
-const HDLD_ZM66SGL="z6g";
+const HDLD_ZM66=   "z66";
 const HDLD_VULCETT="vul";
 const HDLD_LAUNCHR="lau";
 const HDLD_BLOOPER="blo";
 const HDLD_THUNDER="thu";
-const HDLD_LIBGL=  "lib";
-const HDLD_LIBNOGL="lia";
-const HDLD_LIBNOBP="lnb";
-const HDLD_LIBNOBPNOGL="lna";
+const HDLD_LIB=    "lib";
 const HDLD_BFG=    "bfg";
 const HDLD_BRONTO= "bro";
 const HDLD_BOSS=   "bos";
@@ -228,7 +222,7 @@ class HDPickupGiver:HDPickup{
 		destroy();
 	}
 }
-class HDWeaponGiver:HDWeapon{
+class HDWeaponGiver:Inventory{
 	class<hdweapon> weapontogive;
 	property weapontogive:weapontogive;
 	string weprefid;
@@ -284,7 +278,6 @@ class HDWeaponGiver:HDWeapon{
 		if(
 			owner
 			&&owner.player
-			&&owner.player.readyweapon==self
 			&&actualweapon is "HDWeapon"
 		){
 			let wp=actualweapon.getclassname();
