@@ -46,6 +46,7 @@ class MagManager:HDWeapon{
 		..WEPHELP_FIREMODE.."+"..WEPHELP_FIRE.."/"..WEPHELP_ALTFIRE.."  Previous/Next item type\n"
 		..WEPHELP_FIREMODE.."+"..WEPHELP_RELOAD.."/"..WEPHELP_UNLOAD.."  Insert/Remove from backpack\n"
 		..WEPHELP_FIREMODE.."+"..WEPHELP_DROP.."  Drop lowest mag\n"
+		..WEPHELP_USER3.."  Generic item manager\n"
 		;
 	}
 	override inventory createtossable(int amt){
@@ -144,7 +145,6 @@ class MagManager:HDWeapon{
 	spawn:
 		TNT1 A 0;
 		stop;
-	user3:
 	nope:
 		---- A 1{
 			A_WeaponMessage(invoker.uitext);
@@ -170,6 +170,11 @@ class MagManager:HDWeapon{
 			if(!invoker.thismag)NextMagType();
 			invoker.UpdateText();
 		}goto super::select;
+	user3:
+		TNT1 A 0 A_JumpIf(player.oldbuttons&BT_USER3,"nope");
+		TNT1 A 0 A_SelectWeapon("PickupManager");
+		TNT1 A 0 A_WeaponReady(WRF_NONE);
+		goto nope;
 	ready:
 		TNT1 A 1{
 			int bt=player.cmd.buttons;
@@ -248,3 +253,140 @@ class MagManager:HDWeapon{
 	}
 }
 
+
+
+
+
+
+// ------------------------------------------------------------
+// Generic item manager
+// ------------------------------------------------------------
+class PickupManager:HDWeapon{
+	default{
+		+weapon.wimpy_weapon
+		+weapon.no_auto_switch
+		+hdweapon.alwaysshowstatus
+		+nointeraction
+		weapon.selectionorder 1012;
+	}
+	override string gethelptext(){
+		return
+		WEPHELP_FIRE.."/"..WEPHELP_ALTFIRE.."  Previous/Next item\n"
+		..WEPHELP_DROP.."  Drop item\n"
+		..WEPHELP_ZOOM.."+"..WEPHELP_UPDOWN.."  Adjust amount per drop\n"
+		..WEPHELP_USER3.."  Mag manager\n"
+		;
+	}
+	hdpickup thisitem;
+	string uitext;
+	void getfirstitem(){
+		if(!owner)return;
+		for(inventory item=owner.inv;item!=null;item=!item?null:item.inv){
+			if(ismanageable(item)){
+				thisitem=hdpickup(item);
+				return;
+			}
+		}
+	}
+	bool ismanageable(inventory item){
+		return
+			hdpickup(item)
+			&&!hdarmourworn(item)
+		;
+	}
+	action void nextitem(){invoker.cycleitem();}
+	action void previtem(){invoker.cycleitem(false);}
+	void cycleitem(bool forward=true){
+		int thisindex=0;
+		array<hdpickup> items;items.clear();
+		for(inventory item=owner.inv;item!=null;item=!item?null:item.inv){
+			if(ismanageable(item))items.push(hdpickup(item));
+			if(item==thisitem)thisindex=items.size();  //already returns the next index not the current
+		}
+		if(!forward)thisindex-=2;  //get previous rather than next
+		if(items.size()<1){
+			thisitem=null;
+			return;
+		}
+		if(forward){
+			if(thisindex<items.size())thisitem=items[thisindex];
+			else thisitem=items[0];
+		}else{
+			if(thisindex<0)thisitem=items[items.size()-1];
+			else thisitem=items[thisindex];
+		}
+		weaponstatus[PMSS_DROPAMT]=1;
+	}
+	action void UpdateText(){
+		let thisitem=invoker.thisitem;
+		invoker.uitext=string.format("\cy\\\\\\\cfItem Manager\cy///\n\n\n\n\n\n\n\n\n\cj%s",thisitem?(
+			thisitem.gettag().."\n\cm("..thisitem.getclassname()..")\n\n\cx"..thisitem.amount
+			.."\n\n\n\caOn drop: "..invoker.weaponstatus[PMSS_DROPAMT]
+		):"No item selected.");
+	}
+	override void DropOneAmmo(int amt){
+		if(owner&&thisitem){
+			string itemtype=thisitem.getclassname();
+			amt=weaponstatus[PMSS_DROPAMT];
+			bool droppedall=owner.countinv(itemtype)<=amt;
+			owner.A_DropInventory(itemtype,amt);
+			if(droppedall)cycleitem();
+		}
+	}
+	override inventory CreateTossable(int amount){
+		DropOneAmmo(amount);
+		return null;
+	}
+	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
+		let item=thisitem;
+		if(thisitem){
+			let ddi=item.icon;
+			if(!ddi){
+				let dds=item.spawnstate;
+				if(dds!=null)ddi=dds.GetSpriteTexture(0);
+			}
+			if(ddi){
+				vector2 dds=texman.getscaledsize(ddi);
+				vector2 ddv=(1.,1.);
+				if(min(dds.x,dds.y)<8.){
+					ddv*=(8./min(dds.x,dds.y));
+				}
+				sb.drawtexture(ddi,(0,-smallfont.getheight()*4),
+					sb.DI_ITEM_CENTER|sb.DI_SCREEN_CENTER,
+					scale:ddv
+				);
+			}
+		}
+	}
+	override void InitializeWepStats(bool idfa){
+		if(!idfa)weaponstatus[PMSS_DROPAMT]=1;
+	}
+	states{
+	ready:
+		TNT1 A 1{
+			if(!invoker.thisitem||invoker.thisitem.owner!=self)invoker.getfirstitem();
+			A_WeaponReady(WRF_NOFIRE|WRF_ALLOWUSER3);
+			if(justpressed(BT_ATTACK))nextitem();
+			else if(justpressed(BT_ALTATTACK))previtem();
+			else if(pressingzoom()){
+				int inputamt=player.cmd.pitch;
+				if(inputamt){
+					if(abs(inputamt)<(1<<7))inputamt=clamp(inputamt,-1,1);
+					else inputamt>>=7;
+				}
+				invoker.weaponstatus[PMSS_DROPAMT]=clamp(invoker.weaponstatus[PMSS_DROPAMT]+inputamt,1,invoker.thisitem?invoker.thisitem.amount:1);
+				hijackmouse();
+			}
+			UpdateText();
+			A_WeaponMessage(invoker.uitext);
+		}goto readyend;
+	user3:
+		TNT1 A 0 A_JumpIf(player.oldbuttons&BT_USER3,"nope");
+		TNT1 A 0 A_SelectWeapon("MagManager");
+		TNT1 A 0 A_WeaponReady(WRF_NONE);
+		goto nope;
+	}
+}
+enum PickupManagerStatus{
+	PMSS_DROPAMT=1,
+}
