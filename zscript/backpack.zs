@@ -474,7 +474,7 @@ class HDBackpack:HDWeapon{
 				if(owner)owner.A_Log("Empty this backpack first.",true);
 				return 1;
 			}
-			if(wep.weaponbulk()+bulk>maxcapacity){
+			if(floor(wep.weaponbulk()+bulk)>maxcapacity){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
 				return 1;
 			}
@@ -497,9 +497,11 @@ class HDBackpack:HDWeapon{
 			return 12;
 		}else if(mag){
 			if(
-				mag.magbulk
-				+mag.roundbulk*(mag.mags.size()?mag.mags[mag.mags.size()-1]:mag.maxperunit)
-				+bulk
+				floor(
+					mag.magbulk
+					+mag.roundbulk*(mag.mags.size()?mag.mags[mag.mags.size()-1]:mag.maxperunit)
+					+bulk
+				)
 				>maxcapacity
 			){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
@@ -510,7 +512,7 @@ class HDBackpack:HDWeapon{
 			else amounts[index]=tookmag.." "..amounts[index];
 		}else{
 			int units=item.owner?1:item.amount;
-			if(pkup.bulk*units+bulk>maxcapacity){
+			if(floor(pkup.bulk*units+bulk)>maxcapacity){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
 				return 1;
 			}
@@ -633,6 +635,7 @@ class HDBackpack:HDWeapon{
 		else if(justpressed(BT_ALTATTACK))invoker.UpdateMessage(invoker.index+1);
 		else if(pressingreload()&&countinv(invoker.invclasses[invoker.index])){
 			ttt=invoker.ItemToBackpack(findinventory(invoker.invclasses[invoker.index]));
+			if(ttt==1)setweaponstate("nope");
 		}else if(pressingunload()){
 			ttt=invoker.RemoveFromBackpack(invoker.index,true);
 		}else if(pressing(BT_ALTRELOAD)){
@@ -648,6 +651,7 @@ class HDBackpack:HDWeapon{
 			A_WeaponMessage(invoker.wepmsg,ttt+1);
 			A_SetTics(max(1,ttt));
 		}else A_SetTics(ttt);
+
 		A_WeaponReady(
 			WRF_NOFIRE|WRF_ALLOWUSER3
 			|((player.cmd.buttons&(BT_RELOAD|BT_UNLOAD|BT_USE))?WRF_DISABLESWITCH:0)
