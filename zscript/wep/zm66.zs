@@ -362,7 +362,7 @@ class ZM66AssaultRifle:HDWeapon{
 				setweaponstate("nope");
 			}else if(!(invoker.weaponstatus[ZM66S_FLAGS]&ZM66F_CHAMBER)){
 				//no shot but can chamber
-				setweaponstate("chamber_premanual");
+				setweaponstate("chamber_manual");
 			}else{
 				A_GunFlash();
 				A_WeaponReady(WRF_NONE);
@@ -418,12 +418,6 @@ class ZM66AssaultRifle:HDWeapon{
 			setweaponstate("shootgun");
 		}
 
-
-	chamber_premanual:
-		RIFG A 1 offset(0,33);
-		RIFG A 1 offset(-3,34);
-		RIFG A 1 offset(-8,37);
-		goto chamber_manual;
 
 	user3:
 		RIFG A 0 A_MagManager("HD4mMag");
@@ -535,7 +529,7 @@ class ZM66AssaultRifle:HDWeapon{
 			}
 			invoker.weaponstatus[ZM66S_MAG]=zmag.TakeMag(true);
 			A_StartSound("weapons/rifleclick2",CHAN_WEAPON);
-		}goto chamber_manual;
+		}goto reloadend;
 	loadmagdirty:
 		RIFG B 0{
 			if(PressingReload())invoker.weaponstatus[0]|=ZM66F_STILLPRESSINGRELOAD;
@@ -574,8 +568,18 @@ class ZM66AssaultRifle:HDWeapon{
 		}
 		RIFG A 4 offset(-17,49);
 		goto chamber_manual;
+
+	reloadend:
+		RIFG B 2 offset(-11,39);
+		RIFG A 1 offset(-8,37) A_MuzzleClimb(frandom(0.2,-2.4),frandom(0.2,-1.4));
+		RIFG A 0 A_CheckCookoff();
+		RIFG A 1 offset(-3,34);
+		goto chamber_manual;
+
 	chamber_manual:
-		RIFG A 4 offset(-15,43){
+		RIFG A 0 A_JumpIf(invoker.weaponstatus[ZM66S_FLAGS]&ZM66F_CHAMBER,"nope");
+		RIFG A 3 offset(-1,36)A_WeaponBusy();
+		RIFG B 4 offset(-3,42){
 			if(!invoker.weaponstatus[ZM66S_MAG]%100)invoker.weaponstatus[ZM66S_MAG]=0;
 			if(
 				!(invoker.weaponstatus[ZM66S_FLAGS]&ZM66F_CHAMBER)
@@ -587,19 +591,10 @@ class ZM66AssaultRifle:HDWeapon{
 				else invoker.weaponstatus[ZM66S_MAG]--;
 				invoker.weaponstatus[ZM66S_FLAGS]|=ZM66F_CHAMBER;
 				brokenround();
-			}else setweaponstate("reloadend");
-			if(!A_CheckCookoff())A_WeaponBusy();
+			}else setweaponstate("nope");
 		}
-		goto nope;
-		RIFG B 4 offset(-14,45);
-		goto reloadend;
-
-	reloadend:
-		RIFG B 2 offset(-11,39);
-		RIFG A 1 offset(-8,37) A_MuzzleClimb(frandom(0.2,-2.4),frandom(0.2,-1.4));
-		RIFG A 0 A_CheckCookoff();
-		RIFG A 1 offset(-3,34);
-		RIFG A 1 offset(0,33);
+		RIFG A 2 offset(-1,36);
+		RIFG A 0 offset(0,34);
 		goto nope;
 
 
@@ -760,10 +755,8 @@ class ZM66AssaultRifle:HDWeapon{
 			if(
 				invoker.weaponstatus[0]&ZM66F_CHAMBER
 				&&!(invoker.weaponstatus[0]&ZM66F_CHAMBERBROKEN)
-				&&invoker.weaponstatus[ZM66S_HEAT]>HDCONST_ZM66COOKOFF  
-			){
-				setstatelabel("spawnshoot");
-			}
+				&&invoker.weaponstatus[ZM66S_HEAT]>HDCONST_ZM66COOKOFF
+			)setstatelabel("spawnshoot");
 		}
 	spawnshoot:
 		#### C 1 bright light("SHOT"){
@@ -774,25 +767,46 @@ class ZM66AssaultRifle:HDWeapon{
 			//shoot the bullet
 			//copy any changes to flash as well!
 			double brnd=invoker.weaponstatus[ZM66S_HEAT]*0.01;
-			HDBulletActor.FireBullet(self,"HDB_426",
+			let bbb=HDBulletActor.FireBullet(self,"HDB_426",
 				spread:brnd>1.2?invoker.weaponstatus[ZM66S_HEAT]*0.1:0
 			);
 
-			A_ChangeVelocity(frandom(-0.4,0.1),frandom(-0.1,0.08),1,CVF_RELATIVE);
+			//if overlapping owner, treat owner as shooter
+			let targ=invoker.target;
+			if(
+				targ
+				&&abs(targ.pos.x-invoker.pos.x)<=targ.radius
+				&&abs(targ.pos.y-invoker.pos.y)<=targ.radius
+			){
+				bbb.target=targ;
+			}
+			A_ChangeVelocity(
+				frandom(-0.4,0.1)*cos(pitch),
+				frandom(-0.1,0.08),
+				sin(pitch)+frandom(-1.,1.),CVF_RELATIVE
+			);
 			A_StartSound("weapons/rifle",CHAN_VOICE);
 			invoker.weaponstatus[ZM66S_HEAT]+=random(3,5);
 			angle+=frandom(2,-7);
 			pitch+=frandom(-4,4);
 		}
-		#### B 2{
-			if(invoker.weaponstatus[ZM66S_AUTO]>1)A_SetTics(0);  
+		#### B 0{
+//			if(invoker.weaponstatus[ZM66S_AUTO]>1)A_SetTics(0);
 			invoker.weaponstatus[0]&=~(ZM66F_CHAMBER|ZM66F_CHAMBERBROKEN);
-			if(invoker.weaponstatus[ZM66S_MAG]%100>0){  
+			if(invoker.weaponstatus[ZM66S_MAG]%100>0){
 				invoker.weaponstatus[ZM66S_MAG]--;
 				invoker.weaponstatus[0]|=ZM66F_CHAMBER;
 				brokenround();
 			}
 		}goto spawn2;
+	}
+
+	override inventory CreateTossable(int amt){
+		let owner=self.owner;
+		let zzz=zm66assaultrifle(super.createtossable());
+		if(!zzz)return null;
+		zzz.target=owner;
+		return zzz;
 	}
 
 	override void InitializeWepStats(bool idfa){

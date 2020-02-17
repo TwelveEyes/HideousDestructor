@@ -622,8 +622,8 @@ class LiberatorRifle:AutoReloadingThingy{
 				||invoker.weaponstatus[LIBS_MAG]<1
 			)setweaponstate("nope");
 		}
-		BRFG B 1 offset(-2,36)A_StartSound("weapons/libchamber",8);
-		BRFG B 1 offset(-2,38)A_Chamber();
+		BRFG B 1 offset(-2,36)A_Chamber();
+		BRFG B 1 offset(-2,38);
 		BRFG A 1 offset(-1,34);
 		goto nope;
 
@@ -778,14 +778,8 @@ class LiberatorRifle:AutoReloadingThingy{
 
 	reloaddone:
 		BRFG B 1 offset (4,40);
-		BRFG A 1 offset (2,36){
-			if(
-				invoker.weaponstatus[LIBS_CHAMBER]!=2
-				&&invoker.weaponstatus[LIBS_MAG]>0  
-			)A_Chamber();
-		}
-		BRFG A 1 offset (0,34);
-		goto nope;
+		BRFG A 1 offset (2,34);
+		goto chamber_manual;
 
 
 	altfire:

@@ -210,15 +210,14 @@ class HDPistol:HDHandgun replaces Pistol{
 			)setweaponstate("chamber_manual");
 		}goto nope;
 	chamber_manual:
-		---- A 0{
-			if(
-				!(invoker.weaponstatus[0]&PISF_JUSTUNLOAD)
-				&&(
-					invoker.weaponstatus[PISS_CHAMBER]==2
-					||invoker.weaponstatus[PISS_MAG]<1
-				)
-			)setweaponstate("nope");
-		}
+		---- A 0 A_JumpIf(
+			!(invoker.weaponstatus[0]&PISF_JUSTUNLOAD)
+			&&(
+				invoker.weaponstatus[PISS_CHAMBER]==2
+				||invoker.weaponstatus[PISS_MAG]<1
+			)
+			,"nope"
+		);
 		#### B 3 offset(0,34);
 		#### C 4 offset(0,37){
 			A_MuzzleClimb(frandom(0.4,0.5),-frandom(0.6,0.8));
@@ -240,8 +239,7 @@ class HDPistol:HDHandgun replaces Pistol{
 			}
 		}
 		#### B 3 offset(0,35);
-		#### B 0 A_ReFire();
-		goto ready;
+		goto nope;
 	althold:
 	hold:
 		goto nope;
@@ -249,7 +247,7 @@ class HDPistol:HDHandgun replaces Pistol{
 		---- A 0{
 			invoker.weaponstatus[0]&=~PISF_JUSTUNLOAD;
 			if(invoker.weaponstatus[PISS_CHAMBER]==2)setweaponstate("shoot");
-			else if(invoker.weaponstatus[PISS_CHAMBER]>0)setweaponstate("chamber_manual");
+			else if(invoker.weaponstatus[PISS_MAG]>0)setweaponstate("chamber_manual");
 		}goto nope;
 	shoot:
 		#### B 1{
@@ -383,24 +381,15 @@ class HDPistol:HDHandgun replaces Pistol{
 				invoker.weaponstatus[PISS_MAG]=mmm.TakeMag(true);
 				A_StartSound("weapons/pismagclick",8);
 			}
-			if(
-				invoker.weaponstatus[PISS_CHAMBER]<1
-				&&invoker.weaponstatus[PISS_MAG]>0
-			){
-				invoker.weaponstatus[PISS_CHAMBER]=2;
-				invoker.weaponstatus[PISS_MAG]--;
-			}else setweaponstate("reloadend");
 		}
-		#### A 3 offset(0,48) A_StartSound("weapons/pischamber2",8,CHANF_OVERLAP);
-		#### A 2 offset(0,45);
 		goto reloadend;
+
 	reloadend:
 		---- A 2 offset(3,46);
 		---- A 1 offset(2,42);
 		---- A 1 offset(2,38);
 		---- A 1 offset(1,34);
-		---- A 0 A_JumpIf(pressingreload()||pressingunload(),"nope");
-		goto ready;
+		goto chamber_manual;
 
 	user1:
 	altreload:

@@ -302,6 +302,9 @@ class HDBackpack:HDWeapon{
 				}else if((HDSMG)(item)){
 					specicon=(wepstatus[SMGS_MAG].toint()<0)?"SMGNB0":"SMGNA0";
 				}
+			}else if(owner&&owner.findinventory(item.getclassname())){
+				let www=HDWeapon(owner.findinventory(item.getclassname()));
+				specicon=www.getpickupsprite();
 			}
 		}
 		if(specicon!="")ddi=texman.checkfortexture(specicon,texman.type_any);
@@ -493,7 +496,12 @@ class HDBackpack:HDWeapon{
 			UpdateMessage(index);
 			return 12;
 		}else if(mag){
-			if(mag.magbulk+bulk>maxcapacity){
+			if(
+				mag.magbulk
+				+mag.roundbulk*(mag.mags.size()?mag.mags[mag.mags.size()-1]:mag.maxperunit)
+				+bulk
+				>maxcapacity
+			){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
 				return 1;
 			}

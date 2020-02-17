@@ -161,6 +161,7 @@ class HDSMG:HDWeapon{
 		---- A 0 A_MagManager("HD9mMag30");
 		goto ready;
 	altfire:
+		goto chamber_manual;
 	althold:
 		goto nope;
 	hold:
@@ -194,12 +195,8 @@ class HDSMG:HDWeapon{
 		#### A 0;
 	fire2:
 		#### B 1{
-			if(invoker.weaponstatus[SMGS_CHAMBER]==2){
-				A_GunFlash();
-			}else{
-				if(invoker.weaponstatus[SMGS_MAG]>0)setweaponstate("chamber");
-				else setweaponstate("nope");
-			}
+			if(invoker.weaponstatus[SMGS_CHAMBER]==2)A_GunFlash();
+			else setweaponstate("chamber_manual");
 		}
 		#### A 1;
 		#### A 0{
@@ -267,7 +264,7 @@ class HDSMG:HDWeapon{
 		#### B 7 offset(5,37);
 		#### B 1 offset(2,36);
 		#### A 1 offset(0,34);
-		goto readyend;
+		goto nope;
 	user4:
 	unload:
 		#### A 0{
@@ -341,12 +338,7 @@ class HDSMG:HDWeapon{
 				||invoker.weaponstatus[SMGS_CHAMBER]>0
 			)setweaponstate("reloadend");
 		}
-	chamber:
-		#### B 2 offset(33,50){
-			invoker.weaponstatus[SMGS_MAG]--;
-			invoker.weaponstatus[SMGS_CHAMBER]=2;
-		}
-		#### B 4 offset(32,49) A_StartSound("weapons/smgchamber",8,CHANF_OVERLAP);
+		goto reloadend;
 
 	reloadend:
 		#### B 3 offset(30,52);
@@ -354,6 +346,21 @@ class HDSMG:HDWeapon{
 		#### A 1 offset(10,42);
 		#### A 1 offset(5,38);
 		#### A 1 offset(0,34);
+		goto chamber_manual;
+
+	chamber_manual:
+		#### A 0 A_JumpIf(
+			invoker.weaponstatus[SMGS_MAG]<1
+			||invoker.weaponstatus[SMGS_CHAMBER]==2
+		,"nope");
+		#### B 2 offset(3,32){
+			A_WeaponBusy();
+			invoker.weaponstatus[SMGS_MAG]--;
+			invoker.weaponstatus[SMGS_CHAMBER]=2;
+		}
+		#### B 3 offset(5,35) A_StartSound("weapons/smgchamber",8,CHANF_OVERLAP);
+		#### A 1 offset(3,32);
+		#### A 1 offset(2,31);
 		goto nope;
 
 
