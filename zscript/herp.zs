@@ -719,6 +719,7 @@ class HERPUsable:HDWeapon{
 			if(thismag<0)continue;
 			if(unsafe||!thismag||thismag>50){
 				invoker.weaponstatus[i]=-1;
+				if(thismag!=51)thismag%=50;
 				if(pressingunload()||pressingreload()){
 					HD4mMag.GiveMag(self,"HD4mMag",thismag);
 					A_StartSound("weapons/pocket",9);
@@ -801,7 +802,7 @@ class HERPUsable:HDWeapon{
 		A_GiveInventory("HERPController");
 		HERPController(findinventory("HERPController")).UpdateHerps(false);
 		dropinventory(invoker);
-		invoker.goawayanddie();
+		invoker.destroy();
 		return;
 	}
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
