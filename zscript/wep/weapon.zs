@@ -549,7 +549,10 @@ class HDWeapon:Weapon{
 		double eyerange=36,
 		double chestrange=-1
 	){
-		double eyeheight=caller.height-HDCONST_CROWNTOEYES;
+		double eyeheight;
+		if(caller.player)eyeheight=caller.player.viewheight-3;
+		else eyeheight=caller.height-HDCONST_CROWNTOEYES;
+
 		flinetracedata ltd;
 		caller.LineTrace(
 			caller.angle,
@@ -1184,20 +1187,3 @@ const WEPHELP_INJECTOR=WEPHELP_FIRE.."  Use on yourself\n"..WEPHELP_ALTFIRE.."  
 
 
 
-
-
-
-class sctest:inventory{
-	override void doeffect(){
-		let hdp=hdplayerpawn(owner);
-		if(!hdp)return;
-		let sc=hdp.scopecamera;
-		if(!sc)return;
-		vector3 poi=(angletovector(sc.angle,1)*cos(sc.pitch),-sin(sc.pitch));
-		setxyz(sc.pos);
-		for(int i=0;i<50;i+=5){
-			setxyz(pos+poi);
-			A_SpawnParticle("green",lifetime:1);
-		}
-	}
-}
