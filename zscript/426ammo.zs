@@ -165,7 +165,7 @@ class HD4mMag:HDMagAmmo{
 		}
 		for(int i=0;i<amount;i++){
 			if(mags[i]==51)continue;
-			int toinsert=int(min(50,totalrounds)*frandom(0.9,1.));
+			int toinsert=max(mags[i],int(min(50,totalrounds)*frandom(0.9,1.)));
 			mags[i]=toinsert;
 			totalrounds-=toinsert;
 			if(totalrounds<1)break;
