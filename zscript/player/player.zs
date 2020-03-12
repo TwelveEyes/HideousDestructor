@@ -634,8 +634,9 @@ class HDPlayerPawn:PlayerPawn{
 		)nocrosshair=12;
 		else nocrosshair--;
 
-		//check use key
+
 		UseButtonCheck(input);
+
 
 		//this must be at the end since it needs to overwrite a lot of what has just happened
 		IncapacitatedCheck();
