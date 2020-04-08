@@ -102,11 +102,11 @@ class ZM66AssaultRifle:HDWeapon{
 		sb.drawwepcounter(hdw.weaponstatus[ZM66S_AUTO],
 			-22,-10,"RBRSA3A7","STFULAUT","STBURAUT"
 		);
-		if(hdw.weaponstatus[0]&ZM66F_GRENADELOADED)sb.drawwepdot(-16,-13,(4,2.6));
+		if(hdw.weaponstatus[0]&ZM66F_GRENADELOADED)sb.drawrect(-20,-14,4,2.6);
 		int lod=clamp(hdw.weaponstatus[ZM66S_MAG]%100,0,50);
 		sb.drawwepnum(lod,50);
 		if(hdw.weaponstatus[0]&ZM66F_CHAMBER){
-			sb.drawwepdot(-16,-10,(3,1));
+			sb.drawrect(-19,-10,3,1);
 			lod++;
 		}
 		if(hdw.weaponstatus[ZM66S_MAG]>100)lod=random[shitgun](10,99);
@@ -117,9 +117,9 @@ class ZM66AssaultRifle:HDWeapon{
 				-30,-22,sb.DI_SCREEN_CENTER_BOTTOM|sb.DI_TEXT_ALIGN_RIGHT,
 				ab?Font.CR_WHITE:Font.CR_DARKGRAY
 			);
-			sb.drawwepdot(-30,-42+min(16,ab/10),(4,1));
-			sb.drawwepdot(-30,-26,(1,16));
-			sb.drawwepdot(-32,-26,(1,16));
+			sb.drawrect(-34,-43+min(16,ab/10),4,1);
+			sb.drawrect(-31,-42,1,16);
+			sb.drawrect(-33,-42,1,16);
 		}else sb.drawnum(hdw.weaponstatus[ZM66S_ZOOM],
 			-30,-22,sb.DI_SCREEN_CENTER_BOTTOM|sb.DI_TEXT_ALIGN_RIGHT,Font.CR_DARKGRAY
 		);
@@ -180,12 +180,10 @@ class ZM66AssaultRifle:HDWeapon{
 					"zm66scop",(0,scaledyoffset)+bob,sb.DI_SCREEN_CENTER|sb.DI_ITEM_CENTER,
 					scale:(0.82,0.82)
 				);
-				sb.drawnum(int(degree*10),
-					3+bob.x,74+bob.y,sb.DI_SCREEN_CENTER,Font.CR_BLACK
-				);
-				sb.drawimage(
-					"BLETA0",(0,78)+bob,sb.DI_SCREEN_CENTER|sb.DI_ITEM_CENTER,
-					alpha:0.6,scale:(1.3,1.3)
+				sb.drawstring(
+					sb.mAmountFont,string.format("%.1f",degree),
+					(6+bob.x,74+bob.y),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_RIGHT,
+					Font.CR_BLACK
 				);
 			}
 		}

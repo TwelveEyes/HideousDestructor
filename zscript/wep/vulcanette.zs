@@ -175,20 +175,16 @@ class Vulcanette:HDWeapon{
 		}
 		bool bat=hdw.weaponstatus[VULCS_BATTERY]>0;
 		int mags=hdw.weaponstatus[VULCS_MAGS];
-		for(int i=1;i<5;i++){
+		for(int i=0;i<5;i++){
 			if(
 				mags>magmultindex[i]
 				||(!i&&mags>0)
-			)sb.drawwepdot(-16-i*4,-13,(3,2));
-			if(bat&&hdw.weaponstatus[0]&chamberflag[i])sb.drawimage(
-				"GREENPXL",(-14,-15+i*2),
-				sb.DI_SCREEN_CENTER_BOTTOM|sb.DI_TRANSLATABLE|sb.DI_ITEM_RIGHT,
-				1,(4,1)
-			);
+			)sb.drawrect(-19-i*4,-14,3,2);
+			if(bat&&hdw.weaponstatus[0]&chamberflag[i])sb.drawrect(-15,-14+i*2,1,1);
 		}
 		sb.drawwepnum(
 			(hdw.weaponstatus[VULCS_MAGS]%VULC_MAGBASE)-1,
-			50,posy:-10
+			50,posy:-9
 		);
 		sb.drawwepcounter(hdw.weaponstatus[0]&VULCF_FAST,
 			-28,-16,"blank","STFULAUT"
@@ -269,12 +265,10 @@ class Vulcanette:HDWeapon{
 				"zm66scop",(0,scaledyoffset)+bob,sb.DI_SCREEN_CENTER|sb.DI_ITEM_CENTER,
 				scale:(0.8,0.8)
 			);
-			sb.drawnum(int(degree*10),
-				3+bob.x,73+bob.y,sb.DI_SCREEN_CENTER,Font.CR_BLACK
-			);
-			sb.drawimage(
-				"BLETA0",(0,77)+bob,sb.DI_SCREEN_CENTER|sb.DI_ITEM_CENTER,
-				alpha:0.6,scale:(1.3,1.3)
+			sb.drawstring(
+				sb.mAmountFont,string.format("%.1f",degree),
+				(6+bob.x,73+bob.y),sb.DI_SCREEN_CENTER|sb.DI_TEXT_ALIGN_RIGHT,
+				Font.CR_BLACK
 			);
 		}
 	}

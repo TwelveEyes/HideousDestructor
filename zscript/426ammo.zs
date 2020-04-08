@@ -59,6 +59,7 @@ class HD4mMag:HDMagAmmo{
 		hdmagammo.roundtype "FourMilAmmo";
 		hdmagammo.roundbulk ENC_426_LOADED;
 		hdmagammo.magbulk ENC_426MAG_EMPTY;
+		hdmagammo.extracttime 8;
 
 		tag "4.26mm UAC Standard magazine";
 		hdpickup.refid HDLD_FOURMAG;
@@ -125,7 +126,7 @@ class HD4mMag:HDMagAmmo{
 				owner.A_StartSound("weapons/rifleclick",CHAN_WEAPON,CHANF_OVERLAP);
 				return false;
 			}
-		}
+		}else extracttime=getdefaultbytype(getclass()).extracttime;
 		int totake=min(random(1,24),mags[mindex]);
 		if(totake<HDPickup.MaxGive(owner,roundtype,roundbulk))HDF.Give(owner,roundtype,totake);
 		else HDPickup.DropItem(owner,roundtype,totake);

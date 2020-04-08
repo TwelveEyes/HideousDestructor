@@ -16,13 +16,6 @@ extend class HDStatusBar{
 			);
 		}
 	}
-	void drawwepdot(int posx,int posy,vector2 dotscale=(3.,3.)){
-		drawimage(
-			"GREENPXL",(posx,posy),
-			DI_SCREEN_CENTER_BOTTOM|DI_TRANSLATABLE|DI_ITEM_RIGHT,
-			1,scale:dotscale
-		);
-	}
 	void drawwepnum(int value,double mxval,int posx=-16,int posy=-6,bool alwaysprecise=false){
 		int maxvalue=int(mxval);
 		if(!maxvalue)return;
@@ -38,17 +31,15 @@ extend class HDStatusBar{
 			?max(((value*6/maxvalue)<<2),(value>0)):
 			(value*24/maxvalue)
 		;
-		drawimage(
-			"GREENPXL",
-			(posx,posy),
-			DI_SCREEN_CENTER_BOTTOM|DI_TRANSLATABLE|DI_ITEM_RIGHT,
-			1,scale:(min(24,valx),2)
+		drawrect(
+			posx,posy,
+			max(-24,-valx),-2
 		);
-		if(valx>24)drawimage(
-			"YELOPXL",
-			(posx-24,posy),
-			DI_SCREEN_CENTER_BOTTOM|DI_ITEM_RIGHT,
-			1,scale:(1,2)
+		if(valx>24)fill(
+			color(255,240,230,40),
+			posx-24,posy,
+			-1,-2,
+			DI_SCREEN_CENTER_BOTTOM|DI_ITEM_RIGHT
 		);
 	}
 	//"" means ignore this value and move on to the next check.

@@ -177,10 +177,7 @@ class HDStatusBar:DoomStatusBar{
 			}
 		}
 
-		if(hpl.countinv("WornRadsuit"))drawimage(
-			"DRKGRNPX",(0,0),DI_SCREEN_CENTER|DI_ITEM_CENTER,
-			alpha:0.6,scale:(1000,600)
-		);
+		if(hpl.countinv("WornRadsuit"))fill(color(160,10,40,14),0,0,800,600);
 
 		if(idmypos)drawmypos();
 	}
@@ -497,7 +494,7 @@ class HDStatusBar:DoomStatusBar{
 		//heartbeat/playercolour tracker
 		if(hpl.beatmax){
 			float cpb=hpl.beatcount*1./hpl.beatmax;
-			drawrect(-12,-6-cpb*2,3,-(3+hpl.bloodpressure*0.2), DI_SCREEN_CENTER_BOTTOM);
+			drawrect(-12,-6-cpb*2,3,-(3+hpl.bloodpressure*0.05), DI_SCREEN_CENTER_BOTTOM);
 		}
 
 		//armour
