@@ -206,7 +206,8 @@ class HDStatusBar:DoomStatusBar{
 		//heartbeat/playercolour tracker
 		if(hpl && hpl.beatmax){
 			float cpb=hpl.beatcount*1./hpl.beatmax;
-			drawrect(
+			fill(
+				color(int(cpb*255),sbcolour.r,sbcolour.g,sbcolour.b),
 				32,-24-cpb*3,
 				4,-(4+hpl.bloodpressure*0.05),
 				DI_BOTTOMLEFT
@@ -494,7 +495,10 @@ class HDStatusBar:DoomStatusBar{
 		//heartbeat/playercolour tracker
 		if(hpl.beatmax){
 			float cpb=hpl.beatcount*1./hpl.beatmax;
-			drawrect(-12,-6-cpb*2,3,-(3+hpl.bloodpressure*0.05), DI_SCREEN_CENTER_BOTTOM);
+			fill(
+				color(int(cpb*255),sbcolour.r,sbcolour.g,sbcolour.b),
+				-12,-6-cpb*2,3,-(3+hpl.bloodpressure*0.05), DI_SCREEN_CENTER_BOTTOM
+			);
 		}
 
 		//armour
@@ -652,7 +656,7 @@ class HDStatusBar:DoomStatusBar{
 	){
 		fill(color(255,sbcolour.r,sbcolour.g,sbcolour.b),posx,posy,width,height,flags);
 	}
-	//deprecated - please use drawrect directly!
+	//deprecated, please use drawrect instead
 	void drawwepdot(int posx,int posy,vector2 dotscale=(3.,3.)){
 		drawrect(posx-dotscale.x,posy-dotscale.y,dotscale.x,dotscale.y);
 	}
@@ -709,11 +713,12 @@ class HDStatusBar:DoomStatusBar{
 			healthbars[STB_BEATERSIZE-1]=(hpl.inpain?random[heart](1,7):1)+err+random[heart](0,(hpl.bloodpressure>>3));
 		}
 		for(int i=0;i<STB_BEATERSIZE;i++){
+			int alf=(i&1)?128:255;
 			fill(
 				(
-					cp.health>70?color(255,sbcolour.r,sbcolour.g,sbcolour.b)
-					:cp.health>33?color(255,224,200,0)
-					:color(255,128,0,0)
+					cp.health>70?color(alf,sbcolour.r,sbcolour.g,sbcolour.b)
+					:cp.health>33?color(alf,224,200,0)
+					:color(alf,128,0,0)
 				),
 				drawpos.x+i-(STB_BEATERSIZE>>2),drawpos.y-healthbars[i]*0.3,
 				0.8,healthbars[i]*0.6,
