@@ -322,6 +322,7 @@ class LiberatorRifle:AutoReloadingThingy{
 		WEPHELP_FIRESHOOT
 		..(gl?(WEPHELP_ALTFIRE..(glmode?("  Rifle mode\n"):("  GL mode\n"))):"")
 		..WEPHELP_RELOAD.."  Reload mag\n"
+		..WEPHELP_USE.."+"..WEPHELP_RELOAD.."  Reload chamber\n"
 		..(gl?(WEPHELP_ALTRELOAD.."  Reload GL\n"):"")
 		..(glmode?(WEPHELP_FIREMODE.."+"..WEPHELP_UPDOWN.."  Airburst\n")
 			:(
@@ -650,15 +651,17 @@ class LiberatorRifle:AutoReloadingThingy{
 		BRFG A 0 A_JumpIf(invoker.weaponstatus[LIBS_CHAMBER]>0,"nope");
 		BRFG A 0 A_JumpIf(!countinv("SevenMilAmmo"),"nope");
 		BRFG A 1 offset(0,34) A_StartSound("weapons/pocket",9);
-		BRFG A 1 offset(2,36);
-		BRFG B 1 offset(5,40);
-		BRFG B 4 offset(4,39){
+		BRFG A 2 offset(2,36);
+		BRFG B 8 offset(5,40);
+		BRFG B 8 offset(7,44);
+		BRFG B 8 offset(6,43);
+		BRFG B 10 offset(4,39){
 			if(countinv("SevenMilAmmo")){
 				A_TakeInventory("SevenMilAmmo",1,TIF_NOTAKEINFINITE);
 				invoker.weaponstatus[LIBS_CHAMBER]=2;
 				A_StartSound("weapons/libchamber2",8);
 				A_StartSound("weapons/libchamber2a",8,CHANF_OVERLAP,0.7);
-			}
+			}else A_SetTics(4);
 		}
 		BRFG B 7 offset(5,37);
 		BRFG B 1 offset(2,36);
@@ -705,9 +708,12 @@ class LiberatorRifle:AutoReloadingThingy{
 			else if(
 				//no mag, empty chamber, have loose rounds
 				inmag<0
-				&&!countinv("HD7mMag")
 				&&invoker.weaponstatus[LIBS_CHAMBER]<1
 				&&countinv("SevenMilAmmo")
+				&&(
+					pressinguse()
+					||HDMagAmmo.NothingLoaded(self,"HD7mMag")
+				)
 			)return resolvestate("loadchamber");
 			else if(
 				invoker.weaponstatus[LIBS_MAG]>0  

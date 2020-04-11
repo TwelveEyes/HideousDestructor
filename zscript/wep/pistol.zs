@@ -104,7 +104,8 @@ class HDPistol:HDHandgun replaces Pistol{
 		WEPHELP_FIRESHOOT
 		..((weaponstatus[0]&PISF_SELECTFIRE)?(WEPHELP_FIREMODE.."  Semi/Auto\n"):"")
 		..WEPHELP_ALTRELOAD.."  Quick-Swap (if available)\n"
-		..WEPHELP_RELOADRELOAD
+		..WEPHELP_RELOAD.."  Reload mag\n"
+		..WEPHELP_USE.."+"..WEPHELP_RELOAD.."  Reload chamber\n"
 		..WEPHELP_MAGMANAGER
 		..WEPHELP_UNLOADUNLOAD
 		;
@@ -317,25 +318,42 @@ class HDPistol:HDHandgun replaces Pistol{
 		}goto chamber_manual;
 	loadchamber:
 		---- A 0 A_JumpIf(invoker.weaponstatus[PISS_CHAMBER]>0,"nope");
-		---- A 1 offset(0,34) A_StartSound("weapons/pocket",9);
-		---- A 1 offset(2,36);
-		#### C 3 offset(5,40);
-		#### C 6 offset(4,39){
+		---- A 1 offset(0,36) A_StartSound("weapons/pocket",9);
+		---- A 1 offset(2,40);
+		---- A 1 offset(2,50);
+		---- A 1 offset(3,60);
+		---- A 2 offset(5,90);
+		---- A 2 offset(7,80);
+		---- A 2 offset(10,90);
+		#### C 2 offset(8,96);
+		#### C 3 offset(6,88){
 			if(countinv("HDPistolAmmo")){
 				A_TakeInventory("HDPistolAmmo",1,TIF_NOTAKEINFINITE);
 				invoker.weaponstatus[PISS_CHAMBER]=2;
 				A_StartSound("weapons/pischamber1",8);
 			}
 		}
-		#### B 3 offset(2,36);
-		#### B 2 offset(0,34);
+		#### B 2 offset(5,76);
+		#### B 1 offset(4,64);
+		#### B 1 offset(3,56);
+		#### B 1 offset(2,48);
+		#### B 2 offset(1,38);
+		#### B 3 offset(0,34);
 		goto readyend;
 	reload:
 		---- A 0{
 			invoker.weaponstatus[0]&=~PISF_JUSTUNLOAD;
 			if(invoker.weaponstatus[PISS_MAG]>=15)setweaponstate("nope");
-			else if(HDMagAmmo.NothingLoaded(self,"HD9mMag15")){
-				if(countinv("HDPistolAmmo"))setweaponstate("loadchamber");
+			else if(
+				invoker.weaponstatus[SMGS_MAG]<0
+				&&(
+					pressinguse()
+					||HDMagAmmo.NothingLoaded(self,"HD9mMag15")
+				)
+			){
+				if(
+					countinv("HDPistolAmmo")
+				)setweaponstate("loadchamber");
 				else setweaponstate("nope");
 			}
 		}goto unmag;
