@@ -21,22 +21,52 @@ extend class HDPlayerPawn{
 		wait;
 	}
 	int deathcounter;
+	int respawndelay;
 	override void DeathThink(){
-		if(player&&!player.bot){
-			if(hd_yolo&&!alldown())player.cmd.buttons&=~BT_USE;
-			if(deathcounter==144&&!(player.cmd.buttons&BT_USE)){
-				showgametip();
-				specialtip=specialtip.."\n\n\clPress \cdUse\cl to continue.";
-				deathcounter=145;
-			}else if(
-				deathcounter<144
-				&&player
+		if(player){
+			if(
+				respawndelay>0
 			){
+				player.attacker=null;
 				player.cmd.buttons&=~BT_USE;
-				if(!(player.cheats & CF_PREDICTING))deathcounter++;
+				if(!(level.time&(1|2|4|8|16))){
+					switch(CheckPoF()){
+					case -1:
+						//start losing sequence
+						let hhh=hdlivescounter.get();
+						if(hhh.endgametypecounter<-35)hhh.startendgameticker(hdlivescounter.HDEND_WIPE);
+						break;
+					case 1:
+						respawndelay--;
+						A_Log(player.getusername().." friend wait time: "..respawndelay,!player.bot);
+						break;
+					default:
+						respawndelay=HDCONST_POFDELAY;
+						break;
+					}
+				}
+			}else if(hd_pof){
+				player.cmd.buttons|=BT_USE;
+				if(playercorpse)playercorpse.destroy();
+				let hhh=hdhandlers(eventhandler.find("hdhandlers"));
+				hhh.corpsepos[playernumber()]=(pos.xy,floor(pos.z)+0.001*angle);
 			}
-			if(playercorpse){
-				playercorpse.setorigin((pos.xy-playercorpse.angletovector(angle),pos.z),true);
+
+			if(!player.bot){
+				if(deathcounter==144&&!(player.cmd.buttons&BT_USE)){
+					showgametip();
+					specialtip=specialtip.."\n\n\clPress \cdUse\cl to continue.";
+					deathcounter=145;
+				}else if(
+					deathcounter<144
+					&&player
+				){
+					player.cmd.buttons&=~BT_USE;
+					if(!(player.cheats & CF_PREDICTING))deathcounter++;
+				}
+				if(playercorpse){
+					playercorpse.setorigin((pos.xy-playercorpse.angletovector(angle),pos.z),true);
+				}
 			}
 		}
 		if(hd_disintegrator)A_SetBlend("00 00 00",1.,10);
@@ -53,6 +83,13 @@ extend class HDPlayerPawn{
 			)
 		)deathcounter=145;
 		else deathcounter=1;
+
+		if(hd_pof){
+			if(deathmatch){
+				cvar.findcvar("hd_pof").setbool(false);
+				respawndelay=0;
+			}else respawndelay=HDCONST_POFDELAY;
+		}else respawndelay=0;
 
 		if(hd_dropeverythingondeath){
 			array<inventory> keys;keys.clear();
@@ -97,34 +134,33 @@ extend class HDPlayerPawn{
 
 		super.die(source,inflictor,dmgflags,MeansOfDeath);
 	}
-	bool alldown(){
-		if(!player)return false;
-		if(
-			!teamplay
-			&&deathmatch
-		){
-			cvar.findcvar("hd_yolo").setbool(false);
-			return false;
-		}
-		bool ad=true;
+	//-1 if tpk
+	//0 if not gathered
+	//1 if gathered
+	int CheckPoF(){
+		if(!hd_pof)return 1;
+		bool everyonedead=true;
+		bool someoneoutside=false;
 		for(int i=0;i<MAXPLAYERS;i++){
+			if(!playeringame[i])continue;
+			let ppp=players[i].mo;
 			if(
-				playeringame[i]
-				&&players[i].mo
-				&&players[i].mo.health>HDCONST_MINSTANDHEALTH
-				&&hdplayerpawn(players[i].mo)
-				&&hdplayerpawn(players[i].mo).incapacitated<1
-				&&hdplayerpawn(players[i].mo).incaptimer>10
-				&&(
-					!teamplay
-					||players[i].getteam()==player.getteam()
-				)
+				ppp
+				&&ppp.health>0
 			){
-				ad=false;
-				break;
+				everyonedead=false;
+				if(
+					!checksight(ppp)
+					||distance3d(ppp)>256
+				){
+					someoneoutside=true;
+					break;
+				}
 			}
 		}
-		return ad;
+		if(everyonedead)return -1;
+		if(someoneoutside)return 0;
+		return 1;
 	}
 	void healthreset(){
 		regenblues=0;
@@ -138,6 +174,11 @@ extend class HDPlayerPawn{
 		secondflesh=0;
 	}
 }
+
+enum HDPlayerDeath{
+	HDCONST_POFDELAY=11,
+}
+
 
 
 //call the lives counter thinker when someone dies
