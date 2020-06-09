@@ -25,19 +25,20 @@ extend class HDPlayerPawn{
 				A_SetInventory("HDIncapWeapon",1);
 				if(player&&player.readyweapon){
 					if(
-						player.cmd.buttons&(
-							BT_ATTACK|BT_ALTATTACK|BT_RELOAD|BT_ZOOM
-							|BT_USER1|BT_USER2|BT_USER3|BT_USER4
-						)||(
-							hdweapon(player.readyweapon)
-							&&hdweapon(player.readyweapon).bweaponbusy
+						!HDFist(player.readyweapon)&&(
+							player.cmd.buttons&(
+								BT_ATTACK|BT_ALTATTACK|BT_RELOAD|BT_ZOOM
+								|BT_USER1|BT_USER2|BT_USER3|BT_USER4
+							)||(
+								hdweapon(player.readyweapon)
+								&&hdweapon(player.readyweapon).bweaponbusy
+							)
 						)
 					)DropInventory(player.readyweapon);
 					else player.setpsprite(PSP_WEAPON,player.readyweapon.findstate("deselect"));
 				}
-			}else{
-				A_SelectWeapon("HDIncapWeapon");
 			}
+			A_SelectWeapon("HDIncapWeapon");
 		}else{
 			A_SetSize(radius,min(48,height+3));
 		}
@@ -219,6 +220,19 @@ class HDIncapWeapon:SelfBandage{
 		;
 	}
 	states{
+	nope:
+		---- A 1{
+			A_ClearRefire();
+			if(invoker.bweaponbusy){
+				let ppp=hdplayerpawn(self);
+				if(!ppp)return;
+				double hdbbx=(ppp.hudbobrecoil1.x+ppp.hudbob.x)*0.5;
+				double hdbby=max(0,(ppp.hudbobrecoil1.y+ppp.hudbob.y)*0.5+invoker.bobrangey*2);
+				A_WeaponOffset(hdbbx,hdbby+WEAPONTOP,WOF_INTERPOLATE);
+			}
+		}
+		---- A 0 A_JumpIf(!!player.cmd.buttons,"nope");
+		---- A 0 A_Jump(256,"ready");
 	select:
 		TNT1 A 30;
 		goto nope;
@@ -263,7 +277,7 @@ class HDIncapWeapon:SelfBandage{
 		TNT1 A 1{
 			A_SetBlend("7a 3a 18",0.1,4);
 			A_SetPitch(pitch+2,SPF_INTERPOLATE);
-			A_StartSound("*usemeds",CHAN_VOICE);
+			A_PlaySkinSound(SKINSOUND_MEDS,"*usemeds");
 			A_StartSound("misc/bulletflesh",CHAN_WEAPON,CHANF_OVERLAP);
 			actor a=spawn(invoker.injecttype,pos,ALLOW_REPLACE);
 			a.accuracy=40;a.target=self;

@@ -168,7 +168,7 @@ class AutoReloader:AutoReloadingThingy{
 		TNT1 A 0 A_Lower(999);
 		wait;
 	ready:
-		TNT1 A 1 A_WeaponReady(WRF_ALLOWUSER4);
+		TNT1 A 1 A_WeaponReady(WRF_ALLOWUSER3|WRF_ALLOWUSER4);
 		goto readyend;
 	fire:
 		TNT1 A 0 A_CheckChug();
@@ -176,6 +176,13 @@ class AutoReloader:AutoReloadingThingy{
 	hold:
 		TNT1 A 1;
 		TNT1 A 0 A_Refire("hold");
+		goto ready;
+	user3:
+		---- A 0{
+			if(countinv("HD7mMag"))A_MagManager("HD7mMag");
+			else if(countinv("HD7mClip"))A_MagManager("HD7mMag");
+			else A_SelectWeapon("PickupManager");
+		}
 		goto ready;
 	user4:
 	unload:
@@ -257,10 +264,11 @@ class LiberatorRifle:AutoReloadingThingy{
 	}
 	override string,double getpickupsprite(){
 		string spr;
-		// A: -g +m
-		// B: +g +m
-		// C: -g -m
-		// D: +g -m
+
+		// A: -g +m +a
+		// B: +g +m +a
+		// C: -g -m +a
+		// D: +g -m +a
 		if(weaponstatus[0]&LIBF_NOLAUNCHER){
 			if(weaponstatus[LIBS_MAG]<0)spr="C";
 			else spr="A";
@@ -268,6 +276,13 @@ class LiberatorRifle:AutoReloadingThingy{
 			if(weaponstatus[LIBS_MAG]<0)spr="D";
 			else spr="B";
 		}
+
+		// E: -g +m -a
+		// F: +g +m -a
+		// G: -g -m -a
+		// H: +g -m -a
+		if(weaponstatus[0]&LIBF_NOAUTO)spr=string.format("%c",spr.byteat(0)+4);
+
 		return ((weaponstatus[0]&LIBF_NOBULLPUP)?"BRLL":"BRFL")..spr.."0",1.;
 	}
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){

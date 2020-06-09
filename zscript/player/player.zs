@@ -50,7 +50,6 @@ class HDPlayerPawn:PlayerPawn{
 
 	default{
 		+interpolateangles
-		-telestomp
 		telefogsourcetype "";
 		telefogdesttype "";
 
@@ -109,7 +108,6 @@ class HDPlayerPawn:PlayerPawn{
 		A_TakeInventory("NullWeapon");
 
 		A_SetTeleFog("TeleportFog","TeleportFog");
-		btelestomp=true;
 
 		hdlivescounter.updatefragcounts(hdlivescounter.get());
 		showgametip();
@@ -571,7 +569,6 @@ class HDPlayerPawn:PlayerPawn{
 			else if(speed>0.5)speed=1.;
 			else speed=0.36;
 		}
-
 
 		//special hud bobbing
 		double bobvel=max((mustwalk&&vel.xy!=(0,0))?1:0,abs(vel.x),abs(vel.y))*viewbob;

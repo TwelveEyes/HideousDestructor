@@ -33,9 +33,12 @@ extend class HDPlayerPawn{
 			//because spawn telefrags are bullshit
 			if(
 				source.player
-				&&source.getage()<10
+				&&(
+					level.time<35
+					||source.getage()<10
+				)
 			){
-				return 0;
+				return -1;
 			}
 
 			if(source==self){
@@ -316,7 +319,10 @@ extend class HDPlayerPawn{
 		}else if(mod=="bashing"){
 			tostun+=damage;
 			damage>>=2;
-		}else if(mod=="cutting"){
+		}else if(
+			mod=="cutting"
+			||mod=="slashing"
+		){
 			//swords, chainsaw, etc.
 			damage=int(damage*(1.-(alv*0.3)));
 			if(!random(0,10+alv*2))towound+=max(1,damage*4/100);
@@ -327,6 +333,10 @@ extend class HDPlayerPawn{
 			damage=int(damage*(1.-(alv*0.2)));
 			if(!random(0,10+alv*2))towound+=max(1,damage*3/100);
 			if(towound>random(4,20))destroyradsuit();
+			if(
+				armr
+				&&mod!="piercing" //bullets do their own thing
+			)armr.durability-=(damage>>random(1,5));
 		}
 
 
@@ -391,7 +401,11 @@ extend class HDPlayerPawn{
 
 
 		//disintegrator mode keeps things simple
-		if(hd_disintegrator)return super.DamageMobj(
+		//also do this while zerk sometimes, to reflect loss of self-preservation reflexes
+		if(
+			hd_disintegrator
+			||(zerk&&abs(zerk)>400)
+		)return super.DamageMobj(
 			inflictor,
 			source,
 			damage,

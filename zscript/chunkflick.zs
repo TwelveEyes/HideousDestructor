@@ -11,6 +11,7 @@ class FlickChunk:FastProjectile{
 		accuracy 0;
 		mass 10;
 		deathsound "weapons/chunkslap";
+		damagetype "debris";
 		scale 5;
 	}
 	//override 
@@ -40,8 +41,10 @@ class FlickChunk:FastProjectile{
 			if(tracer&&tracer.health>0&&(tracer.player||!random(0,3)))
 				tracer.A_StartSound(tracer.painsound,CHAN_VOICE);
 		}
-		TNT1 A random(0,32);
-		TNT1 A 0{if(!random(0,tracer?2:10))A_AlertMonsters(32);}
+		TNT1 A random(4,20);
+		TNT1 A 0{
+			if(tracer)tracer.lastheard=target;
+		}
 		stop;
 	}
 }

@@ -95,8 +95,8 @@ class HDB_776:HDBulletActor{
 class HDB_9:HDBulletActor{
 	default{
 		pushfactor 0.4;
-		mass 86;
-		speed 550;
+		mass 80;
+		speed 475;
 		accuracy 300;
 		stamina 900;
 		woundhealth 10;
@@ -109,7 +109,7 @@ class HDB_355:HDBulletActor{
 		mass 99;
 		speed 600;
 		accuracy 240;
-		stamina 890;
+		stamina 900;
 		woundhealth 15;
 		hdbulletactor.hardness 3;
 	}
@@ -388,9 +388,6 @@ class HDBulletActor:HDActor{
 	}
 	void ApplyGravity(){
 		if(vel.z>BULLET_TERMINALVELOCITY)vel.z-=max(0.001,getgravity());
-	}
-	override bool cancollidewith(actor other,bool passive){
-		return !passive;
 	}
 	static HDBulletActor FireBullet(
 		actor caller,
@@ -1231,6 +1228,11 @@ if(hd_debug)console.printf("BLOCKED  "..depleteshield.."    OF  "..bulletpower..
 
 		int shockbash=int(max(impact,impact*min(pen,deemedwidth))*(frandom(0.2,0.25)+stamina*0.00001));
 		if(hd_debug)console.printf("     "..shockbash.." temp cav dmg");
+
+		if(
+			!HDMobBase(hitactor)
+			&&!HDPlayerPawn(hitactor)
+		)shockbash>>=3;
 
 		//apply impact/tempcav damage
 		bnoextremedeath=impact<(hitactor.gibhealth<<3);
