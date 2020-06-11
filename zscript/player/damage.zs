@@ -14,7 +14,7 @@ extend class HDPlayerPawn{
 		//"You have to be aware of recursively called code pointers in death states.
 		//It can easily happen that Actor A dies, calling function B in its death state,
 		//which in turn nukes the data which is being checked in DamageMobj."
-		if(!self || health<1)return damage;
+		if(!self || health<1 || damage<1)return damage;
 
 		int originaldamage=damage;
 
@@ -328,7 +328,7 @@ extend class HDPlayerPawn{
 			//swords, chainsaw, etc.
 			damage=int(damage*(1.-(alv*0.3)));
 			if(!random(0,10+alv*2))towound+=max(1,damage*4/100);
-			if(armr)armr.durability-=(damage>>(1+alv));
+			if(armr)armr.durability-=max(0,damage>>(1+alv));
 			if(damage>random(5,30))destroyradsuit();
 		}else{
 			//anything else
@@ -338,7 +338,7 @@ extend class HDPlayerPawn{
 			if(
 				armr
 				&&mod!="piercing" //bullets do their own thing
-			)armr.durability-=(damage>>random(1,5));
+			)armr.durability-=max(0,damage>>random(1,5));
 		}
 
 
