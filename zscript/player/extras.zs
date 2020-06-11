@@ -288,7 +288,7 @@ extend class HDPlayerPawn{
 
 
 extend class HDHandlers{
-	void FindRange(hdplayerpawn ppp){
+	static void FindRange(hdplayerpawn ppp){
 		flinetracedata frt;
 		ppp.linetrace(
 			ppp.angle,65536,ppp.pitch,flags:TRF_NOSKY,
@@ -298,7 +298,7 @@ extend class HDHandlers{
 		double c=frt.distance;
 		double b=c/HDCONST_ONEMETRE;
 		ppp.A_Log(string.format("\cd[\cuRF\cd]\cj \cf%.2f\cj metre%s",b,b==1?"":"s"),true);
-		if(hd_debug)ppp.A_Log(string.format("(%.2f DU%s)",c,c==1?"":"s"),true);
+		if(hd_debug)ppp.A_Log(string.format("("..(ppp.player?ppp.player.getusername():"something").." measured %.2f DU%s)",c,c==1?"":"s"),true);
 	}
 	void Taunt(hdplayerpawn ppp){
 		ppp.A_StartSound(ppp.tauntsound,CHAN_VOICE);
