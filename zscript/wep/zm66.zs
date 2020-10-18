@@ -617,7 +617,7 @@ class ZM66AssaultRifle:HDWeapon{
 				invoker.weaponstatus[0]&=~ZM66F_CHAMBERBROKEN;
 				invoker.weaponstatus[ZM66S_FLAGS]&=~ZM66F_CHAMBER;
 				A_StartSound("weapons/rifleclick",CHAN_WEAPON,CHANF_OVERLAP);
-				for(int i=0;i<3;i++)A_SpawnItemEx("TinyWallChunk",0,0,20,
+				for(int i=0;i<5;i++)A_SpawnItemEx("FourMilChunk",0,0,20,
 					random(4,7),random(-2,2),random(-2,1),0,SXF_NOCHECKPOSITION
 				);
 				if(!random(0,5))A_SpawnItemEx("HDSmokeChunk",12,0,height-12,4,frandom(-2,2),frandom(2,4));
@@ -809,7 +809,7 @@ class ZM66AssaultRifle:HDWeapon{
 	}
 
 	override void InitializeWepStats(bool idfa){
-		weaponstatus[ZM66S_FLAGS]|=ZM66F_GRENADELOADED;
+		if(!(weaponstatus[0]&ZM66F_NOLAUNCHER))weaponstatus[0]|=ZM66F_GRENADELOADED;
 		weaponstatus[ZM66S_MAG]=51;
 		if(!idfa && !owner){
 			weaponstatus[ZM66S_ZOOM]=30;
@@ -936,6 +936,7 @@ class ZM66Random:IdleDummy{
 }
 
 
+//just for testing cookoff effects
 class ZM66CookOff:Inventory{
 	override void AttachToOwner(actor other){
 		let zzz=ZM66AssaultRifle(other.findinventory("ZM66AssaultRifle"));
@@ -947,3 +948,6 @@ class ZM66CookOff:Inventory{
 	}
 }
 
+class FourMilChunk:WallChunk{
+	default{scale 0.12;translation "ZMRound";}
+}

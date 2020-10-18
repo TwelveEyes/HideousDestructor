@@ -309,8 +309,6 @@ class HDBulletPuff:HDPuff{
 				frandom(-0.4,0.4)*stm,frandom(-0.4,0.4)*stm,frandom(0.4,1.2)*stm,
 				frandom(-0.1,0.1),frandom(-0.1,0.1),-1.
 			);
-//			actor ch=spawn(missilename,self.pos,ALLOW_REPLACE);
-//			ch.vel=self.vel+(random(-stm,stm),random(-stm,stm),random(-2,12));
 		}
 	}
 	states{
@@ -363,6 +361,9 @@ class HDSmoke:HDPuff{
 	}
 	states{
 	spawn:
+		TNT1 A 0 nodelay A_CheckProximity("spawn2","HDSmoke",64,4,CPXF_LESSOREQUAL);
+		stop;
+	spawn2:
 		RSMK A 4;RSMK A 0 A_SetScale(scale.y*2);
 		---- BCD -1{frame=random(1,3);}wait;
 	}
@@ -402,6 +403,8 @@ class HDFlameRed:HDPuff{
 	spawn:
 		BAL1 A 0 nodelay A_SpawnItemEx("HDRedFireLight",flags:SXF_SETTARGET);
 		BAL1 ABCDE 1;
+		TNT1 A 0 A_CheckProximity("death","HDFlameRed",64,4,CPXF_LESSOREQUAL);
+		stop;
 	death:
 		TNT1 A 0{
 			grow=0.01;
@@ -413,7 +416,6 @@ class HDFlameRed:HDPuff{
 			A_SetTranslucent(0.6,0);
 			scale=(1.2,1.2);gravity=0.1;
 		}
-		//PUF2 C -1{frame=random(0,3);}//
 		RSMK CD -1{frame=random(0,3);}
 		wait;
 	}
@@ -458,15 +460,7 @@ class HDFlameRedBig:HDActor{
 	states{
 	spawn:
 		FIR7 ABABABABABAB 1 A_FlameFade();
-		RSMK A 0{
-			scale*=2;
-			scale.x=scale.y;
-			addz(12*scale.y);
-			roll=frandom(0,360);
-			A_SetRenderstyle(0.6,STYLE_Translucent);
-			vel.z+=2;
-		}
-		#### AAAAAAAAAAA 3 A_SmokeFade();
+		FIR7 A 0 spawn("HDSmoke",(pos.x,pos.y,pos.z+36*scale.y),ALLOW_REPLACE);
 		stop;
 	}
 }
@@ -612,14 +606,16 @@ class DistantNoise:Thinker{
 				playersleft++;
 				if(distances[i]==ticker){
 					distances[i]=-1;
-					while(volume>0){
+					//for volumes greater than 1, play the sound on top of itself until spent
+					double thisvol=volume;
+					while(thisvol>0){
 						players[i].mo.A_StartSound(
 							distantsound,CHAN_DISTANT,
 							CHANF_OVERLAP|CHANF_LOCAL,
-							min(1.,volume),  //if we ever stop needing this clamp, delete the loop
+							min(1.,thisvol),  //if we ever stop needing this clamp, delete the loop
 							pitch:pitch
 						);
-						volume-=1.;
+						thisvol-=1.;
 					}
 				}
 			}
@@ -812,6 +808,7 @@ class MegaBloodSplatter:IdleDummy{
 				b.translation=self.translation;
 			}
 		}
+		destroy();
 	}
 }
 class HDBloodTrailFloor:IdleDummy{
@@ -901,84 +898,3 @@ class TeleFog:IdleDummy replaces TeleportFog{
 
 
 
-
-
-
-
-//deprecated, delete later
-
-//distant noise generator designed to imitate speed of sound
-//generates a noisemaker for each player with its own delay based on distance
-//special usages: deathsound=sound to make; mass=length of the sound
-class DistantDummy:IdleDummy{
-	default{
-		deathsound "world/riflefar";mass 20;
-	}
-	double dist;
-	states{
-	spawn:
-		TNT1 A 0 nodelay{
-			console.printf("DistantDummy is deprecated. Please use DistantNoise.Make() instead.");
-			if(target)A_AlertMonsters();
-			for(int i=0;i<MAXPLAYERS;i++){
-				if((playeringame[i])&&(players[i].mo)){
-					dist=distance3d(players[i].mo);
-					if(dist>HDCONST_MINDISTANTSOUND){ //don't bother if too close
-						actor id=spawn("DistantNoisemaker",pos,ALLOW_REPLACE);
-						if(id){
-							id.target=players[i].mo;
-							id.deathsound=self.deathsound;
-							id.stamina=int(dist/HDCONST_SPEEDOFSOUND);
-							id.mass=self.mass;
-							id.bmissilemore=self.bmissilemore;
-						}
-					}
-				}
-			}
-		}stop;
-	}
-}
-class DistantNoisemaker:IdleDummy{
-	default{
-		mass 20;
-		deathsound "world/riflefar";
-	}
-	states{
-	spawn:
-		TNT1 A 1 nodelay A_SetTics(stamina);
-		TNT1 A 0{
-			if(
-				abs(pos.x)>30000
-				||abs(pos.y)>30000
-				||abs(pos.z)>30000
-			){
-				destroy();return;
-			}
-			A_StartSound(deathsound,CHAN_VOICE,attenuation:24);
-			if(bmissilemore)A_StartSound(deathsound,CHAN_WEAPON,attenuation:24);
-		}
-		TNT1 A 1{
-			if(target && mass>0){
-				self.mass--;
-				setxyz(target.pos);
-			}else{destroy();return;}
-		}wait;
-	}
-}
-class DistantRifle:DistantDummy{
-	default{deathsound "world/riflefar";mass 18;}
-}
-class DistantHERP:DistantRifle{default{deathsound "world/herpfar";}}
-class DistantVulc:DistantRifle{default{deathsound "world/vulcfar";}}
-class DistantShotgun:DistantDummy{
-	default{deathsound "world/shotgunfar";mass 34;}
-}
-class DistantRocket:DistantDummy{
-	default{deathsound "world/rocketfar";mass 21;}
-}
-class DistantBFG:DistantDummy{
-	default{deathsound "world/bfgfar";mass 44;}
-}
-class DoubleDistantRifle:DistantRifle{
-	default{+missilemore}
-}

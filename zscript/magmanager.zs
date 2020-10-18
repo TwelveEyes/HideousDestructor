@@ -36,7 +36,9 @@ class MagManager:HDWeapon{
 	}
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
 		if(!thismag||thismag.mags.size()<1)return;
+		sb.beginhud(forcescaled:true);
 		thismag.DrawHUDStuff(sb,self,hpl);
+		sb.beginhud(forcescaled:false);
 	}
 	override string gethelptext(){
 		return
@@ -332,6 +334,7 @@ class PickupManager:HDWeapon{
 		return null;
 	}
 	override void DrawHUDStuff(HDStatusBar sb,HDWeapon hdw,HDPlayerPawn hpl){
+		sb.beginhud(forcescaled:true);
 		let item=thisitem;
 		if(thisitem){
 			let ddi=item.icon;
@@ -346,11 +349,12 @@ class PickupManager:HDWeapon{
 					ddv*=(8./min(dds.x,dds.y));
 				}
 				sb.drawtexture(ddi,(0,-smallfont.getheight()*4),
-					sb.DI_ITEM_CENTER|sb.DI_SCREEN_CENTER,
+					sb.DI_ITEM_BOTTOM|sb.DI_SCREEN_CENTER,
 					scale:ddv
 				);
 			}
 		}
+		sb.beginhud(forcescaled:false);
 	}
 	override void InitializeWepStats(bool idfa){
 		if(!idfa)weaponstatus[PMSS_DROPAMT]=1;

@@ -138,6 +138,7 @@ class HDAmBox:HDUPK{
 		health 100; mass 120;
 		meleerange 42;
 		radiusdamagefactor 0.5;
+		hdambox.maxcapacity 200.;
 		obituary "%o paid no attention to Admiral Ackbar.";
 		tag "ammo box";
 	}
@@ -191,6 +192,61 @@ class HDAmBox:HDUPK{
 			frandom(0,3),0,frandom(-4,4),
 			frandom(1,360),SXF_NOCHECKPOSITION
 		);
+	}
+	double maxcapacity;
+	property maxcapacity:maxcapacity;
+	virtual void SpawnContents(){
+		array<string> invclasses;invclasses.clear();
+
+		//arbitrarily add more common canonical classes that don't have mag or don't have loose
+		invclasses.push("HD4mMag");
+		invclasses.push("HD4mMag");
+		invclasses.push("HDShellAmmo");
+
+		//retrieve list of HDAmmo items
+		for(int i=0;i<allactorclasses.size();i++){
+			let iic=(class<HDAmmo>)(allactorclasses[i]);
+			if(!iic)continue;
+			let iid=getdefaultbytype(iic);
+			if(
+				iid
+				&&iid.bfitsinbackpack
+				&&!iid.binvbar
+				&&!iid.bcheatnogive
+				&&iid.refid!=""
+				&&(
+					(
+						(class<HDMagAmmo>)(iic)
+						&&
+							(
+								getdefaultbytype((class<HDMagAmmo>)(iic)).maxperunit
+								*getdefaultbytype((class<HDMagAmmo>)(iic)).roundbulk
+							)
+							+getdefaultbytype((class<HDMagAmmo>)(iic)).magbulk
+						<maxcapacity
+					)||(
+						!(class<HDMagAmmo>)(iic)
+						&&iid.bulk<maxcapacity
+						&&iid.bulk>0
+					)
+				)
+			)invclasses.push(iic.getclassname());
+		}
+
+		//pick one of them at random
+		let iic=(class<HDAmmo>)(invclasses[random(0,invclasses.size()-1)]);
+		let iid=getdefaultbytype(iic);
+		if(iid){
+			double iiu=
+					HDMagAmmo(iid)?(
+						HDMagAmmo(iid).maxperunit
+							*HDMagAmmo(iid).roundbulk
+							+HDMagAmmo(iid).magbulk
+					):iid.bulk;
+			if(!iiu)iiu=iid.bulk;
+			if(hd_debug&&!iiu)A_Log(iid.getclassname().." has an effective unit bulk of zero.");
+			A_DropItem(iic,int(maxcapacity*frandom(0.1,1.)/iiu));
+		}
 	}
 	states{
 	grab:
@@ -270,22 +326,8 @@ class HDAmBox:HDUPK{
 		---- A 2 A_StartSound("weapons/pocket",CHAN_VOICE);
 		---- A 0 A_JumpIf(Wads.CheckNumForName("id",0)!=-1,2);
 		AMBX B 0 A_SpawnItemEx("HDFader",flags:SXF_TRANSFERSPRITEFRAME|SXF_TRANSFERSCALE|SXF_TRANSFERRENDERSTYLE);
-		---- A 0 A_Jump(256,
-			"zeds","smgs","piss",
-			"libs","clip","rocs",
-			"bron","cell","shel",
-			"ieds"
-		);
-		zeds: ---- AAAAA 0 A_DropItem("HD4mMag");stop;
-		smgs: ---- AAAA 0 A_DropItem("HD9mMag30");stop;
-		piss: ---- AAAAAA 0 A_DropItem("HD9mMag15");stop;
-		libs: ---- AAAA 0 A_DropItem("HD7mMag");stop;
-		clip: ---- AAAAA 0 A_DropItem("HD7mClip");stop;
-		rocs: ---- AAAAA 0 A_DropItem("HDRocketAmmo");stop;
-		bron: ---- AAAAA 0 A_DropItem("BrontornisRound");stop;
-		cell: ---- AAAAA 0 A_DropItem("HDBattery");stop;
-		shel: ---- AAAAA 0 A_DropItem("ShellPickup");stop;
-		ieds: ---- AAA 0 A_DropItem("HDIEDKits");stop;
+		---- A 0 SpawnContents();
+		stop;
 	brokengoodies:
 		---- A 0 A_StartSound("weapons/plasmax",CHAN_VOICE);
 		---- A 0 A_DropStuff("HDSmokeChunk",random(0,6));
@@ -294,10 +336,31 @@ class HDAmBox:HDUPK{
 			0,0,frandom(0,2),0,SXF_NOCHECKPOSITION
 		);
 		---- A 0 A_Jump(256,
+			"brokenmisc",
 			"brokenzeds","brokensmgs","brokenpiss",
 			"brokenlibs","brokenclip","brokenrocs",
 			"brokenbron","brokencell","brokenshel"
 		);
+	brokenmisc:
+		---- A 0{
+			maxcapacity*=0.2;
+			SpawnContents();
+		}
+		---- AAAAAAA 0 A_SpawnItemEx("HugeWallChunk",
+			frandom(-3,3),frandom(-3,3),frandom(1,8),
+			frandom(-10,10),frandom(-10,10),frandom(-3,8),
+			0,SXF_NOCHECKPOSITION
+		);
+		---- AAA 0 A_SpawnItemEx("HDSmokeChunk",
+			frandom(-10,10),frandom(-10,10),frandom(1,10),
+			frandom(-4,4),frandom(-4,4),frandom(0,2),
+			0,SXF_NOCHECKPOSITION,24
+		);
+		---- A 0 A_SpawnItemEx("HDExplosion",
+			frandom(-1,1),frandom(-1,1),frandom(3,4),
+			0,0,frandom(0,2),0,SXF_NOCHECKPOSITION,32
+		);
+		stop;
 	brokenzeds:
 		---- A 0 A_DropItem("HD4mMag");
 		---- AAA 0 A_DropItem("HD4mmMagEmpty");
@@ -758,6 +821,10 @@ class HDUPKAlwaysGive:HDUPK{
 		hdupkalwaysgive.msgtoall "";
 	}
 	override void OnGrab(actor grabber){
+		//this must be called again when using a grab state
+		A_CallSpecial(special,args[0],args[1],args[2],args[3],args[4]);
+		special=0;
+
 		if(toallplayers!=""){
 			for(int i=0;i<MAXPLAYERS;i++){
 				if(playeringame[i]&&players[i].mo){

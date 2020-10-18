@@ -7,6 +7,8 @@ extend class HDMobBase{
 	int bodydamage;
 	int damagerecoil;
 	int bloodloss;
+	int maxbloodloss;
+	property maxbloodloss:maxbloodloss;
 	int pain;
 	int downedframe;
 	property downedframe:downedframe;
@@ -187,8 +189,13 @@ extend class HDMobBase{
 			if(!(bloodloss&(1|2|4|8))){
 				bodydamage++;
 			}
-			if(hd_debug)console.printf(getclassname().." bleed "..damage..", est. remain "..sphlth-bloodloss);
-			if(bloodloss<sphlth)return 1;
+
+			//if a custom blood capacity is specified, use that instead of health
+			int blhlth=maxbloodloss;
+			if(blhlth<1)blhlth=sphlth;
+
+			if(hd_debug)console.printf(getclassname().." bleed "..damage..", est. remain "..blhlth-bloodloss);
+			if(bloodloss<blhlth)return 1;
 			return super.damagemobj(
 				inflictor,source,random(damage,health),mod,DMG_NO_PAIN|DMG_THRUSTLESS,angle
 			);
@@ -223,6 +230,17 @@ extend class HDMobBase{
 
 		//force death even if not quite gibbing
 		if(health>0&&bodydamage>sphlth){
+
+			//force use maxhpdrain when anti-revive deaths should be in play
+			//prevents e.g. burning baron corpse spawning shards over and over again
+			if(
+				instatesequence(curstate,resolvestate("death"))
+				||instatesequence(curstate,resolvestate("dead"))
+				||instatesequence(curstate,resolvestate("xdeath"))
+				||instatesequence(curstate,resolvestate("raise"))
+				||instatesequence(curstate,resolvestate("ungib"))
+			)mod="maxhpdrain";
+
 			return super.damagemobj(inflictor,source,health,mod,flags,angle);
 		}
 
@@ -253,7 +271,7 @@ extend class HDMobBase{
 				if(deathticks==8){
 					A_NoBlocking();
 					if(!bdontdrop){
-						deathdrop();
+						if(!bnodeathdrop)deathdrop();
 						if(!bhasdropped)bhasdropped=true;
 					}
 					deathticks=9;
@@ -292,8 +310,41 @@ extend class HDMobBase{
 			}
 		}
 
-		//replenish shields
+		//replenish shields and handle breaking/unbreaking
 		if(shields<maxshields)shields++;
+		if (maxshields>0) {
+			if(shields==0){
+				if(hd_debug)console.printf(getclassname().." shield restored!");
+				A_StartSound("misc/mobshieldf", CHAN_BODY, CHANF_OVERLAP, 0.75);
+				shields=2;
+				for(int i=0;i<10;i++){
+					vector3 rpos=pos+(
+						frandom(-radius,radius),
+						frandom(-radius,radius),
+						frandom(0,height)
+					);
+					actor spk=actor.spawn("ShieldSpark",rpos,ALLOW_REPLACE);
+					vector3 sv = spk.Vec3To(self);
+					sv.z += height/2;
+					spk.vel=(sv/50);
+				}
+			}
+			else if(shields==1){
+				int downto=int(-maxshields*0.125);
+				shields=downto;
+				if(hd_debug)console.printf(getclassname().." shield broke to "..downto.."!");
+				A_StartSound("misc/mobshieldx", CHAN_BODY, CHANF_OVERLAP, 0.75);
+				for(int i=0;i<10;i++){
+					vector3 rpos=pos+(
+						frandom(-radius,radius),
+						frandom(-radius,radius),
+						frandom(0,height)
+					);
+					actor spk=actor.spawn("ShieldSpark",rpos,ALLOW_REPLACE);
+					spk.vel=(frandom(-2,2),frandom(-2,2),frandom(-2,2))+vel;
+				}
+			}
+		}
 
 		//regeneration
 		if(!(level.time&(1|2|4|8|16|32|64|128|256|512)))GiveBody(1);
@@ -337,6 +388,7 @@ extend class HDMobBase{
 
 		//set corpse stuff
 		bnodropoff=false;
+		bnoblockmonst=true;
 		bnotautoaimed=true;
 		balwaystelefrag=true;
 		bpushable=false;
@@ -366,6 +418,7 @@ extend class HDMobBase{
 		//reset corpse stuff
 		let deff=getdefaultbytype(getclass());
 		bnodropoff=deff.bnodropoff;
+		bnoblockmonst=deff.bnoblockmonst;
 		bfloatbob=deff.bfloatbob;
 		maxstepheight=deff.maxstepheight;
 		bnotautoaimed=deff.bnotautoaimed;
@@ -419,7 +472,6 @@ extend class HDHandlers{
 
 
 
-class bbb:baronofhell{}
 
 //a thinker that constantly bleeds
 class HDBleedingWound:Thinker{
@@ -469,6 +521,27 @@ class HDBleedingWound:Thinker{
 		int bled=bleeder.damagemobj(bleeder,source,bleedrate,"bleedout",DMG_NO_PAIN|DMG_THRUSTLESS);
 		if(bleeder&&bleeder.health<1&&bleedrate<random(10,60))bleeder.deathsound="";
 	}
+	static bool canbleed(actor b,bool checkbandage=false){
+		return(
+			!hd_nobleed
+			&&!!b
+			&&b.bshootable
+			&&!b.bnoblood
+			&&!b.bnoblooddecals
+			&&!b.bnodamage
+			&&!b.bdormant
+			&&b.health>0
+			&&b.bloodtype!="ShieldNeverBlood"
+			&&(
+				!hdmobbase(b)
+				||!hdmobbase(b).bdoesntbleed
+			)
+			&&(
+				checkbandage
+				||!b.findinventory("SpiritualArmour")
+			)
+		);
+	}
 	static void inflict(
 		actor bleeder,
 		int bleedpoints,
@@ -476,21 +549,7 @@ class HDBleedingWound:Thinker{
 		bool hitvital=false,
 		actor source=null
 	){
-		if(
-			hd_nobleed
-			||!bleeder.bshootable
-			||bleeder.bnoblood
-			||bleeder.bnoblooddecals
-			||bleeder.bnodamage
-			||bleeder.bdormant
-			||bleeder.health<1
-			||bleeder.bloodtype=="ShieldNeverBlood"
-			||(
-				hdmobbase(bleeder)
-				&&hdmobbase(bleeder).bdoesntbleed
-			)
-			||bleeder.findinventory("SpiritualArmour")
-		)return;
+		if(!HDBleedingWound.canbleed(bleeder))return;
 
 		//TODO: proper array of wounds for the player
 		if(hdplayerpawn(bleeder)){
@@ -588,4 +647,10 @@ class ShieldSpark:IdleDummy{
 		TFOG ABCDEFGHIJ 3 bright A_FadeOut(0.08);
 		stop;
 	}
+}
+
+//dummy item when you don't want anything coming out for blood or puffs
+class NullPuff:Actor{
+	default{+nointeraction}
+	states{spawn:TNT1 A 0;stop;}
 }

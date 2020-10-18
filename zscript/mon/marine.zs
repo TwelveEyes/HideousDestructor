@@ -632,6 +632,18 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 			class<actor> mn="HDB_00";
 			A_LeadTarget2(shotspeed:getdefaultbytype(mn).speed,adjusttics:1);
 			hdmobai.DropAdjust(self,mn);
+
+			//aim for head or legs
+			if(
+				target
+				&&target.countinv("HDArmourWorn")
+				&&abs(pitch)<45
+				&&!random(0,2)
+			){
+				double ddd=max(distance2d(target),radius);
+				double ppp=frandom(10,25)*100/ddd;
+				pitch+=random(0,2)?ppp:-ppp;
+			}
 		}
 		#### F 1 bright light("SHOT"){
 			gunloaded--;
@@ -915,9 +927,12 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		);
 		#### JHE 4;
 		#### H 0{
-			scale.x=1;
+			scale.x=abs(scale.x);
 			if(!random(0,15+timesdied))return;
-			else if(!random(0,10-timesdied))A_Die("raisebotch");
+			else if(!random(0,10-timesdied))damagemobj(
+				null,null,health+(gibhealth)<<2,
+				"raisebotch",DMG_FORCED|DMG_NO_ARMOR
+			);
 			else{
 				speed=max(1,speed-random(0,1));
 				damagemobj(
@@ -926,9 +941,9 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 					"balefire",
 					DMG_NO_PAIN|DMG_NO_FACTOR|DMG_THRUSTLESS
 				);
-				seesound="grunt/sight";
-				painsound="grunt/pain";
-				deathsound="grunt/death";
+				seesound="freshgrunt/sight";
+				painsound="freshgrunt/pain";
+				deathsound="freshgrunt/death";
 				A_StartSound(seesound,CHAN_VOICE);
 			}
 		}---- A 0 setstatelabel("see");
@@ -952,8 +967,7 @@ class HDMarine:HDMobMan replaces ScriptedMarine{
 		#### O 5;
 		#### P 5 A_XScream();
 		#### QRSTUV 5;
-		#### W -1 canraise;
-		stop;
+		goto xdead;
 	ungib:
 		#### W 0 A_JumpIf((random(1,12)-timesdied)<5,"RaiseZombie");
 		#### WW 8;
@@ -1121,9 +1135,9 @@ class UndeadRifleman:HDMarine{
 			"balefire",
 			DMG_NO_PAIN|DMG_NO_FACTOR|DMG_THRUSTLESS
 		);
-		seesound="grunt/sight";
-		painsound="grunt/pain";
-		deathsound="grunt/death";
+		seesound="freshgrunt/sight";
+		painsound="freshgrunt/pain";
+		deathsound="freshgrunt/death";
 	}
 }
 class DeadRifleman:HDMarine replaces DeadMarine{
@@ -1340,7 +1354,7 @@ class GhostMarine:HDMobBase{
 		health 200000000;
 		gibhealth 500;
 		renderstyle "add";
-		bloodtype "idledummy";
+		bloodtype "NullPuff";
 		seesound "imp/sight";
 		height 52;
 		radius 7;

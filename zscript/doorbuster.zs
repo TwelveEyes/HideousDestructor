@@ -38,7 +38,7 @@ class doordestroyer:hdactor{
 		for(int i=0;i<llit;i++){
 			for(int j=0;j<numpercolumn;j++){
 				actor aaa=spawn(chunktype,(
-					(v1pos+vfrac*i)+(frandom(-3,3),frandom(-3,3)),
+					(v1pos+vfrac*i)+(frandom(-vfrac.x,vfrac.x),frandom(-vfrac.y,vfrac.y)),
 					frandom(bottom,top)
 				),ALLOW_REPLACE);
 				aaa.vel.xy=rotatevector(
@@ -150,6 +150,14 @@ class doordestroyer:hdactor{
 						return false;
 					}
 
+					//destroying polyobjs turns out to be too unpredictable
+					//like, "empty space sometimes turns into impassable void" unpredictable
+					//so just abort
+					DistantQuaker.Quake(caller,6,30,512,30);
+					return false;
+
+
+					//begin old destruction code
 
 					//spawn the DD actor for debris only
 					for(int i=0;i<3;i++){

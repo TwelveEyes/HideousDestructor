@@ -16,7 +16,7 @@ class Yokai:HDMobBase{
 		renderstyle "Add";
 		tag "yokai";
 		maxtargetrange 666;health 66;
-		bloodtype "IdleDummy";
+		bloodtype "NullPuff";
 		obituary "%o watched a yokai.";
 		translation "176:191=29:47","192:207=160:167","240:247=188:191";
 		speed 4;
@@ -68,7 +68,7 @@ class Yokai:HDMobBase{
 				return;
 			}
 
-			A_StartSound("putto/sight",CHAN_AUTO,0,1.,0.9);
+			A_StartSound("yokai/sight",CHAN_AUTO,0,1.,0.9);
 			A_SetScale(0.666);
 			GiveBody(4);
 			if(!target)return;
@@ -96,7 +96,7 @@ class Yokai:HDMobBase{
 		---- A 1;
 		---- A 0{
 			bfrightened=true;
-			A_StartSound("putto/sight");
+			A_StartSound("yokai/sight");
 			A_SetTranslucent(1,1);
 			A_UnsetShootable();
 		}

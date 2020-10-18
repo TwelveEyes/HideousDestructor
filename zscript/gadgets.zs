@@ -68,7 +68,7 @@ class WornRadsuit:InventoryFlag{
 		if(rrr)owner.useinventory(rrr);else destroy();
 		return null;
 	}
-	override void attachtoowner(actor owner){	
+	override void attachtoowner(actor owner){
 		if(!owner.countinv("PortableRadsuit"))owner.A_GiveInventory("PortableRadsuit");
 		super.attachtoowner(owner);
 	}
@@ -115,8 +115,17 @@ class PortableRadsuit:HDPickup replaces RadSuit{
 		return super.CreateTossable();
 	}
 	override void actualpickup(actor user){
-		HDF.TransferFire(self,user);
 		super.actualpickup(user);
+		//put on the radsuit right away
+		if(
+			!user.findinventory("WornRadsuit")
+			&&user.player&&user.player.cmd.buttons&BT_USE
+			&&HDPlayerPawn.CheckStrip(user,STRIP_RADSUIT,false)
+		){
+			inventory slf=user.findinventory(getclass());
+			HDF.TransferFire(slf,user);
+			user.UseInventory(slf);
+		}
 	}
 	override void DoEffect(){
 		bfitsinbackpack=(amount!=1||!owner||!owner.findinventory("WornRadsuit"));
@@ -201,13 +210,9 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 	}
 	bool worn;
 	PointLight nozerolight;
-	override double getbulk(){return bulk;}
 	override void DetachFromOwner(){
 		if(owner&&owner.player){
-			if(cvar.getcvar("hd_nv",owner.player).getfloat()==999.){
-				if(owner.player.fixedcolormap==5)owner.player.fixedcolormap=-1;
-				owner.player.fixedlightlevel=-1;
-			}
+			UndoFullbright();
 			Shader.SetEnabled(owner.player,"NiteVis",false);
 			if(worn)owner.A_SetBlend("01 00 00",0.8,16);
 		}
@@ -220,8 +225,13 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 	override int getsbarnum(int flags){return int(amplitude);}
 	override void AttachToOwner(actor other){
 		super.AttachToOwner(other);
-		if(owner&&owner.player)amplitude=cvar.getcvar("hd_nv",owner.player).getfloat();
-		else amplitude=frandom(-NITEVIS_MAX,NITEVIS_MAX);
+		if(owner&&owner.player){
+			let cvv=cvar.getcvar("hd_nv",owner.player);
+			double cvf=clamp(cvv.getfloat(),0,NITEVIS_MAX);
+			amplitude=cvf;
+			if(cvf!=cvv.getfloat())cvv.setfloat(cvf);
+		}
+		else amplitude=frandom(0,NITEVIS_MAX);
 		lastcvaramplitude=amplitude;
 		syncamount();
 	}
@@ -238,9 +248,15 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 		mags[index]+=integrity;
 		return integrity;
 	}
+	void DoFullbright(){
+		if(!owner||!owner.player)return;
+		if(owner.player.fixedcolormap!=NITEVIS_INVULNCOLORMAP)owner.player.fixedcolormap=playerinfo.NUMCOLORMAPS+1;
+		owner.player.fixedlightlevel=1;
+		Shader.SetEnabled(owner.player,"NiteVis",false);
+	}
 	void UndoFullbright(){
 		if(!owner||!owner.player)return;
-		if(owner.player.fixedcolormap==5)owner.player.fixedcolormap=playerinfo.NOFIXEDCOLORMAP;
+		if(owner.player.fixedcolormap!=NITEVIS_INVULNCOLORMAP)owner.player.fixedcolormap=playerinfo.NOFIXEDCOLORMAP;
 		owner.player.fixedlightlevel=-1;
 	}
 	override void DoEffect(){
@@ -266,7 +282,10 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 					bbblowest=bbb.mags[i];
 				}
 			}
-			if(mags[0]<NITEVIS_MAGMAXCHARGE){
+			if(
+				mags[0]<NITEVIS_MAGMAXCHARGE
+				&&bbb.mags[bbbindex]>0
+			){
 				mags[0]+=NITEVIS_CYCLEUNIT;
 				if(!random[rand1](0,(NITEVIS_BATCYCLE>>1)))bbb.mags[bbbindex]--;
 			}
@@ -279,11 +298,6 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 		if(
 			worn
 			&&!owner.countinv("PowerInvisibility")
-			&&(
-				!oldliteamp
-				||owner.player.fixedcolormap==5
-				||owner.player.fixedcolormap<0
-			)
 		){
 
 			//check if totally drained
@@ -303,7 +317,7 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 			}
 
 			//actual goggle effect
-			owner.player.fov=min(owner.player.fov,90);
+			owner.player.fov=max(30,min(owner.player.fov,90));
 			double nv=min(chargedamount*(NITEVIS_MAX/20.),NITEVIS_MAX);
 			if(!nv){
 				if(thiscvaramplitude<0)amplitude=-0.00001;
@@ -311,15 +325,24 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 			}
 			if(oldliteamp){
 				spent+=(NITEVIS_MAX/10);
-				owner.player.fixedcolormap=5;
-				owner.player.fixedlightlevel=1;
-				Shader.SetEnabled(owner.player,"NiteVis",false);
+				DoFullbright();
 			}else{
+				SetNVGStyle();
 				UndoFullbright();
 				nv=clamp(amplitude,-nv,nv);
 				spent+=int(max(1,abs(nv*0.1)));
 				Shader.SetEnabled(owner.player,"NiteVis",true);
 				Shader.SetUniform1f(owner.player,"NiteVis","exposure",nv);
+				Shader.SetUniform1f(owner.player,"NiteVis","timer",level.maptime);
+				Shader.SetUniform1i(owner.player,"NiteVis","u_resfactor",resfactor);
+				Shader.SetUniform1i(owner.player,"NiteVis","u_hscan",hscan);
+				Shader.SetUniform1i(owner.player,"NiteVis","u_vscan",vscan);
+				Shader.SetUniform1i(owner.player,"NiteVis","u_scanfactor",scanfactor);
+				Shader.SetUniform1f(owner.player,"NiteVis","u_scanstrength",scanstrength);
+				Shader.SetUniform1i(owner.player,"NiteVis","u_posterize",posterize);
+				Shader.SetUniform3f(owner.player,"NiteVis","u_posfilter",posfilter);
+				Shader.SetUniform1f(owner.player,"NiteVis","u_whiteclip",whiteclip);
+				Shader.SetUniform1f(owner.player,"NiteVis","u_desat",desat);
 			}
 
 			//flicker
@@ -348,6 +371,7 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 		NITEVIS_BATCYCLE=20000,
 		NITEVIS_MAGMAXCHARGE=NITEVIS_CYCLEUNIT*NITEVIS_BATCYCLE,
 		NITEVIS_MAGMAX=NITEVIS_MAGMAXCHARGE+NITEVIS_MAXINTEGRITY,
+		NITEVIS_INVULNCOLORMAP=0,
 	}
 	states{
 	spawn:
@@ -357,11 +381,7 @@ class PortableLiteAmp:HDMagAmmo replaces Infrared{
 			int cmd=player.cmd.buttons;
 			if(cmd&BT_USE){
 				double am=cmd&BT_ZOOM?-5:5;
-				double plitude=max(0,(am+abs(invoker.amplitude)));
-				if(plitude>NITEVIS_MAX)plitude-=NITEVIS_MAX;
-				invoker.amplitude=invoker.amplitude<0?-plitude:plitude;
-			}else if(cmd&BT_ZOOM){
-				invoker.amplitude=-invoker.amplitude;
+				invoker.amplitude=clamp(am+abs(invoker.amplitude),0,NITEVIS_MAX);
 			}else if(cmd&BT_USER3){
 				invoker.firsttolast();
 				int amt=invoker.mags[0];
@@ -403,7 +423,37 @@ class VisorLight:PointLight{
 		setorigin((target.pos.xy,target.pos.z+target.height-6),true);
 	}
 }
+extend class PortableLiteAmp {
+	transient CVar NVGStyle;
+	int style;
+	int resfactor,scanfactor,hscan,vscan,posterize;
+	double scanstrength,whiteclip,desat;
+	vector3 posfilter,negfilter;
 
+	void SetNVGStyle() {
+		if (!NVGStyle) NVGStyle = CVar.GetCVar("hd_nv_style",owner.player);
+		int style = NVGStyle.GetInt();
+		switch (style) {
+			case 0: // Hideous green
+				resfactor=1;hscan=1;vscan=0;scanfactor=8;scanstrength=0.1;posterize=24;posfilter=(0,1,0);whiteclip=0.25;desat=0.0;break;
+			case 1: // Hideous red
+				resfactor=1;hscan=1;vscan=0;scanfactor=8;scanstrength=0.1;posterize=24;posfilter=(1,0,0);whiteclip=0.25;desat=0.0;break;
+			case 2: // Analog green
+				resfactor=4;hscan=1;vscan=0;scanfactor=resfactor;scanstrength=0.1;posterize=256;posfilter=(0.25,1.0,0.25);whiteclip=0.6;desat=0.1;break;
+			case 3: // Analog amber
+				resfactor=4;hscan=1;vscan=0;scanfactor=resfactor;scanstrength=0.1;posterize=256;posfilter=(1.0,1.0,0.25);whiteclip=0.6;desat=0.1;break;
+			case 4: // Digital green
+				resfactor=3;hscan=1;vscan=1;scanfactor=resfactor;scanstrength=0.025;posterize=16;posfilter=(0.05,1.0,0.05);whiteclip=0.9;desat=0.0;break;
+			case 5: // Digital amber
+				resfactor=3;hscan=1;vscan=1;scanfactor=resfactor;scanstrength=0.025;posterize=16;posfilter=(1.0,1.0,0.05);whiteclip=0.9;desat=0.0;break;
+			case 6: // Modern green
+				resfactor=2;hscan=1;vscan=0;scanfactor=2;scanstrength=0.1;posterize=256;posfilter=(0.0,1.0,0.75);whiteclip=0.8;desat=0.0;break;
+			default:
+			case 7: // Truecolor
+				resfactor=1;hscan=1;vscan=0;scanfactor=2;scanstrength=0.1;posterize=256;posfilter=(0.5,1.0,0.5);whiteclip=1.0;desat=0.5;break;
+		}
+	}
+}
 
 
 
@@ -490,6 +540,17 @@ class HDJetPack:HDCellWeapon{
 	override void InitializeWepStats(bool idfa){
 		weaponstatus[JETPACKS_BATTERY]=20;
 		weaponstatus[JETPACKS_BATTERYCOUNTER]=0;
+	}
+	override void actualpickup(actor user){
+		super.actualpickup(user);
+		//put on the jetpack right away
+		if(
+			user.player&&user.player.cmd.buttons&BT_USE
+			&&HDPlayerPawn.CheckStrip(user,STRIP_JETPACK,false)
+		){
+			inventory slf=user.findinventory(getclass());
+			user.UseInventory(slf);
+		}
 	}
 	states{
 	spawn:

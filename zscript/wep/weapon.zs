@@ -257,9 +257,11 @@ class HDWeapon:Weapon{
 				&&!onr.barehanded
 				&&onr.zerk
 				&&(
-					onr.player.cmd.buttons&BT_ATTACK
-					||onr.player.cmd.buttons&BT_ALTATTACK
-					||onr.player.cmd.buttons&BT_ZOOM
+					onr.player.cmd.buttons&(
+						BT_ATTACK
+						|BT_ALTATTACK
+						|BT_ZOOM
+					)
 					||bweaponbusy
 					||onr.vel.xy==(0,0)
 				)
@@ -513,7 +515,7 @@ class HDWeapon:Weapon{
 		return weapondefaults;
 	}
 	//apply config from owner's hd_weapondefaults cvar
-	void defaultconfigure(playerinfo whichplayer,string weapondefaults="cvar"){
+	virtual void defaultconfigure(playerinfo whichplayer,string weapondefaults="cvar"){
 		bdontdefaultconfigure=true;
 		if(!whichplayer)return;
 		if(weapondefaults=="cvar")weapondefaults=hdweapon.getdefaultcvar(whichplayer);

@@ -30,8 +30,16 @@ OptionValue "Autoaim"{
 	5, "Very high"
 	6, "Always"
 }
-
-
+OptionValue "NVGStyle"{
+	0, "Hideous Green"
+	1, "Hideous Red"
+	2, "Analog Green"
+	3, "Analog Amber"
+	4, "Digital Green"
+	5, "Digital Amber"
+	6, "Modern Green"
+	7, "Truecolor"
+}
 OptionValue "DoorBuster"{
 	0,"Allow all"
 	1,"Allow none"
@@ -162,7 +170,7 @@ OptionMenu "HDOptionsMenu"{
 	Slider "$DSPLYMNU_MOVEBOB","movebob",0,1.0,0.05,2
 	Slider "$DSPLYMNU_STILLBOB","stillbob",0,1.0,0.05,2
 	Slider "$DSPLYMNU_BOBSPEED","wbobspeed",0,2.0,0.1
-	
+
 	StaticText " "
 	StaticText "User Personal Gear Settings",1
 	Submenu "Set Custom Loadout...","HDLoadoutMenu"
@@ -170,7 +178,8 @@ OptionMenu "HDOptionsMenu"{
 	Option "DERP mode","hd_derpmode","DERPModes"
 	Option "IEDs start active","hd_autoactivateied","YesNo"
 	Option "Reflex sight image","hd_crosshair","ReflexReticle"
-	Slider "Night vision (negative=red)","hd_nv",-100,100,1,0
+	Slider "Night vision brightness","hd_nv",0,100,1,0
+	Option "Night vision style","hd_nv_style","NVGStyle"
 	SafeCommand "Reset Weapon Settings","hd_clearwepcv","Really clear all weapon settings?"
 }
 
@@ -190,7 +199,6 @@ OptionMenu "HDControlsMenu"{
 	Control "Mag Manager","+user3"
 	Control "Weapon Unload","+user4"
 	Control "Drop Weapon","weapdrop"
-	Control "Range Finder","hd_findrange"
 
 	StaticText " "
 	StaticText "Regular Movement Controls",1
@@ -216,6 +224,7 @@ OptionMenu "HDControlsMenu"{
 	Control "Set team spawn here","teamspawn 666"
 	Control "Clear team spawn","teamspawn -1"
 	Control "Query all team positions","checkin"
+	Control "Range Finder","hd_findrange"
 	Control "Play Dead","hd_playdead"
 
 	StaticText " "

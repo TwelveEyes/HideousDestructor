@@ -38,7 +38,7 @@ extend class HDPlayerPawn{
 						break;
 					case 1:
 						respawndelay--;
-						A_Log(player.getusername().." friend wait time: "..respawndelay,!player.bot);
+						A_Log(player.getusername().." friend wait time: "..respawndelay);
 						break;
 					default:
 						respawndelay=HDCONST_POFDELAY;
@@ -47,9 +47,9 @@ extend class HDPlayerPawn{
 				}
 			}else if(hd_pof){
 				player.cmd.buttons|=BT_USE;
-				if(playercorpse)playercorpse.destroy();
 				let hhh=hdhandlers(eventhandler.find("hdhandlers"));
 				hhh.corpsepos[playernumber()]=(pos.xy,floor(pos.z)+0.001*angle);
+				if(playercorpse)playercorpse.destroy();
 			}
 
 			if(!player.bot){
@@ -65,12 +65,37 @@ extend class HDPlayerPawn{
 					if(!(player.cheats & CF_PREDICTING))deathcounter++;
 				}
 				if(playercorpse){
-					playercorpse.setorigin((pos.xy-playercorpse.angletovector(angle),pos.z),true);
+					setorigin((playercorpse.pos.xy+angletovector(angle)*3,playercorpse.pos.z),true);
 				}
 			}
 		}
+
+		if(hd_dropeverythingondeath){
+			array<inventory> keys;keys.clear();
+			for(inventory item=inv;item!=null;item=item.inv){
+				if(item is "Key"){
+					keys.push(item);
+					item.detachfromowner();
+				}else if(item is "HDPickup"||item is "HDWeapon"){
+					DropInventory(item);
+				}
+				if(!item||item.owner!=self)item=inv;
+			}
+			for(int i=0;i<keys.size();i++){
+				keys[i].attachtoowner(self);
+			}
+		}
+
 		if(hd_disintegrator)A_SetBlend("00 00 00",1.,10);
+
+		vel=(0,0,0);
+		viewbob=0;
+
+		double oldangle=angle;
+		double oldpitch=pitch;
 		super.DeathThink();
+		angle=oldangle;
+		pitch=min(oldpitch+1,45);
 	}
 	override void Die(actor source,actor inflictor,int dmgflags,name MeansOfDeath){
 
@@ -91,22 +116,6 @@ extend class HDPlayerPawn{
 			}else respawndelay=HDCONST_POFDELAY;
 		}else respawndelay=0;
 
-		if(hd_dropeverythingondeath){
-			array<inventory> keys;keys.clear();
-			for(inventory item=inv;item!=null;item=item.inv){
-				if(item is "Key"){
-					keys.push(item);
-					item.detachfromowner();
-				}else if(item is "HDPickup"||item is "HDWeapon"){
-					DropInventory(item);
-				}
-				if(!item||item.owner!=self)item=inv;
-			}
-			for(int i=0;i<keys.size();i++){
-				keys[i].attachtoowner(self);
-			}
-		}
-
 
 		if(player){
 			let www=hdweapon(player.readyweapon);
@@ -124,12 +133,17 @@ extend class HDPlayerPawn{
 			playercorpse.translation=translation;
 			ApplyUserSkin(true);
 			playercorpse.sprite=sprite;
+			playercorpse.scale=skinscale;
 
 			if(
 				(!inflictor||!inflictor.bnoextremedeath)
 				&&(-health>gibhealth||aggravateddamage>40)
 			)playercorpse.A_Die("extreme");
 			else if(!silentdeath)A_StartSound(deathsound,CHAN_VOICE);
+
+			bsolid=false;
+			bshootable=false;
+			bnointeraction=true;
 		}
 
 		super.die(source,inflictor,dmgflags,MeansOfDeath);
@@ -244,7 +258,7 @@ class HDPlayerCorpse:HDMobMan{
 	xdeath:
 		#### O 5{
 			A_XScream();
-			scale.x=1;
+			scale.x=abs(scale.x);
 		}
 		#### PQRSTUV 5;
 		#### W -1;

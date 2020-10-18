@@ -45,11 +45,11 @@ class HDArmour:HDMagAmmo{
 		}
 	}
 	action void A_WearArmour(){
-		bool helptext=cvar.getcvar("hd_helptext",player).getbool();
+		bool helptext=!!player&&cvar.getcvar("hd_helptext",player).getbool();
 		invoker.syncamount();
 		int dbl=invoker.mags[invoker.mags.size()-1];
 		//if holding use, cycle to next armour
-		if(player.cmd.buttons&BT_USE){
+		if(!!player&&player.cmd.buttons&BT_USE){
 			invoker.mags.insert(0,dbl);
 			invoker.mags.pop();
 			invoker.syncamount();
@@ -107,9 +107,10 @@ class HDArmour:HDMagAmmo{
 		if(self)checkmega();
 		return sct;
 	}
-	void checkmega(){
+	bool checkmega(){
 		mega=mags.size()&&mags[mags.size()-1]>1000;
 		icon=texman.checkfortexture(mega?"ARMCB0":"ARMSB0",TexMan.Type_MiscPatch);
+		return mega;
 	}
 	override void beginplay(){
 		cooldown=0;

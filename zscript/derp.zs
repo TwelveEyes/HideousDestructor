@@ -380,7 +380,11 @@ class DERPUsable:HDWeapon{
 	}
 	override bool AddSpareWeapon(actor newowner){return AddSpareWeaponRegular(newowner);}
 	override hdweapon GetSpareWeapon(actor newowner,bool reverse,bool doselect){return GetSpareWeaponRegular(newowner,reverse,doselect);}
-	override int getsbarnum(int flags){return weaponstatus[DERPS_BOTID];}
+	override int getsbarnum(int flags){
+		let ssbb=HDStatusBar(statusbar);
+		if(ssbb&&weaponstatus[0]&DERPF_BROKEN)ssbb.savedcolour=Font.CR_DARKGRAY;
+		return weaponstatus[DERPS_BOTID];
+	}
 	override void InitializeWepStats(bool idfa){
 		weaponstatus[DERPS_BOTID]=1;
 		weaponstatus[DERPS_AMMO]=15;
@@ -390,6 +394,8 @@ class DERPUsable:HDWeapon{
 	override void loadoutconfigure(string input){
 		int mode=getloadoutvar(input,"mode",1);
 		if(mode>0)weaponstatus[DERPS_MODE]=clamp(mode,1,3);
+		mode=getloadoutvar(input,"unloaded",1);
+		if(mode>0)weaponstatus[DERPS_AMMO]=-1;
 	}
 	override double weaponbulk(){
 		int mgg=weaponstatus[DERPS_AMMO];
@@ -1057,11 +1063,7 @@ class DERPController:HDWeapon{
 	}
 	states{
 	select:
-		TNT1 A 10{
-			invoker.weaponstatus[DRPCS_TIMER]=3;
-			if(!getcvar("hd_helptext"))return;
-			A_WeaponMessage("\cf/// \cdD.E.R.P. \cf\\\\\\\c-\n\n\nDrop cycles through D.E.R.P.s, Reload modes.\n\nHold Firemode to control.\nFire shoot, Altfire forward, Use backward.\n\n\nAlt. Reload to re-ping all deployed D.E.R.P.s",175);
-		}
+		TNT1 A 10{invoker.weaponstatus[DRPCS_TIMER]=3;}
 		goto super::select;
 	ready:
 		TNT1 A 1{

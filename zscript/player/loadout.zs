@@ -41,7 +41,7 @@ class SoldierExtras:HDPickup{
 
 //reset inventory
 class InvReset:Inventory{
-	void ReallyClearInventory(actor resetee,bool keepkeys=false){
+	static void ReallyClearInventory(actor resetee,bool keepkeys=false){
 		for(inventory item=resetee.inv;item!=null;item=!item?null:item.inv){
 			if(
 				(!keepkeys||!(item is "Key"))
@@ -50,9 +50,9 @@ class InvReset:Inventory{
 				item=resetee.inv;
 			}
 		}
-		resetee.ClearInventory();
+//		resetee.ClearInventory();
 	}
-	void GiveStartItems(actor resetee){
+	static void GiveStartItems(actor resetee){
 		//now get all the "dropitems" (i.e. player's startitems) and give them
 		let drop=getdefaultbytype(resetee.getclass()).getdropitems();
 		if(drop){
@@ -104,7 +104,7 @@ class HDWeaponSelector:Thinker{
 
 
 
-
+//refids.
 //these need to be defined ONLY where an item
 //needs to be selectable through custom loadouts.
 //all in one place for ease of checking for conflicts.
@@ -444,19 +444,23 @@ extend class HDPlayerPawn{
 					if(newwep){
 						//clear any randomized garbage
 						newwep.weaponstatus[0]=0;
+
 						//apply the default based on user cvar first
 						newwep.defaultconfigure(player);
+
 						//now apply the loadout input to overwrite the defaults
 						string wepinput=howmany[i];
 						wepinput.replace(" ","");
 						wepinput=wepinput.makelower();
 						newwep.loadoutconfigure(wepinput);
+
 						//the only way I know to force the weapongiver to go last: make it go again
 						if(reff is "HDWeaponGiver"){
 							let hdwgreff=(class<hdweapongiver>)(reff);
 							let gdhdwgreff=getdefaultbytype(hdwgreff);
 							newwep.loadoutconfigure(gdhdwgreff.config);
 						}
+
 						newwep.actualpickup(self,true);
 					}
 				}

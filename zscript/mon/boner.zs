@@ -83,7 +83,7 @@ class bonerball:slowprojectile{
 		FATB ABABABAB 1 bright{vel.z--;}
 		goto spawn2;
 	death:
-		---- A 0 A_JumpIf(stamina<4,"bounce");
+		---- A 0 A_JumpIf(health>0&&stamina<4,"bounce");
 	realdeath:
 		---- A 0{
 			if(blockingmobj){
@@ -179,7 +179,18 @@ class Boner:HDMobBase replaces Revenant{
 		SKEL G 4 A_FaceTarget();
 		SKEL G 1 A_SkelWhoosh();
 		SKEL H 2;
-		SKEL I 6 A_SkelFist();
+		SKEL I 6{
+			//copypasted from A_SkelFist with adjustments
+			let targ=target;
+			if(!targ)return;
+			A_FaceTarget();
+			if(CheckMeleeRange()){
+				int damage=random[SkelFist](1, 10)*6;
+				A_StartSound("skeleton/melee",CHAN_WEAPON);
+				int newdam=targ.DamageMobj(self,self,damage,"Bashing");
+				targ.TraceBleed(newdam>0?newdam:damage,self);
+			}
+		}
 		SKEL H 4;
 		---- A 0 setstatelabel("see");
 	missile:

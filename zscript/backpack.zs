@@ -112,6 +112,15 @@ class HDBackpack:HDWeapon{
 		bpindex=invclasses.find(getclassname());
 		maxindex=invclasses.size()-1;
 	}
+	string storeweapondefaults;
+	override void defaultconfigure(playerinfo whichplayer,string weapondefaults){
+		if(whichplayer)weapondefaults=hdweapon.getdefaultcvar(whichplayer);
+		else storeweapondefaults="";
+		if(weapondefaults=="")return;
+		weapondefaults.replace(" ","");
+		weapondefaults.makelower();
+		storeweapondefaults=weapondefaults;
+	}
 	void initializeamount(string loadlist){
 		array<string> whichitem;whichitem.clear();
 		array<string> howmany;howmany.clear();
@@ -121,8 +130,9 @@ class HDBackpack:HDWeapon{
 			howmany.push((whichitem[i].mid(3,whichitem[i].length())));
 			whichitem[i]=whichitem[i].left(3);
 		}
-		string weapondefaults="";
-		if(owner&&owner.player)weapondefaults=hdweapon.getdefaultcvar(owner.player);
+
+		string weapondefaults=storeweapondefaults;
+
 		for(int i=0;i<whichitem.size();i++){
 			string ref=whichitem[i].makelower();
 			if(ref=="")continue;
@@ -172,6 +182,18 @@ class HDBackpack:HDWeapon{
 				}
 			}
 		}
+	}
+
+
+	override int getsbarnum(){
+		int pct=int(bulk*100/maxcapacity);
+		let ssbb=HDStatusBar(statusbar);
+		if(ssbb){
+			if(pct>80)ssbb.savedcolour=Font.CR_RED;
+			else if(pct>60)ssbb.savedcolour=Font.CR_YELLOW;
+			else if(pct>0)ssbb.savedcolour=Font.CR_WHITE;
+		}
+		return pct;
 	}
 
 	double bulk;
@@ -496,14 +518,14 @@ class HDBackpack:HDWeapon{
 			UpdateMessage(index);
 			return 12;
 		}else if(mag){
-			if(
-				floor(
-					mag.magbulk
-					+mag.roundbulk*(mag.mags.size()?mag.mags[mag.mags.size()-1]:mag.maxperunit)
-					+bulk
-				)
-				>maxcapacity
-			){
+			double thisbulk;
+			if(HDArmour(mag)){
+				thisbulk=HDArmour(mag).checkmega()?ENC_BATTLEARMOUR:ENC_GARRISONARMOUR;
+			}else thisbulk=floor(
+				mag.magbulk
+				+mag.roundbulk*(mag.mags.size()?mag.mags[mag.mags.size()-1]:mag.maxperunit)
+			);
+			if(thisbulk+bulk>maxcapacity){
 				if(owner)owner.A_Log("Your backpack is too full.",true);
 				return 1;
 			}

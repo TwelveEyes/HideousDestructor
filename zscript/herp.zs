@@ -511,7 +511,11 @@ class HERPUsable:HDWeapon{
 		if(owner&&owner.player.cmd.buttons&BT_ZOOM)enc*=2;
 		return enc;
 	}
-	override int getsbarnum(int flags){return weaponstatus[HERP_BOTID];}
+	override int getsbarnum(int flags){
+		let ssbb=HDStatusBar(statusbar);
+		if(ssbb&&weaponstatus[0]&HERPF_BROKEN)ssbb.savedcolour=Font.CR_DARKGRAY;
+		return weaponstatus[HERP_BOTID];
+	}
 	override void InitializeWepStats(bool idfa){
 		weaponstatus[HERP_BATTERY]=20;
 		weaponstatus[1]=51;
@@ -538,7 +542,6 @@ class HERPUsable:HDWeapon{
 	states{
 	select:
 		TNT1 A 0 A_ResetBarrelSize();
-		TNT1 A 0 A_WeaponMessage("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nHold \cdUse\cu while hitting \cdAlt. Reload\nto unload battery.\n\nHold \cdUse\cu while hitting \cdUnload\nto remove partially-spent mags.\n\nHold \cdFiremode\cu to change BotID, \cdAltfire\cu to toggle on/off.\n\nPress \cdFire\cu to deploy.",3500);
 		goto super::select;
 	ready:
 		TNT1 A 0 A_JumpIf(pressingzoom(),"raisetofire");
@@ -593,7 +596,7 @@ class HERPUsable:HDWeapon{
 	raisetofire:
 		TNT1 A 8 A_StartSound("herp/crawl",8,CHANF_OVERLAP,1.);
 		HERG A 1 offset(0,80) A_StartSound("herp/beepready",8,CHANF_OVERLAP);
-		HERG A 1 offset(0,60) A_WeaponMessage("");
+		HERG A 1 offset(0,60);
 		HERG A 1 offset(0,50) A_RaiseBarrelSize();
 		HERG A 1 offset(0,40);
 		HERG A 1 offset(0,34);
@@ -820,8 +823,11 @@ class HERPUsable:HDWeapon{
 			if(hdw.weaponstatus[i]>=0)sb.drawrect(-11-i*4,-15,3,2);
 		}
 		sb.drawwepnum(hdw.weaponstatus[1]%100,50,posy:-10);
-		sb.drawwepcounter(hdw.weaponstatus[0]&HERPF_STARTOFF,
-			-28,-16,"STBURAUT","blank"
+		bool herpon=!(hdw.weaponstatus[0]&HERPF_STARTOFF);
+		sb.drawstring(
+			sb.pnewsmallfont,herpon?"ON":"OFF",(-30,-30),
+			sb.DI_TEXT_ALIGN_RIGHT|sb.DI_TRANSLATABLE|sb.DI_SCREEN_CENTER_BOTTOM,
+			herpon?Font.CR_GREEN:Font.CR_DARKRED
 		);
 
 		if(!batt)sb.drawstring(
@@ -1286,10 +1292,7 @@ class HERPController:HDWeapon{
 	}
 	states{
 	select:
-		TNT1 A 10{
-			invoker.weaponstatus[HERPS_TIMER]=3;
-			if(getcvar("hd_helptext"))A_WeaponMessage("\cd/// \ccH.E.R.P. \cd\\\\\\\c-\n\n\n\cdDrop\cu cycles through H.E.R.P.s. \cdReload\cu toggles input mode.\n\n\cdAlt. Reload\cu sets home angle.\n\nHold \cdFiremode\cu to control.\n\cdFire\cu to shoot.",215);
-		}
+		TNT1 A 10;
 		goto super::select;
 	ready:
 		TNT1 A 1{

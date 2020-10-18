@@ -275,6 +275,8 @@ Default key: none
 
 Logs the distance of the object or map geometry you're pointing at.
 
+If you hold use while hitting your rangefinder key, the grenade/rocket launcher on your selected weapon (if any) will use that distance.
+
 ## IV. COMMANDS AND CVARS
 
 ### Commands
@@ -404,13 +406,18 @@ Leave an item blank but keep the comma in order to use the default (i.e., the de
 Type `hd_showskins` for your available options.
 To reset everything to default, type `hd_skin ""`.
 In addition to any custom skins you may load, you can use soundclasses "hdguy", "hdgal" and "hdbot", and mugshots "STF","SFF" and "STC".
-The fist sprite is determined in priority: the explicit sprite name in hd_skin; if that is invalid, then the fist given in the skin actor definition; if none is given, then if you are using any of the 3 standard mugshots it will use the default for that; and if that is not given then it will be based on the gender setting.
+
+  (MODDING NOTE: a skin's sounds must have consistent unique sound "player/____/..." definitions to work correctly, as HD will look for the sound alias based on the name you give it, *not* the actor class name!)
+
+  The fist sprite is determined in priority: the explicit sprite name in hd_skin; if that is invalid, then the fist given in the skin actor definition; if none is given, then if you are using any of the 3 standard mugshots it will use the default for that; and if that is not given then it will be based on the gender setting.
 
 * `hd_voicepitch` (1.0): This lets you change the speed of the samples that play for your character's voice, allowing distinct audio cues for each person in multiplayer. Clamped between 0.7 and 1.3.
 
 * `hd_nv` (7): This sets the starting amplitude of your light amplification visor, between 0 and 100. Negative values mean the display is red rather than green. Brighter displays drain more battery.
 
   You can also set it to 999 to get the vanilla Doom behaviour where the renderer just omits lighting reduction. This is considered a cheat in multiplayer.
+
+* `hd_nv_style` (0): This sets the rendering style for your light amplification visor. Values range from 0 through 4. Some of these are better than others but do not affect battery use.
 
 * `hd_hudusedelay` (12): This is how many tics (1/35 of a second) you must hold Use before the full HUD shows up with all the ammo counts and compass (and scope view if hd_noscope is set to 1). Minimum delay is 12. If you set the value over 100, the digits preceding the tens place will be parsed as the delay before even the partial HUD appears, e.g., a value of 1212 means an all-or-nothing with no partial HUD while 120 means you can quickly hit Use to check your vitals and hold much longer to get everything.
 
@@ -458,6 +465,8 @@ As editing these can get a bit involved, you might want to use your preferred te
 ## V. ITEMS
 
 To pick up an item, use it as you would use a door or switch, or hold Use and look towards it. Even if you do not pick it up, you will bring it towards yourself, so this can also be done to quickly get an unwanted item out of the way of another (or an actual door or switch) that you do want.
+
+For items that can be worn, such as armour and radsuits, if you continue holding Use as the final pickup registers you will automatically put on the item if you are able to. To avoid this, make sure you just *tap* Use to pick the item up.
 
 Armour comes in two levels: "Garrison" as standard military use, and "Battle" for your more refined, higher-budget militarized-police/unaccountable non-state-actor corporate "civilian" work. Battle armour mitigates the most damage, while garrison armour lasts longer generally and restricts less movement.
 
@@ -560,9 +569,9 @@ Some items can be picked up and saved for later, as described below.
 
   Press use to engage the ladder. To disengage, do any of the following:
 
-  - press jump at any time (which will also give you a horizontal boost away from the ladder).
-  - press use again while turned away from it, or while directly facing it.
-  - press speed while standing about on the top ledge from which you have hung the ladder.
+  - press Jump at any time (which will also give you a horizontal boost away from the ladder).
+  - press Use again while turned away from it, or while directly facing it.
+  - press Speed while standing on top of the surface from which you have hung the ladder.
 
   To remove the ladder, get onto the ladder and attempt to jump while crouching.
 
@@ -592,6 +601,8 @@ Some items can be picked up and saved for later, as described below.
 
   GZDoom actor name: `DERPBot`
   Loadout code: `drp`
+  * mode - 1-3, turret/ambush/patrol
+  * unloaded - 0/1, whether it comes without ammo loaded or if it's just a switch-hitting camera
 
   The gun that runs around killing people by itself! Basically a pistol wired to a webcam and treads, made of bullets, aggression and shitty programmer art. They can't climb and run out of ammo quickly, but you can pick them back up anytime as you would an ordinary item for later redeployment.
 

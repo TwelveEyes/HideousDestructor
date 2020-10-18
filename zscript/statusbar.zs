@@ -177,7 +177,7 @@ class HDStatusBar:DoomStatusBar{
 			}
 		}
 
-		if(hpl.countinv("WornRadsuit"))fill(color(160,10,40,14),0,0,800,600);
+		if(hpl.countinv("WornRadsuit"))fill(color(160,10,40,14),0,0,screen.getwidth(),screen.getheight());
 
 		if(idmypos)drawmypos();
 	}
@@ -238,7 +238,7 @@ class HDStatusBar:DoomStatusBar{
 		}
 
 		//guns
-		drawselectedweapon(-100,-24,DI_BOTTOMRIGHT);
+		drawselectedweapon(-80,-60,DI_BOTTOMRIGHT);
 
 		drawammocounters(-18);
 		drawweaponstash(true,-48);
@@ -374,34 +374,34 @@ class HDStatusBar:DoomStatusBar{
 					"DUSTA0",(0,0),DI_SCREEN_CENTER|DI_ITEM_CENTER,
 					alpha:0.01*lv,scale:(1000,600)
 				);
-				return;
 			}
-		}
+		}else{
 
-		//draw the crosshair.
-		if(hpl.health>0)DrawHDXHair(hpl);
+			//draw the crosshair
+			if(hpl.health>0)DrawHDXHair(hpl);
 
-		SetSize(0,320,200);
-		BeginHUD(forcescaled:true);
+			SetSize(0,320,200);
+			BeginHUD(forcescaled:true);
 
 
-		//draw the goggles when they do something.
-		let hdla=portableliteamp(hpl.findinventory("PortableLiteAmp"));
-		if(hdla && hdla.worn){
-			//can we do these calculations once somewhere else?
-			int gogheight=int(screen.getheight()*(1.9*90.)/cplayer.fov);
-			int gogwidth=screen.getwidth()*gogheight/screen.getheight();
-			int gogoffsx=-((gogwidth-screen.getwidth())>>1);
-			int gogoffsy=-((gogheight-screen.getheight())>>1);
+			//draw the goggles when they do something.
+			let hdla=portableliteamp(hpl.findinventory("PortableLiteAmp"));
+			if(hdla && hdla.worn){
+				//can we do these calculations once somewhere else?
+				int gogheight=int(screen.getheight()*(1.6*90.)/cplayer.fov);
+				int gogwidth=screen.getwidth()*gogheight/screen.getheight();
+				int gogoffsx=-((gogwidth-screen.getwidth())>>1);
+				int gogoffsy=-((gogheight-screen.getheight())>>1);
 
-			screen.drawtexture(
-				texman.checkfortexture("gogmask",texman.type_any),
-				true,
-				gogoffsx-(int(hpl.hudbob.x)),
-				gogoffsy-(int(hpl.hudbob.y)),
-				DTA_DestWidth,gogwidth,DTA_DestHeight,gogheight,
-				true
-			);
+				screen.drawtexture(
+					texman.checkfortexture("gogmask",texman.type_any),
+					true,
+					gogoffsx-(int(hpl.hudbob.x)),
+					gogoffsy-(int(hpl.hudbob.y)),
+					DTA_DestWidth,gogwidth,DTA_DestHeight,gogheight,
+					true
+				);
+			}
 		}
 
 		//draw information text for selected weapon
@@ -771,6 +771,7 @@ class HDStatusBar:DoomStatusBar{
 			);
 		}
 	}
+	color savedcolour;
 	void DrawInvSel(int posx,int posy,int numposx,int numposy,int flags){
 		if(CPlayer.mo.InvSel){
 			inventory ivs=cplayer.mo.invsel;
@@ -786,17 +787,18 @@ class HDStatusBar:DoomStatusBar{
 
 			let pivs=HDPickup(ivs);
 			let piws=HDWeapon(ivs);
+			savedcolour=Font.CR_SAPPHIRE;
 			if(pivs){
 				int pivsi=pivs.getsbarnum();
 				if(pivsi!=-1000000)drawstring(
 					pnewsmallfont,FormatNumber(pivsi),
-					(numposx,numposy-7),flags|DI_TEXT_ALIGN_RIGHT,Font.CR_SAPPHIRE,scale:(0.5,0.5)
+					(numposx,numposy-7),flags|DI_TEXT_ALIGN_RIGHT,savedcolour,scale:(0.5,0.5)
 				);
 			}else if(piws){
 				int piwsi=piws.getsbarnum();
 				if(piwsi!=-1000000)drawstring(
 					pnewsmallfont,FormatNumber(piwsi),
-					(numposx,numposy-7),flags|DI_TEXT_ALIGN_RIGHT,Font.CR_SAPPHIRE,scale:(0.5,0.5)
+					(numposx,numposy-7),flags|DI_TEXT_ALIGN_RIGHT,savedcolour,scale:(0.5,0.5)
 				);
 			}
 
@@ -812,7 +814,13 @@ class HDStatusBar:DoomStatusBar{
 		inventory item;
 		array<inventory> items;items.clear();
 		for(item=cplayer.mo.inv;item!=NULL;item=item.inv){
-			if(!item||!item.binvbar)continue;
+			if(
+				!item
+				||(
+					!item.binvbar
+					&&item!=cplayer.mo.invsel
+				)
+			)continue;
 			items.push(item);
 			if(item==cplayer.mo.invsel)thisindex=i;
 

@@ -12,7 +12,7 @@ OPTVAL_NEUTRAL="They";
 OPTVAL_OTHER="It";
 
 STARTUP1="        \cq~ \cr* \cq~";
-STARTUP2=" \cyHideous Destructor \cx4.4.1b\cypre";
+STARTUP2=" \cyHideous Destructor \cx4.4.2d\cypre";
 STARTUP3=" Please read the manual.";
 STARTUP4="       Have fun!";
 STARTUP5="        \cq~ \cr* \cq~";
@@ -34,4 +34,8 @@ CC_IMPH="serpentipede healer";
 CC_MARINE="operator";
 OB_MARINE="%o was shot up by another operator.";
 OB_MARINEHIT="%o violated another operator's personal space.";
+
+
+BS_PRECIOUS="Precious.";
+BS_PKUP="So precious in your sight.";
 

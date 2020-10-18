@@ -100,13 +100,27 @@ class HDFire:IdleDummy{
 				target.target=master;
 				if(stamina>20)stamina=20;
 			}
+
+			setorigin(target.pos,false);
+
+			//check if player
+			let tgt=HDPlayerPawn(target);
+			if(tgt){
+				if(tgt.playercorpse){
+					target=tgt.playercorpse;
+				}
+				A_AlertMonsters();
+				A_TakeFromTarget("PowerFrightener");
+				A_GiveToTarget("IsMoving",4);
+				HDWeapon.SetBusy(target);
+			}else stamina-=3; //monsters assumed to be trying to douse
+
 			int wlvl=target.waterlevel;
 			if(wlvl>1){
 				destroy();
 				if(wlvl<2)spawn("HDSmoke",pos,ALLOW_REPLACE);
 				return;
 			}
-			setorigin(target.pos,false);
 			A_SetTics(clamp(random(3,int(30-stamina*0.1)),2,12));
 			if(stamina<=0 || target.countinv("HDFireEnder")){
 				A_TakeFromTarget("HDFireEnder");
@@ -139,20 +153,8 @@ class HDFire:IdleDummy{
 			sp.vel+=target.vel+(frandom(-2,2),frandom(-2,2),frandom(-1,3));
 			A_StartSound("misc/firecrkl",CHAN_AUTO,volume:0.4,attenuation:6.);
 
-			//check if player
-			let tgt=HDPlayerPawn(target);
-			if(tgt){
-				if(tgt.playercorpse){
-					target=tgt.playercorpse;
-				}
-				A_AlertMonsters();
-				A_TakeFromTarget("PowerFrightener");
-				A_GiveToTarget("IsMoving",4);
-				HDWeapon.SetBusy(target);
-			}else stamina-=3; //monsters assumed to be trying to douse
-			//damage the target
+			//heat up the target
 			target.A_GiveInventory("Heat",clamp(stamina,20,random(20,80)));
-//			target.damagemobj(self,master,randompick(0,0,0,1),"Thermal",flags:DMG_NO_FACTOR);
 		}
 		wait;
 	}
@@ -189,6 +191,7 @@ class PersistentDamager:HDActor{
 					ccc.bnodamage
 					||!ccc.bshootable
 					||ccc.pos.z<pos.z-ccc.height
+					||!ccc.checksight(self)  //hope this doesn't bog things down too much
 				)continue;
 				stamina--;
 				if(damagetype=="Thermal")HDF.Give(ccc,"Heat",stamina*10);
@@ -224,6 +227,7 @@ class Heat:Inventory{
 	double baseinversevolumeratio;
 	double realamount;
 	int burnoutthreshold;
+	int burnouttimer;
 	actor heatfield;
 	actor heatlight;
 	enum HeatNumbers{
@@ -232,6 +236,7 @@ class Heat:Inventory{
 	states{spawn:TNT1 A 0;stop;}
 	default{
 		+inventory.untossable //for some reason this works without it
+		+inventory.keepdepleted
 		inventory.amount 1;
 		inventory.maxamount 9999999;
 		obituary "%o was too hot to handle.";
@@ -247,7 +252,7 @@ class Heat:Inventory{
 		baseinversevolumeratio=HEATNUM_DEFAULTVOLUME/max(0.000001,volume);
 		inversevolumeratio=baseinversevolumeratio;
 		volumeratio=1/baseinversevolumeratio;
-		burnoutthreshold=max(user.gibhealth,user.spawnhealth(),100);
+		burnoutthreshold=max(40,((int(user.mass*(user.radius+user.height))+(user.gibhealth))>>5)+300);
 		A_SetSize(owner.radius,owner.height);
 		heatlight=HDFireLight(spawn("HDFireLight",pos,ALLOW_REPLACE));
 		heatlight.target=owner;hdfirelight(heatlight).heattarget=self;
@@ -256,15 +261,21 @@ class Heat:Inventory{
 		if(!owner){destroy();return;}
 		if(!owner.player&&isfrozen())return;
 
+		//reset burnout if raised
+		if(
+			owner.bismonster
+			&&!owner.bcorpse
+			&&owner.health>=owner.spawnhealth()
+		)burnouttimer=0;
+
 		//make adjustments based on armour and player status
 		let hdp=hdplayerpawn(owner);
 		if(hdp){
 			inversevolumeratio=baseinversevolumeratio;
 			int al=hdp.armourlevel;
-			if(al==1){
-				inversevolumeratio*=0.4;
-				amount=max(0,amount-5);
-			}else if(al==3)inversevolumeratio*=0.6;
+			if(al==1)inversevolumeratio*=0.4;
+			else if(al==3)inversevolumeratio*=0.6;
+
 			if(
 				hdp.health<1&&
 				hdp.playercorpse
@@ -295,6 +306,7 @@ class Heat:Inventory{
 			&&owner.bshootable
 			&&!owner.bnodamage
 			&&!owner.countinv("ImmunityToFire")
+			&&burnoutthreshold>burnouttimer
 		){
 			if(owner.bshootable){
 				realamount+=frandom(1.2,3.0);
@@ -304,13 +316,16 @@ class Heat:Inventory{
 				if(
 					owner is "PersistentDamager"
 					||realamount<600
+					||burnouttimer>((burnoutthreshold*7)>>3)
 				){
+					burnouttimer++;
 					aaa=spawn("HDFlameRed",owner.pos+(
 						frandom(-radius,radius),
 						frandom(-radius,radius),
 						frandom(2,owner.height)
 					),ALLOW_REPLACE);
 				}else{
+					burnouttimer+=2;
 					aaa=spawn("HDFlameRedBig",owner.pos+(
 						frandom(-radius,radius)*0.6,
 						frandom(-radius,radius)*0.6,
@@ -328,6 +343,12 @@ class Heat:Inventory{
 				aaa.A_StartSound("misc/firecrkl",CHAN_BODY,volume:clamp(realamount*0.001,0,0.2));
 			}
 		}
+
+		//reset timer so charred remains can be reignited
+		else if(
+			burnouttimer>=burnoutthreshold
+			&&realamount<100
+		)burnouttimer=random((burnoutthreshold*3)>>2,burnoutthreshold);
 
 		//damage
 		if(
@@ -379,7 +400,7 @@ class Heat:Inventory{
 		if(!owner){destroy();return;}
 
 		//cooldown
-		double reduce=inversevolumeratio*max(realamount*0.001,1.);
+		double reduce=inversevolumeratio*max(realamount*0.003,1.);
 		if(owner.vel dot owner.vel > 4)reduce*=1.6;
 
 		if(owner.waterlevel>2)reduce*=10;

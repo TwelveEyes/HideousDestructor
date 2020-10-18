@@ -15,7 +15,7 @@ class HDBlurSphere:HDPickup{
 		+inventory.alwayspickup
 		inventory.maxamount 9;
 		inventory.interhubamount 1;
-		inventory.pickupmessage "So precious in your sight.";
+		inventory.pickupmessage "$BS_PKUP";
 		inventory.pickupsound "blursphere/pickup";
 		inventory.icon "PINSA0";
 		scale 0.3;
@@ -116,7 +116,16 @@ class HDBlurSphere:HDPickup{
 				data:medusagaze
 			);
 			actor aaa=medusagaze.hitactor;
-			if(aaa&&aaa.bismonster){
+			if(
+				aaa
+				&&(
+					aaa.bismonster
+					||aaa.player
+				)&&(
+					!hdmobbase(aaa)
+					||!hdmobbase(aaa).bnoblurgaze
+				)
+			){
 				aaa.A_ClearTarget();
 				aaa.A_ClearSoundTarget();
 				HDF.Give(aaa,"Heat",random(1,level+3));
@@ -195,27 +204,16 @@ class HDBlurSphere:HDPickup{
 				);
 			}
 			if(!(xp%5)){
-				string msg[15];
-				msg[0]=string.format("Out of sync with: %i",randticker[0]+1);
-				msg[1]="Error: no such actor \"HDPlayer\" exists. Execution may abort!";
-				msg[2]="\cd[DERP] \cjEngaging hostile.";
-				msg[3]="Memory allocation error: recovered segfault at address 00x6f24ff.";
-				msg[4]="rendering error";
-				msg[5]="Noise.";
-				msg[6]="hello";
-				msg[7]="I hate you.";
-				msg[8]="This is worthless.";
-				msg[9]="it hurts";
-				msg[10]="error";
-				msg[11]="Precious.";
-				msg[12]="Precious.";
-				msg[13]="Precious.";
-				msg[14]="Precious.";
-				owner.A_Log(msg[int(clamp(randtickerfloat*msg.size(),0,msg.size()-1))],true);
+				array<string>msgs;msgs.clear();
+				string msg=Wads.ReadLump(Wads.CheckNumForName("blurspheretexts",0));
+				msg.split(msgs,"\n");
+				msg=msgs[int(clamp(randtickerfloat*msgs.size(),0,msgs.size()-1))];
+				if(msg=="Out of sync with: ")msg=msg..randticker[0]+1;
+				owner.A_Log(msg,true);
 			}
 			if(!(xp%7)){
 				hdplayerpawn(owner).aggravateddamage++;
-				if(!randticker[0])owner.A_Log("Precious.",true);
+				if(!randticker[0])owner.A_Log("$BS_PRECIOUS",true);
 			}
 		}
 		if(level>=BLUR_LEVELCAP&&xp>666)xp=0;
@@ -275,6 +273,11 @@ class ShellShade:ZombieStormtrooper{
 		health 900;
 		stencilcolor "04 00 06";
 		tag "shell-shade";
+
+		seesound "shellshade/sight";
+		activesound "shellshade/active";
+		painsound "shellshade/pain";
+		deathsound "shellshade/death";
 	}
 	override void postbeginplay(){
 		user_weapon=1;
@@ -302,7 +305,7 @@ class ShellShade:ZombieStormtrooper{
 		){
 			bnoblood=false;
 			forcepain(self);
-			A_StartSound("marine/death",CHAN_VOICE);
+			A_Scream();
 			shields>>=1;
 		}
 		int dmg=super.damagemobj(
@@ -329,7 +332,7 @@ class ShellShade:ZombieStormtrooper{
 	xdeath:
 		POSS G 5;
 		TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAA
-			random(1,3) A_StartSound("marine/death",random(8,24),volume:frandom(0.3,1.),attenuation:0.1,pitch:frandom(0.98,1.01));
+			random(1,3) A_StartSound(deathsound,random(8,24),volume:frandom(0.3,1.),attenuation:0.1,pitch:frandom(0.98,1.01));
 		TNT1 A 35;
 		TNT1 A 0 A_DropItem("HDBlurSphere");
 	xxxdeath:

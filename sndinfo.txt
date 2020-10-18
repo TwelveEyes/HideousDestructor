@@ -4,6 +4,19 @@ grunt/bleedout1  dspodth1
 grunt/bleedout2  dspodth2
 $random grunt/bleedout {grunt/bleedout1 grunt/bleedout2}
 
+shellshade/sight   dsposit
+shellshade/active  dsposact
+shellshade/pain    dsplpain
+shellshade/death   dspldeth
+
+freshgrunt/sight   dsposit
+freshgrunt/active  dsposact
+freshgrunt/pain    dspopain
+freshgrunt/death1  dspodth1
+freshgrunt/death2  dspodth2
+freshgrunt/death3  dspodth3
+$random freshgrunt/death {freshgrunt/death1 freshgrunt/death2 freshgrunt/death3}
+
 babuin/sight    dssgtsit
 babuin/active   dsdmact
 babuin/pain     dsdmpain
@@ -20,6 +33,8 @@ putto/sight   dsboscub
 putto/pain    dsdmpain
 putto/death   dsbarexp
 
+yokai/sight   dsboscub
+
 caco/ballhum        dsplsidl  $limit caco/ballhum 0
 caco/ballcrack      dsrifclk
 caco/bigexplode     dsbarexp
@@ -30,12 +45,17 @@ caco/bigcrack       dsthubm
 caco/bigshot        dsdsdshtgn  //dsbarexp in d1
 caco/charge         dscacsit
 
+skull/idlescream    dssklatk
+skull/activescream  dssklatk
+
 baron/ballhum    dsplsidl
 baron/bigballx   dsbarexp
 baron/attack     dsfirsht
 baron/shotx      dsfirxpl
 
 cyber/ballhum    dsplsidl  $limit cyber/ballhum 0
+
+vile/curse  dsvilact
 
 barrel/pain   dsbspact
 barrel/walk   dsmetal
@@ -259,6 +279,7 @@ world/herpfar     dsriffar    $limit world/herpfar 0
 world/shotgunfar   dsshtfar    $limit world/shotgunfar 0
 world/rocketfar    dsrktfar
 world/tbfar        dsrktfar
+world/tbfar2        dsshtfar
 world/bfgfar       dsbfgfar
 world/explode      dsbarexp  $limit world/explode 0
 
@@ -283,7 +304,8 @@ misc/casing3       dsrifck2  $volume misc/casing3 0.2  $limit misc/casing 3
 misc/casing4       dsding    $volume misc/casing4 0.9  $limit misc/casing 4
 misc/ladder        dsbelt
 misc/boxtrapped    dsrifclk
-
+misc/mobshieldf     dsfwoosh
+misc/mobshieldx     dsfwoosh
 
 
 //delimit some stock doom sounds

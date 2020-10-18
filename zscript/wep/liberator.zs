@@ -39,12 +39,17 @@ class AutoReloadingThingy:HDWeapon{
 		owner.A_TakeInventory("fourmilammo",canmake*4);
 		if(deductfrombp>0)bp.addamount("fourmilammo",-deductfrombp);
 
+
 		//add resulting rounds
 		//fill up inv first, then bp
 		if(didmake<1)return;
+
 		int bpadd=didmake-onpspace;
-		owner.A_GiveInventory("SevenMilAmmo",didmake);
+		int onpadd=didmake-max(0,bpadd);
+
 		if(bpadd>0)bp.addamount("sevenmilammo",bpadd);
+		if(onpadd>0)owner.A_GiveInventory("SevenMilAmmo",onpadd);
+
 
 		owner.A_Log("You reloaded "..didmake.." 7.76mm rounds during your downtime.",true);
 	}
@@ -951,7 +956,7 @@ class LiberatorRifle:AutoReloadingThingy{
 		stop;
 	}
 	override void InitializeWepStats(bool idfa){
-		weaponstatus[LIBS_FLAGS]|=LIBF_GRENADELOADED;
+		if(!(weaponstatus[0]&LIBF_NOLAUNCHER))weaponstatus[0]|=LIBF_GRENADELOADED;
 		weaponstatus[LIBS_MAG]=30;
 		weaponstatus[LIBS_CHAMBER]=2;
 		if(!idfa&&!owner){

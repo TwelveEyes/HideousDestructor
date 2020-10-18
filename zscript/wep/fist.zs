@@ -19,8 +19,7 @@ class HDFist:HDWeapon replaces Fist{
 		+hdweapon.dontdisarm
 		+hdweapon.dontnull
 		+nointeraction
-		obituary "%o made %k take the kid gloves off.";
-		attacksound "*fist";
+		obituary "%o was knocked out by %k.";
 		weapon.selectionorder 100;
 		weapon.kickback 120;
 		weapon.bobstyle "Alpha";
@@ -198,7 +197,7 @@ class HDFist:HDWeapon replaces Fist{
 			A_Log(string.format("Punched %s for %i damage!",pch,dmg));
 		}
 		if(dmg*2>punchee.health)punchee.A_StartSound("misc/bulletflesh",CHAN_AUTO);
-		punchee.damagemobj(self,self,int(dmg),"SmallArms0");
+		punchee.damagemobj(self,self,int(dmg),"melee");
 
 		if(!punchee)invoker.targethealth=0;else{
 			invoker.targethealth=punchee.health;
@@ -254,6 +253,17 @@ class HDFist:HDWeapon replaces Fist{
 			invoker.grabangle=grabangle;
 			invoker.grabbed=grbd;
 		}
+
+		//don't allow drag if standing on top of the thing being dragged
+		if(
+			pos.z-floorz>10
+			&&!(pos.z-(grabbed.pos.z+grabbed.height))
+			&&max(
+				abs(pos.x-grabbed.pos.x),
+				abs(pos.y-grabbed.pos.y)
+			)<radius+grabbed.radius
+		)return;
+
 		bool resisting=(
 			(
 				grabbed.bismonster

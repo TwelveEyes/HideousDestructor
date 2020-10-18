@@ -162,12 +162,17 @@ class HDBossBrain:HDMobBase replaces BossBrain{
 	){
 		if(
 			!bshootable
-			||(!source&&damage<TELEFRAG_DAMAGE)
+			||(
+				!source
+				&&damage<TELEFRAG_DAMAGE
+				&&mod!="crush"
+			)
 			||(source&&source.master==self)
 		)return -1;
 		if(
 			!bincombat
 			||damage==TELEFRAG_DAMAGE
+			||mod=="crush"
 		){
 			bshootable=false;
 			setstatelabel("deathfade");
@@ -179,18 +184,6 @@ class HDBossBrain:HDMobBase replaces BossBrain{
 
 		int maxhp=skill+2;
 
-		for(int i=0;i<MAXPLAYERS;i++){
-			if(!playeringame[i])continue;
-			maxhp++;
-			if(
-				players[i].mo
-				&&players[i].mo.health>0
-			){
-				let pmo=players[i].mo;
-				pmo.vel+=(pmo.pos-pos).unit()*7;
-				pmo.vel.z+=3;
-			}
-		}
 		int returnvalue=-1;
 		if(paintimes>maxhp){
 			hdbosseye bbe;
@@ -203,6 +196,18 @@ class HDBossBrain:HDMobBase replaces BossBrain{
 			returnvalue=super.damagemobj(inflictor,source,health,mod,flags|DMG_NO_FACTOR|DMG_NO_PAIN,angle);
 		}else{
 			setstatelabel("pain");
+			for(int i=0;i<MAXPLAYERS;i++){
+				if(!playeringame[i])continue;
+				maxhp++;
+				if(
+					players[i].mo
+					&&players[i].mo.health>0
+				){
+					let pmo=players[i].mo;
+					pmo.vel+=(pmo.pos-pos).unit()*7;
+					pmo.vel.z+=5;
+				}
+			}
 		}
 
 		DistantQuaker.Quake(

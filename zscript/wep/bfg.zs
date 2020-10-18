@@ -58,8 +58,24 @@ class BFG9K:HDCellWeapon replaces BFG9000{
 		}
 		return super.CreateTossable(amount);
 	}
+	override void tick(){
+		super.tick();
+
+		if(!owner)return;
+		if(owner.health<1){
+			weaponstatus[0]&=~BFGF_STRAPPED;
+			if(weaponstatus[0]&BFGF_CRITICAL)owner.A_DropInventory(getclass());
+		}else if(
+			!owner.player
+			||(
+				owner.player.readyweapon!=self
+				&&!NullWeapon(owner.player.readyweapon)
+			)
+		)weaponstatus[0]&=~BFGF_STRAPPED;
+	}
 	override void doeffect(){
 		if(hdplayerpawn(owner)){
+			//droop downwards
 			if(
 				owner.player&&owner.player.readyweapon==self&&
 				!(hdplayerpawn(owner).gunbraced)&&
@@ -153,7 +169,7 @@ class BFG9K:HDCellWeapon replaces BFG9000{
 			A_WeaponReady(WRF_ALL);
 		}goto readyend;
 	select0:
-		B9KG A 0;
+		B9KG A 0{if(!countinv("NulledWeapon"))invoker.weaponstatus[0]&=~BFGF_STRAPPED;}
 		BFGG C 0 A_CheckIdSprite("B9KGA0","BFGGA0");
 		goto select0bfg;
 	deselect0:
@@ -771,7 +787,7 @@ extend class HDWeapon{
 		)chargeable=true;
 		if(!chargeable&&owner.findinventory("HDBattery")){
 			let batts=HDBattery(owner.findinventory("HDBattery"));
-			for(int i=0;i<amount;i++){
+			for(int i=0;i<batts.amount;i++){
 				if(batts.mags[i]>=BFGC_MINCHARGE){
 					chargeable=true;
 					break;

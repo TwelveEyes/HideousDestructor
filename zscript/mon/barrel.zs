@@ -15,6 +15,7 @@ class HDBarrel:HDMobBase replaces ExplosiveBarrel{
 		+activatemcross +canpass +nodropoff
 		+fixmapthingpos +dontgib
 		+hdmobbase.doesntbleed
+		-countkill
 		-ismonster
 		+hdmobbase.noshootablecorpse
 		damagefactor "Thermal",1.2;
@@ -532,11 +533,10 @@ class BarrelGremlin:HDActor{
 	}
 	bool hasmoved;
 	void A_GremlinHunt(){
-		if(!master){
-			destroy();
-			return;
-		}
-		if(master.health<1){
+		if(
+			!master
+			||master.health<1
+		){
 			bshootable=true;
 			A_Die();
 			return;

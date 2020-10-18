@@ -71,7 +71,7 @@ extend class HDPlayerPawn{
 				||(zerk>500&&!random(0,255))
 			)
 		){
-			scale.y=1.;
+			scale.y=skinscale.y;
 			incapacitated=-((11-6)<<2);
 		}
 		if(
@@ -231,8 +231,20 @@ class HDIncapWeapon:SelfBandage{
 				A_WeaponOffset(hdbbx,hdbby+WEAPONTOP,WOF_INTERPOLATE);
 			}
 		}
-		---- A 0 A_JumpIf(!!player.cmd.buttons,"nope");
-		---- A 0 A_Jump(256,"ready");
+		---- A 0{
+			if(player.cmd.buttons&(
+					BT_ATTACK|
+					BT_ALTATTACK|
+					BT_RELOAD|
+					BT_ZOOM|
+					BT_USER1|
+					BT_USER2|
+					BT_USER3|
+					BT_USER4|
+					BT_JUMP
+			))setweaponstate("nope");
+			else setweaponstate("ready");
+		}
 	select:
 		TNT1 A 30;
 		goto nope;
@@ -269,8 +281,11 @@ class HDIncapWeapon:SelfBandage{
 		TNT1 A 0 A_JumpIf(!countinv(invoker.inventorytype),"fumbleforsomething");
 		TNT1 A 0 A_JumpIf(invoker.inventorytype=="HDFragGrenadeAmmo","pullpin");
 		TNT1 A 0 A_JumpIf(
-			invoker.inventorytype=="PortableStimpack"
-			||invoker.inventorytype=="PortableBerserkpack"
+			!countinv("WornRadsuit")
+			&&(
+				invoker.inventorytype=="PortableStimpack"
+				||invoker.inventorytype=="PortableBerserkpack"
+			)
 			,"injectstim");
 		goto nope;
 	injectstim:
